@@ -16,8 +16,7 @@ Requirements: Node 20+, Python 3.10+, ffmpeg, and Chromium for Playwright.
 
 ```bash
 npm install
-npx playwright install chromium          # skip if Chromium is already provided
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+npm run setup                            # Python venv for the audio, Playwright's Chromium, ffmpeg check
 
 npm run dev                              # interactive preview at http://localhost:5173
 npm run audio -- arrow-of-time           # synthesize the score -> out/arrow-of-time/audio/score.wav
@@ -34,10 +33,11 @@ npm run render -- arrow-of-time          # 1080p24 film -> out/arrow-of-time/ren
 | `npm run still -- <id> --sheet --from 0 --to 80 --n 40 --cols 8` | Contact sheet of a whole time range. |
 | `npm run still -- <id> --t 10 --t 20 --bench --scale 1` | Per-frame render cost, for planning renders. |
 | `npm run render -- <id> [--preset draft\|final]` | Render the film. `draft` is half resolution, fast x264 and no motion blur. Rendering is split into 20 s segments that workers pull from a queue; an interrupted render continues with `--resume`. Also takes `--from/--to` seconds, `--workers n`, `--segment s`, `--crf`, `--scale`, `--gl auto\|egl\|vulkan\|swiftshader\|gpu` and `--no-audio`. |
-| `npm run release -- <id> [--poster 75]` | Package the latest final render into `releases/<id>/`: the 1080p master, a 720p preview, a poster frame and `info.json`. |
+| `npm run release -- <id> [--poster 75]` | Package the latest final render into `releases/<id>/` (tracked with Git LFS): a two-pass 1080p encode at 8 Mbps (`--mbps`), a 720p preview sized to fit `--preview-mb` (default 28), a poster frame and `info.json`. |
 | `npm run audio -- <id>` | Run `projects/<id>/score.py` and write `out/<id>/audio/score.wav`. |
 | `npm run new -- <id> --title "My Film"` | Scaffold a new film from `templates/starter`. |
-| `npm run typecheck` | TypeScript check of the engine, tools and all projects. |
+| `npm run setup` | One-time setup: creates `.venv` with the audio dependencies, installs Playwright's Chromium, checks for ffmpeg. |
+| `npm run typecheck` | TypeScript check of the engine, tools and all projects (CI runs it on every push). |
 
 ## How a film is made
 
