@@ -5,6 +5,9 @@
 
 ![Frames from the film](poster.jpg)
 
+The final render took 1 h 23 min on a 4-core CPU without a GPU (Mesa llvmpipe, 2 workers,
+motion blur on; about 0.8 s of GPU time per frame).
+
 ```bash
 npm run audio -- arrow-of-time      # score  -> out/arrow-of-time/audio/score.wav
 npm run render -- arrow-of-time     # film   -> out/arrow-of-time/renders/arrow-of-time-final-latest.mp4
