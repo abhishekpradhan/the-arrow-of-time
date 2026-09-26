@@ -32,7 +32,7 @@ import numpy as np  # noqa: E402
 
 from studio import Mix, SR, Timeline, analysis, fx, instruments as ins, master, theory, wav  # noqa: E402
 from studio import filters as flt  # noqa: E402
-from studio.core import F32, Bounce, db, env_points, ns, rng  # noqa: E402
+from studio.core import F32, Bounce, env_points, ns, rng  # noqa: E402
 from studio.theory import midi, name  # noqa: E402
 from studio.timeline import fit, grid, pulses, ramp  # noqa: E402
 
@@ -43,7 +43,9 @@ DEFAULT_OUT = ROOT / 'out' / PROJECT / 'audio' / 'score.wav'
 # Musical material (MUSIC.md)
 # ----------------------------------------------------------------------------
 
-GAP = 0.35  # silent gap before the Big Bang
+GAP = 0.35      # silent gap before the Big Bang (MUSIC.md)
+BREATH = 0.06   # the "suck": everything stops this long before the asteroid impact
+END_FADE = 0.5  # the file ends in silence (fades the last reverb tail)
 
 #: core progression Am - Fmaj7 - C - G6 with the E pedal held on top:
 #: bass + upper voices (common tones A/C/E are held between chords)
@@ -60,6 +62,24 @@ TRIAD = {'Am': ['A3', 'C4', 'E4', 'A4'], 'F': ['A3', 'C4', 'F4', 'A4'],
          'C': ['G3', 'C4', 'E4', 'G4'], 'G': ['G3', 'B3', 'D4', 'G4']}
 FIGURE = {'Am': ['A3', 'E4', 'A4', 'E4'], 'F': ['F3', 'C4', 'F4', 'C4'],
           'C': ['C4', 'G4', 'C5', 'G4'], 'G': ['G3', 'D4', 'G4', 'D4']}
+
+#: per-section mix offsets (dB): the film's dynamic arc. Quiet moments are
+#: genuinely quiet; the climaxes (bang, Milky Way, asteroid, civilization to
+#: NOW, red giant, merger, Picardy) carry the loudness.
+LEVEL = {
+    'prologue': -9.0, 'riser': -4.0, 'bang': 0.0, 'universe': -1.5, 'darkages': -12.0, 'firststars': -8.0,
+    'galaxies': -2.0, 'milkyway': -2.0, 'nebula': -7.0, 'sun': -1.5, 'earth': -2.5, 'moon': -1.5, 'oceans': -6.0,
+    'life': 1.5, 'snowball': -11.0, 'cambrian': 1.5, 'dinosaurs': 2.0, 'impact': 0.0, 'mammals': -7.0,
+    'humans': -10.0, 'caves': -4.0, 'ascent': -1.5, 'now': -10.0, 'future': -4.0, 'redgiant': 1.5,
+    'whitedwarf': -8.0, 'merger': 0.0, 'laststars': -4.0, 'blackholes': -11.0, 'evaporation': -9.0,
+    'epilogue': -4.0,
+}
+
+#: extra clock level (dB) and click brightness per section, so the heartbeat
+#: stays audible over the loudest music without being annoying in quiet parts
+TICK_BOOST = {'prologue': (0.0, 0.0), 'civilization': (9.0, 1.0), 'moonlanding': (11.0, 1.0), 'nightearth': (12.0, 1.0),
+              'mars': (5.0, 0.5), 'drift': (5.0, 0.5), 'hotearth': (3.0, 0.3), 'redgiant': (10.0, 1.0),
+              'whitedwarf': (2.0, 0.3), 'merger': (12.0, 1.0), 'laststars': (8.0, 0.8)}
 
 #: the 8-bar theme, quarter note = 1 s: (note, beats) per bar
 THEME = [
@@ -110,32 +130,43 @@ class Score:
         m.reverb('cathedral', fx.reverb_ir('cathedral'), hp=200.0, lp=9000.0)
         T = m.track
         chorus = lambda seed, mix=0.3, rate=0.3: fx.Chorus(rate, 2.2, 13.0, mix, 2, seed=seed)  # noqa: E731
+        # the clock must read through the loudest passages: carve room for each tick there
+        self.sched = self.tick_schedule()
+        loud = {k for k, (boost, _) in TICK_BOOST.items() if boost >= 7.0}
+        carve_times = [t for t, *_ in self.sched if (tl.beat_at(t) and tl.beat_at(t).id in loud)]
+        carve = lambda: fx.Carve(carve_times, depth_db=6.0)  # noqa: E731
         self.clock = T('clock', gain_db=-8, fx=[flt.HP(250)], sends={'room': -10, 'hall': -22}, group='clock')
         self.clock_far = T('clock_far', gain_db=-8, fx=[flt.HP(250)], sends={'room': -10, 'hall': -10, 'cathedral': -16},
                            group='clock')
-        self.organ = T('organ', gain_db=0, fx=[flt.HP(36), flt.LP(12000)], sends={'hall': -7, 'cathedral': -16})
-        self.strings = T('strings', gain_db=0, fx=[flt.HP(40), chorus(1, 0.25)], sends={'hall': -6})
-        self.lead = T('lead', gain_db=0, fx=[flt.HP(60), chorus(4, 0.2)], sends={'hall': -6, 'cathedral': -15})
+        self.organ = T('organ', gain_db=0, fx=[flt.HP(36), flt.LP(12000), carve()], sends={'hall': -7, 'cathedral': -16})
+        self.strings = T('strings', gain_db=0, fx=[flt.HP(40), carve()], sends={'hall': -6})
+        self.lead = T('lead', gain_db=0, fx=[flt.HP(60), carve()], sends={'hall': -6, 'cathedral': -15})
         self.piano = T('piano', gain_db=0, fx=[flt.HP(30)], sends={'hall': -10})
         self.piano_far = T('piano_far', gain_db=0, fx=[flt.HP(30)], sends={'hall': -12, 'cathedral': -5})
-        self.brass = T('brass', gain_db=0, fx=[flt.HP(40), chorus(2, 0.3, 0.45)], sends={'hall': -8})
-        self.choir = T('choir', gain_db=-1, fx=[flt.HP(80)], sends={'hall': -10, 'cathedral': -8})
-        self.bells = T('bells', gain_db=-5, fx=[flt.HP(250)], sends={'cathedral': -4, 'hall': -14})
-        self.pluck = T('pluck', gain_db=-3, fx=[flt.HP(110), fx.Delay(0.375, 0.28, 0.16, lp=4500.0)], sends={'hall': -11})
-        self.mallet = T('mallet', gain_db=-4, fx=[flt.HP(90)], sends={'hall': -12})
-        self.pad = T('pad', gain_db=0, fx=[flt.HP(40), chorus(3, 0.35, 0.18)], sends={'hall': -8, 'cathedral': -14})
+        self.brass = T('brass', gain_db=0, fx=[flt.HP(40), chorus(2, 0.3, 0.45), carve()], sends={'hall': -8})
+        self.choir = T('choir', gain_db=-1, fx=[flt.HP(80), carve()], sends={'hall': -10, 'cathedral': -8})
+        self.bells = T('bells', gain_db=-5, fx=[flt.HP(250), carve()], sends={'cathedral': -4, 'hall': -14})
+        self.pluck = T('pluck', gain_db=-3, fx=[flt.HP(110), flt.LP(9000), fx.Delay(0.375, 0.28, 0.16, lp=4500.0)],
+                       sends={'hall': -11})
+        self.mallet = T('mallet', gain_db=-4, fx=[flt.HP(90), flt.LP(9000)], sends={'hall': -12})
+        self.pad = T('pad', gain_db=0, fx=[flt.HP(40)], sends={'hall': -8, 'cathedral': -14})
         self.glass = T('glass', gain_db=-3, fx=[flt.HP(300)], sends={'cathedral': -4})
         self.perc = T('perc', gain_db=0, fx=[flt.HP(28)], sends={'room': -7, 'hall': -15})
         self.boom = T('boom', gain_db=0, fx=[flt.HP(20)], sends={'hall': -20}, group='fx')
         self.sfx = T('sfx', gain_db=0, fx=[flt.HP(30)], sends={'hall': -13, 'cathedral': -18}, group='fx')
         self.amb = T('amb', gain_db=0, fx=[flt.HP(40)], sends={'hall': -16}, group='fx')
-        # hard cuts (MUSIC.md): the silent gap before the bang, NOW, and the asteroid impact (music only)
+        # hard cuts (MUSIC.md): the silent gap before the bang, NOW, and the asteroid impact
         m.cut(self.cue('bang') - GAP)
         m.cut(self.cue('now'))
-        m.cut(self.cue('asteroidImpact'), groups=['music'])
+        m.cut(self.cue('asteroidImpact') - BREATH)   # all music (and every tail) stops, then the hit
         self._cache = {}
+        self.offset = 0.0
 
     # -- helpers ---------------------------------------------------------------
+    def sec(self, name: str) -> None:
+        """Set the mix offset (dB) applied to everything placed next."""
+        self.offset = LEVEL[name]
+
     def want(self, a: float, b: float) -> bool:
         """Does [a, b] (plus tails) touch the render window?"""
         return b + 14.0 >= self.t0 and a <= self.t1 + 0.5
@@ -148,7 +179,7 @@ class Score:
             n = x.shape[-1]
             env = env_points([(ta - t, v) for ta, v in shape], n, db_domain=True)
             x = x * env
-        track.add(t, x, gain_db, pan)
+        track.add(t, x, gain_db + self.offset, pan)
 
     def cached(self, key, fn):
         if key not in self._cache:
@@ -175,26 +206,39 @@ class Score:
         self.prog(track or self.strings, steps, end, synth, gain_db, shape)
 
     def roll(self, t0, t1, note, v0=0.2, v1=0.9, rate=15.0, gain_db=0.0, seed=0):
-        """Timpani roll with a crescendo from ``v0`` to ``v1``."""
+        """Timpani roll with a crescendo from ``v0`` to ``v1``. The strokes of a
+        roll overlap (same pitch, ~15 per second), so each one is short and the
+        roll sits about 10 dB under a single stroke: support, not a solo."""
         r = rng('roll', t0, note, seed)
         ts = grid(t0, t1, 1.0 / rate)
         for i, t in enumerate(ts):
             u = (t - t0) / max(t1 - t0, 1e-6)
             v = (v0 + (v1 - v0) * u ** 1.5) * r.uniform(0.85, 1.0)
             vq = round(v * 20) / 20
-            x = self.cached(('timp-roll', note, vq, i % 3), lambda: ins.timpani(note, vq, decay=0.8, seed=i % 3))
-            self.put(self.perc, t + r.normal(0, 0.004), x, gain_db, pan=0.25 if i % 2 else -0.05)
+            x = self.cached(('timp-roll', note, vq, i % 3), lambda: ins.timpani(note, vq, decay=0.45, seed=i % 3))
+            self.put(self.perc, t + r.normal(0, 0.004), x, gain_db - 10.0, pan=0.25 if i % 2 else -0.05)
 
     def tick(self, t, kind, vel, far=False, seed=0):
-        x = self.cached(('tick', kind, seed % 6), lambda: ins.clock(kind, 1.0, seed=seed % 6))
-        g = 20 * math.log10(max(vel, 1e-3))
+        b = self.tl.beat_at(t)
+        boost, bright = TICK_BOOST.get(b.id if b else '', (0.0, 0.0))
+        x = self.cached(('tick', kind, seed % 6, bright), lambda: ins.clock(kind, 1.0, seed=seed % 6, bright=bright))
+        g = 20 * math.log10(max(vel, 1e-3)) + boost
         (self.clock_far if far else self.clock).add(t, x, g, pan=-0.12 if kind == 'tick' else 0.12)
 
     # -- the clock ---------------------------------------------------------------
     def clock_part(self):
+        """Place every tick of :meth:`tick_schedule` that touches the window."""
+        sched = self.sched
+        self.tick_count = len(sched)
+        for t, kind, v, far, i in sched:
+            if self.t0 - 2 <= t <= self.t1 + 0.1:
+                self.tick(t, kind, v, far, seed=i)
+
+    def tick_schedule(self):
         """The heartbeat: calm, accelerating into the bang, silent in the
         blast, soft in the dark ages, accelerating through civilization,
-        dead at NOW, resuming, slowing through the end, one final tick."""
+        dead at NOW, resuming, slowing through the end, one final tick.
+        Returns [(time, 'tick'|'tock', velocity, far, index)]."""
         c, B = self.cue, self.B
         runs = []
         first, rs, bang = c('firstTick'), c('riserStart'), c('bang')
@@ -202,7 +246,7 @@ class Score:
         steady = pulses(first, rs, 1.0)
         acc = [t for t in pulses(rs, stop, ramp(rs, stop, 1.0, 5.0)) if t < stop - 0.06]
         runs.append([(t, 0.55, False) for t in steady] +
-                    [(t, 0.55 + 0.3 * (t - rs) / (stop - rs), False) for t in acc])
+                    [(t, 0.55 + 0.5 * ((t - rs) / (stop - rs)) ** 1.5, False) for t in acc])
         D = B('darkages')
         runs.append([(t, 0.32, True) for t in grid(D.start, D.end, 2.0)])
         a0, civ, now = c('accelStart'), B('civilization'), c('now')
@@ -218,20 +262,25 @@ class Score:
         runs.append([(res, 0.5, True)])
         steady = pulses(res + 1.5, Ls.start, 1.0)
         run = [(t, 0.3 + 0.15 * min(1.0, (t - steady[0]) / 4.0), False) for t in steady]
-        k = math.log(2) / Ls.dur                     # 60 -> 30 BPM across the last stars, then slower still
-        slow = pulses(Ls.start, last + 40.0, lambda t: np.exp(-k * (np.asarray(t) - Ls.start)))
-        j = int(np.argmin([abs(t - last) for t in slow]))
-        slow = fit(slow[:j + 1], Ls.start, last)     # the last tick lands exactly on lastTick
+        # 60 -> 30 BPM across the last stars, then ever slower (a gentler decay) until the
+        # last tick lands exactly on lastTick; the late decay rate is chosen so that no
+        # tick collides with the final flash (lastFlash)
+        k1 = math.log(2) / Ls.dur
+        flash = c('lastFlash')
+        def schedule(k2):
+            def slowing(t):
+                t = np.asarray(t, dtype=np.float64) - Ls.start
+                return np.where(t <= Ls.dur, np.exp(-k1 * t), 0.5 * np.exp(-k2 * (t - Ls.dur)))
+            ts = pulses(Ls.start, last + 40.0, slowing)
+            j = int(np.argmin([abs(t - last) for t in ts]))
+            return fit(ts[:j + 1], Ls.start, last)
+        cands = [schedule(k1 * m) for m in np.linspace(0.25, 0.45, 21)]
+        slow = max(cands, key=lambda ts: (min(0.6, min(abs(t - flash) for t in ts)), -abs(len(ts) - len(cands[10]))))
         bh = B('blackholes').start
         run += [(t, 0.45 - 0.1 * (t - Ls.start) / (last - Ls.start), t >= bh) for t in slow]
         runs.append(run)
         runs.append([(c('finalTick'), 0.36, True)])
-        self.tick_count = 0
-        for run in runs:
-            for i, (t, v, far) in enumerate(run):
-                if self.t0 - 2 <= t <= self.t1 + 0.1:
-                    self.tick(t, 'tick' if i % 2 == 0 else 'tock', v, far, seed=i)
-                self.tick_count += 1
+        return [(t, 'tick' if i % 2 == 0 else 'tock', v, far, i) for run in runs for i, (t, v, far) in enumerate(run)]
 
     # -- sections ------------------------------------------------------------------
     def prologue(self):
@@ -240,6 +289,7 @@ class Score:
         stop = bang - GAP
         if not self.want(P.start, stop):
             return
+        self.sec('prologue')
         t_in = P.start + 2.0
         self.put(self.organ, t_in, ins.organ(['A2'], stop - t_in + 0.3, 'drone', attack=6.0, release=0.3, seed=1),
                  -3, shape=[(rs, 0), (stop, 5)])
@@ -254,9 +304,10 @@ class Score:
             t = P.start + dt
             self.put(self.piano, t, ins.piano(note, dur=min(6.0, stop - t), vel=vel, tone=0.55), -1)
         d = stop - rs
+        self.sec('riser')
         self.put(self.sfx, rs, ins.riser(d, 180.0, 7000.0, q=1.6, vel=0.9, curve=2.2, seed=1), -10)
         self.put(self.sfx, rs, ins.shepard(d, 0.18, 1.3, vel=1.0, seed=1), -7)
-        self.put(self.amb, rs, ins.rumble(d, lp=110.0, vel=0.7, attack=d * 0.8, release=0.01, seed=1), -3)
+        self.put(self.amb, rs, ins.rumble(d, lp=110.0, vel=0.7, attack=d * 0.8, release=0.01, seed=1), -8)
         self.put(self.sfx, stop - 2.5, ins.reverse_swell(2.5, bright=1.0, vel=0.8, seed=1), -12)
 
     def bigbang(self):
@@ -265,18 +316,20 @@ class Score:
         bang, BB = self.cue('bang'), self.B('bigbang')
         if not self.want(bang, BB.end):
             return
-        self.put(self.boom, bang, ins.sub_boom(12.0, 95.0, 24.0, 0.5, 3.2, 1.0, click=0.9, harmonics=0.5, seed=1), -1)
-        self.put(self.sfx, bang, ins.impact(1.0, 1.5, 8.0, seed=2), -3)
+        self.sec('bang')
+        self.put(self.boom, bang, ins.sub_boom(12.0, 95.0, 24.0, 0.5, 3.2, 1.0, click=0.9, harmonics=0.5, seed=1), -4)
+        self.put(self.sfx, bang, ins.impact(1.0, 1.5, 8.0, seed=2), -5)
         self.put(self.sfx, bang, ins.noise_burst(12.0, 16000.0, 110.0, 5.0, 2.4, 1.0, seed=3), -7)
         self.put(self.perc, bang, ins.timpani('A2', 1.0, seed=1), -2)
-        decay = [(bang, 0), (bang + 1.5, -3), (bang + 4, -10), (bang + 7, -20), (BB.end, -30)]
+        decay = [(bang, -1.5), (bang + 1.5, -4.5), (bang + 4, -11), (bang + 7, -20), (BB.end, -30)]
+        # the tutti blooms a moment after the blast's transient (room for the boom)
         self.put(self.choir, bang, ins.choir(['A2', 'E3', 'A3', 'C4', 'E4', 'A4', 'E5'], BB.end - bang, 'a',
-                                             attack=0.06, release=3.0, voices=5, seed=4), 2, shape=decay)
+                                             attack=0.25, release=3.0, voices=5, seed=4), 2, shape=decay)
         self.put(self.organ, bang, ins.organ(['A1', 'E2', 'A2', 'C3', 'E3', 'A3', 'C4', 'E4', 'A4'], BB.end - bang,
-                                             'full', attack=0.03, release=2.5, seed=5), 1, shape=decay)
-        self.put(self.organ, bang, ins.organ(['A2'], BB.end - bang, 'pedal', attack=0.05, release=3.0, seed=6), 0,
+                                             'full', attack=0.12, release=2.5, seed=5), 1, shape=decay)
+        self.put(self.organ, bang, ins.organ(['A2'], BB.end - bang, 'pedal', attack=0.15, release=3.0, seed=6), 0,
                  shape=decay)
-        self.put(self.strings, bang, ins.strings(['A2', 'E3', 'A3', 'E4', 'A4', 'C5', 'E5'], 3.0, attack=0.05,
+        self.put(self.strings, bang, ins.strings(['A2', 'E3', 'A3', 'E4', 'A4', 'C5', 'E5'], 3.0, attack=0.2,
                                                  release=3.0, bright=6000, seed=7), -1, shape=decay)
         # title music
         t = bang + 1.0
@@ -296,6 +349,7 @@ class Score:
         cmb = self.cue('cmbClear')
         if not self.want(I.start, CM.end):
             return
+        self.sec('universe')
         # inflation: a soft outward "whoomp"
         self.put(self.boom, I.start, ins.sub_boom(5.0, 70.0, 30.0, 0.4, 1.4, 0.5, click=0.2, seed=4), -6)
         self.put(self.sfx, I.start, ins.noise_burst(5.0, 9000.0, 250.0, 2.5, 1.2, 0.5, seed=5), -12)
@@ -335,10 +389,11 @@ class Score:
         D, FS, G = self.B('darkages'), self.B('firststars'), self.B('galaxies')
         if not self.want(D.start, G.start):
             return
-        self.put(self.pad, D.start - 1.0, ins.drone(['A1'], G.start - D.start, attack=3.0, release=4.0, vel=0.9), -8)
+        self.sec('darkages')
+        self.put(self.pad, D.start - 1.0, ins.drone(['A1'], G.start - D.start, attack=3.0, release=4.0, vel=0.9), -16)
         self.put(self.organ, D.start - 0.5, ins.organ(['A2'], FS.end - D.start, 'drone', attack=3.0, release=3.0,
-                                                      seed=80), -12)
-        self.put(self.amb, D.start - 1.5, ins.wind(D.dur + 4.0, 0.8, vel=0.6, seed=1), -14)
+                                                      seed=80), -8)
+        self.put(self.amb, D.start - 1.5, ins.wind(D.dur + 4.0, 0.8, vel=0.6, seed=1), -8)
 
     def firststars(self):
         """56-64: one bell per starIgnitions time (A minor pentatonic, high),
@@ -346,13 +401,14 @@ class Score:
         FS = self.B('firststars')
         if not self.want(FS.start, FS.end):
             return
+        self.sec('firststars')
         penta = theory.scale('A', 'pentatonic_minor', 'A5', 'E7')
         r = rng('stars')
         prev = None
         for i, t in enumerate(self.tl.times('starIgnitions')):
             m = int(r.choice([p for p in penta if p != prev]))
             prev = m
-            self.put(self.bells, t, ins.bell(m, 7.0, r.uniform(0.55, 0.85), 'glass', fm=0.4, seed=100 + i), -1,
+            self.put(self.bells, t, ins.bell(m, 7.0, r.uniform(0.55, 0.85), 'glass', fm=0.4, seed=100 + i), 5,
                      pan=float(r.uniform(-0.7, 0.7)))
         steps = [(FS.start, 'A2', ['A3', 'C4', 'E4']), (FS.start + 4, 'F2', ['A3', 'C4', 'E4'])]
         self.organ_prog(steps, FS.end + 0.3, 'soft', attack=3.0, release=1.5, gain_db=-4,
@@ -365,31 +421,34 @@ class Score:
         G, mw = self.B('galaxies'), self.cue('milkyWayReveal')
         if not self.want(G.start, mw):
             return
+        self.sec('galaxies')
         s = G.start
-        cres = [(s, -12), (mw - 1, -2), (mw, 0)]
+        stop = mw - 0.15                        # the crescendo stops just short of the reveal: a breath, then the hit
+        cres = [(s, -18), (s + 3, -11), (mw - 1, -2), (stop, 0)]
         self.organ_prog([(s, 'A2', ['A3', 'C4', 'E4']), (s + 2, 'B2', ['G3', 'B3', 'E4']), (s + 4, 'C3', ['G3', 'C4', 'E4']),
-                         (s + 5, 'D3', ['A3', 'D4', 'F4'])], mw + 0.2, 'principal', attack=0.5, release=0.6,
+                         (s + 5, 'D3', ['A3', 'D4', 'F4'])], stop, 'principal', attack=0.5, release=0.1,
                         shape=cres, seed=130)
         self.string_prog([(s, 'A2', ['A4', 'C5', 'E5']), (s + 2, 'B2', ['B4', 'D5', 'G5']), (s + 4, 'C3', ['C5', 'E5', 'G5']),
-                          (s + 5, 'D3', ['D5', 'F5', 'A5'])], mw + 0.2, attack=0.8, release=0.6, shape=cres, bright=5500,
+                          (s + 5, 'D3', ['D5', 'F5', 'A5'])], stop, attack=0.8, release=0.1, shape=cres, bright=5500,
                          seed=140)
-        self.put(self.choir, s + 3.0, ins.choir(['C4', 'E4', 'G4', 'C5'], mw - s - 3.0, 'a', attack=2.5, release=0.4,
+        self.put(self.choir, s + 3.0, ins.choir(['C4', 'E4', 'G4', 'C5'], stop - s - 3.0, 'a', attack=2.5, release=0.1,
                                                 seed=150), -4)
-        self.roll(mw - 2.5, mw - 0.03, 'C3', 0.1, 0.9, gain_db=-3, seed=2)
-        self.put(self.sfx, mw - 2.0, ins.reverse_swell(2.0, 1.0, 0.9, seed=3), -11)
+        self.roll(mw - 2.5, mw - 0.12, 'C3', 0.1, 0.9, gain_db=-3, seed=2)
+        self.put(self.sfx, mw - 2.05, ins.reverse_swell(2.0, 1.0, 0.9, seed=3), -11)   # peaks 50 ms before the reveal
 
     def milkyway(self):
         """70-80: synth brass + organ full chord, F major -> C, sustain to 80."""
         mw, MW = self.cue('milkyWayReveal'), self.B('milkyway')
         if not self.want(mw, MW.end):
             return
+        self.sec('milkyway')
         t2 = MW.start + 5.0
         end = MW.end
         dyn = [(mw, 0), (t2 - 0.4, -2), (t2, 0), (end - 3.0, -2), (end, -16)]
-        self.put(self.boom, mw, ins.sub_boom(6.0, 70.0, 32.0, 0.35, 1.6, 0.6, click=0.3, seed=7), -4)
-        self.put(self.perc, mw, ins.timpani('F2', 1.0, seed=2), -2)
+        self.put(self.boom, mw, ins.sub_boom(6.0, 70.0, 32.0, 0.35, 1.6, 0.6, click=0.3, seed=7), -8)
+        self.put(self.perc, mw, ins.timpani('F2', 1.0, seed=2), -5)
         self.put(self.sfx, mw, ins.noise_burst(4.0, 16000.0, 2500.0, 1.5, 0.9, 0.35, seed=8), -14)
-        self.put(self.brass, mw, ins.brass(['F2', 'C3', 'F3', 'A3', 'C4', 'F4', 'A4'], t2 - mw, attack=0.22, release=0.9,
+        self.put(self.brass, mw, ins.brass(['F2', 'C3', 'F3', 'A3', 'C4', 'F4', 'A4'], t2 - mw, attack=0.07, release=0.9,
                                            vel=0.95, bright=1.0, seed=1), 1, shape=dyn)
         self.put(self.brass, t2, ins.brass(['C3', 'G3', 'C4', 'E4', 'G4', 'C5', 'E5'], end - t2 - 1.0, attack=0.3,
                                            release=2.0, vel=0.95, bright=1.0, seed=2), 1, shape=dyn)
@@ -397,9 +456,9 @@ class Score:
                          (t2, 'C3', ['C3', 'G3', 'C4', 'E4', 'G4', 'C5', 'E5'])], end, 'full', attack=0.08, release=2.2,
                         gain_db=-1, shape=dyn, pedal='pedal', seed=160)
         self.string_prog([(mw, 'F2', ['F3', 'C4', 'F4', 'A4', 'C5', 'F5', 'A5']),
-                          (t2, 'C3', ['E3', 'G3', 'C4', 'G4', 'C5', 'E5', 'G5'])], end, attack=0.35, release=2.2,
+                          (t2, 'C3', ['E3', 'G3', 'C4', 'G4', 'C5', 'E5', 'G5'])], end, attack=0.12, release=2.2,
                          shape=dyn, gain_db=-1, bright=6500, seed=170)
-        self.put(self.choir, mw, ins.choir(['F3', 'C4', 'F4', 'A4', 'C5'], t2 - mw, 'a', attack=0.3, release=1.2,
+        self.put(self.choir, mw, ins.choir(['F3', 'C4', 'F4', 'A4', 'C5'], t2 - mw, 'a', attack=0.15, release=1.2,
                                            seed=180), 0, shape=dyn)
         self.put(self.choir, t2, ins.choir(['E3', 'G3', 'C4', 'E4', 'G4', 'C5'], end - t2 - 1.0, 'a', attack=0.5,
                                            release=2.5, seed=181), 0, shape=dyn)
@@ -411,24 +470,28 @@ class Score:
         sn, si, theia = self.cue('supernova'), self.cue('sunIgnite'), self.cue('theia')
         if not self.want(N.start, theia):
             return
+        self.sec('nebula')
         self.put(self.boom, sn, ins.sub_boom(5.0, 60.0, 30.0, 0.3, 1.8, 0.5, click=0.25, seed=9), -5)
         self.put(self.sfx, sn, ins.noise_burst(4.0, 7000.0, 400.0, 1.0, 0.8, 0.3, seed=10), -12)
         # ostinato: 8th notes (2 per second), root/fifth of the current chord
         changes = [(N.start, ('A2', 'E3')), (si, ('C3', 'G3')), (si + 4, ('G2', 'D3')), (E.start, ('A2', 'E3')),
                    (E.start + 3, ('F2', 'C3')), (M.start, ('D2', 'A2'))]
         for i, t in enumerate(grid(N.start, theia - 0.05, 0.5)):
+            self.sec('nebula' if t < S.start else 'sun' if t < E.start else 'earth' if t < M.start else 'moon')
             pair = [p for tc, p in changes if tc <= t + 1e-6][-1]
             note = pair[i % 2]
             on_beat = abs(t - round(t)) < 1e-6
             base = 0.40 if t < M.start else 0.40 + 0.25 * (t - M.start) / (theia - M.start)
             vel = round(base + (0.06 if on_beat else 0.0), 2)
-            self.put(self.piano, t, ins.piano(note, dur=0.9, vel=vel, tone=0.6), -3)
+            self.put(self.piano, t, ins.piano(note, dur=min(0.9, theia - 0.07 - t), vel=vel, tone=0.6), -3)
         # nebula pads
+        self.sec('nebula')
         self.put(self.strings, N.start, ins.strings(['A2', 'E3', 'A3', 'C4'], S.start - N.start + 0.5, attack=2.0,
                                                     release=2.0, bright=2200, vibrato=8, seed=190), -8)
         self.put(self.pad, N.start + 0.5, ins.pad(['A3', 'C4', 'E4'], S.start - N.start + 0.5, attack=3.0, release=2.0,
                                                   bright=1400, seed=1), -8)
         # sun ignites: reverse swell into a bright C major bloom
+        self.sec('sun')
         self.put(self.sfx, si - 1.5, ins.reverse_swell(1.5, 1.2, 0.9, seed=4), -11)
         self.put(self.boom, si, ins.sub_boom(4.0, 65.0, 35.0, 0.25, 1.2, 0.4, click=0.2, seed=11), -7)
         for k, note in enumerate(['C6', 'G6', 'E6', 'C7', 'G5']):
@@ -443,6 +506,7 @@ class Score:
         self.string_prog(s_steps, M.start + 0.5, attack=1.0, release=1.8, gain_db=-3, shape=dyn, bright=5500, seed=220)
         self.put(self.choir, si, ins.choir(['E4', 'G4', 'C5'], 3.5, 'a', attack=0.8, release=2.0, seed=230), -6)
         # a molten, battered Earth
+        self.sec('earth')
         self.put(self.amb, E.start, ins.rumble(M.start - E.start + 2.0, lp=150.0, vel=0.5, attack=1.5, release=2.0,
                                                seed=2), -8)
         for k, dt in enumerate((1.3, 3.6)):
@@ -454,18 +518,20 @@ class Score:
         M, O, theia = self.B('moon'), self.B('oceans'), self.cue('theia')
         if not self.want(M.start, O.start):
             return
+        self.sec('moon')
         d = theia - M.start
-        self.put(self.strings, M.start, ins.strings(['D2', 'A2', 'D3', 'F3'], d, attack=d * 0.8, release=0.12,
-                                                    bright=3000, vibrato=20, seed=240), -2)
-        self.put(self.strings, M.start + 0.3, ins.strings(['E5', 'F5'], d - 0.3, attack=d * 0.8, release=0.12,
-                                                          bright=6000, vibrato=25, seed=241), -8)
-        self.put(self.brass, M.start, ins.brass(['D2', 'A2', 'D3'], d, attack=d * 0.9, release=0.1, vel=0.7, bright=0.6,
-                                                growl=0.4, seed=3), -4)
-        self.roll(M.start, theia - 0.05, 'D2', 0.1, 0.85, gain_db=-3, seed=3)
-        self.put(self.sfx, M.start, ins.riser(d - 0.04, 200.0, 5000.0, q=1.8, vel=0.8, seed=2), -12)
+        br = 0.06                               # a breath before the impact
+        self.put(self.strings, M.start, ins.strings(['D2', 'A2', 'D3', 'F3'], d - br - 0.04, attack=d * 0.8,
+                                                    release=0.04, bright=3000, vibrato=20, seed=240), -2)
+        self.put(self.strings, M.start + 0.3, ins.strings(['E5', 'F5'], d - 0.3 - br - 0.04, attack=d * 0.8,
+                                                          release=0.04, bright=6000, vibrato=25, seed=241), -8)
+        self.put(self.brass, M.start, ins.brass(['D2', 'A2', 'D3'], d - br - 0.04, attack=d * 0.9, release=0.04,
+                                                vel=0.7, bright=0.6, growl=0.4, seed=3), -4)
+        self.roll(M.start, theia - 0.12, 'D2', 0.1, 0.85, gain_db=-3, seed=3)
+        self.put(self.sfx, M.start, ins.riser(d - br, 200.0, 5000.0, q=1.8, vel=0.8, seed=2), -12)
         # impact
-        self.put(self.sfx, theia, ins.impact(1.0, 1.2, 7.0, seed=12), -2)
-        self.put(self.boom, theia, ins.sub_boom(7.0, 80.0, 26.0, 0.35, 2.2, 0.8, click=0.5, seed=13), -3)
+        self.put(self.sfx, theia, ins.impact(1.0, 1.2, 7.0, seed=12), -4)
+        self.put(self.boom, theia, ins.sub_boom(7.0, 80.0, 26.0, 0.35, 2.2, 0.8, click=0.5, seed=13), -6)
         self.put(self.sfx, theia + 0.1, ins.debris(4.5, 40.0, 0.9, seed=14), -4)
         # wide shimmering pad afterwards
         t = theia + 0.4
@@ -483,6 +549,7 @@ class Score:
         O, L, rain = self.B('oceans'), self.B('life'), self.cue('rainStart')
         if not self.want(O.start, L.start + 4):
             return
+        self.sec('oceans')
         self.organ_prog([(O.start, 'A2', ['A3', 'B3', 'C4', 'E4']), (O.start + 4, 'F2', ['A3', 'C4', 'E4'])],
                         O.end + 0.5, 'soft', attack=2.5, release=2.5, gain_db=-5, seed=270)
         self.string_prog([(O.start, None, ['E4', 'A4', 'B4', 'C5']), (O.start + 4, None, ['F4', 'A4', 'C5', 'E5'])],
@@ -497,6 +564,7 @@ class Score:
         fz = self.cue('snowballFreeze')
         if not self.want(L.start, S.end):
             return
+        self.sec('life')
         chords = [(t, LIFE[i % 4]) for i, t in enumerate(grid(L.start, S.start + 1.0, 2.0))]
         bounce = Bounce(L.start, S.start - L.start + 6.0)
         accents = [1.0, 0.62, 0.78, 0.62, 0.9, 0.62, 0.78, 0.62]
@@ -541,6 +609,7 @@ class Score:
         S, fz = self.B('snowball'), self.cue('snowballFreeze')
         if not self.want(S.start, S.end):
             return
+        self.sec('snowball')
         self.put(self.glass, fz, ins.shimmer(3.0, 'E7', 5.0, 0.0, 7, 0.5, seed=4), -2)
         self.put(self.sfx, fz, ins.noise_burst(1.5, 14000.0, 6000.0, 0.5, 0.3, 0.2, seed=15), -16)
         for dt, note, d in ((0.0, 'E6', 3.3), (0.8, 'B6', 2.6), (1.7, 'A6', 2.0)):
@@ -556,6 +625,7 @@ class Score:
         C, Ld = self.B('cambrian'), self.B('land')
         if not self.want(C.start, Ld.end):
             return
+        self.sec('cambrian')
         chords = [(t, LIFE[i % 4]) for i, t in enumerate(grid(C.start, Ld.end, 2.0))]
         accents = [1.0, 0.62, 0.78, 0.62, 0.9, 0.62, 0.78, 0.62]
         mar = {'C': ['E4', 'G4', 'C5'], 'G/B': ['D4', 'G4', 'B4'], 'Am': ['C4', 'E4', 'A4'], 'F': ['C4', 'F4', 'A4']}
@@ -587,6 +657,7 @@ class Score:
         Dn = self.B('dinosaurs')
         if not self.want(Dn.start, Dn.end):
             return
+        self.sec('dinosaurs')
         big = {0: 1.0, 3: 0.7, 6: 0.8, 8: 0.95, 10: 0.7, 11: 0.8, 14: 0.85}
         mid = {2: 0.55, 5: 0.6, 7: 0.5, 12: 0.6, 13: 0.55, 15: 0.7}
         rims = {4: 0.5, 12: 0.45}
@@ -626,33 +697,37 @@ class Score:
     def impact(self):
         """156-162: ominous whoosh along asteroidStreak, IMPACT at
         asteroidImpact (music cuts), rumble tail."""
-        Dn, I = self.B('dinosaurs'), self.B('impact')
+        Dn = self.B('dinosaurs')
         st, imp = self.cue('asteroidStreak'), self.cue('asteroidImpact')
         Mm = self.B('mammals')
         if not self.want(Dn.end, Mm.start + 2):
             return
+        self.sec('impact')
         d = imp - Dn.end
-        self.put(self.brass, Dn.end, ins.brass(['A1', 'E2', 'Bb2'], d + 0.3, attack=d * 0.9, release=0.2, vel=0.8,
-                                               bright=0.5, growl=0.6, seed=7), -1)
-        self.put(self.strings, Dn.end + 0.2, ins.strings(['A2', 'Bb2', 'E5', 'F5'], d, attack=d * 0.8, release=0.2,
-                                                         vibrato=24, bright=3500, seed=350), -6)
-        self.roll(st, imp - 0.04, 'A2', 0.1, 0.9, gain_db=-4, seed=4)
-        w = imp - st
-        self.put(self.sfx, st, ins.whoosh(w, 90.0, 2800.0, peak=0.985, pan_from=-0.7, pan_to=0.4, q=1.0, vel=1.0,
+        br = BREATH
+        self.put(self.brass, Dn.end, ins.brass(['A1', 'E2', 'Bb2'], d - br - 0.04, attack=d * 0.9, release=0.04,
+                                               vel=0.8, bright=0.5, growl=0.6, seed=7), -1)
+        self.put(self.strings, Dn.end + 0.2, ins.strings(['A2', 'Bb2', 'E5', 'F5'], d - 0.2 - br - 0.04,
+                                                         attack=d * 0.8, release=0.04, vibrato=24, bright=3500,
+                                                         seed=350), -6)
+        self.roll(st, imp - 0.12, 'A2', 0.1, 0.9, gain_db=-4, seed=4)
+        w = imp - st - br
+        self.put(self.sfx, st, ins.whoosh(w, 90.0, 2800.0, peak=0.97, pan_from=-0.7, pan_to=0.4, q=1.0, vel=1.0,
                                           seed=1), -4)
         self.put(self.sfx, st, ins.riser(w, 100.0, 4000.0, q=1.2, vel=0.8, seed=3), -10)
         self.put(self.amb, st, ins.rumble(w, lp=120.0, vel=0.8, attack=w * 0.9, release=0.01, seed=3), -2)
-        self.put(self.sfx, imp, ins.impact(1.0, 1.6, 9.0, seed=31), 0)
-        self.put(self.boom, imp, ins.sub_boom(10.0, 72.0, 22.0, 0.5, 3.5, 0.95, click=0.8, harmonics=0.5, seed=32), -1)
+        self.put(self.sfx, imp, ins.impact(1.0, 1.5, 9.0, seed=31), -3)
+        self.put(self.boom, imp, ins.sub_boom(9.0, 72.0, 24.0, 0.5, 2.5, 0.95, click=0.8, harmonics=0.5, seed=32), -5)
         self.put(self.sfx, imp, ins.noise_burst(9.0, 14000.0, 150.0, 3.0, 1.8, 0.9, seed=33), -5)
         self.put(self.sfx, imp + 0.15, ins.debris(5.0, 40.0, 0.9, seed=34), -3)
-        self.put(self.amb, imp, ins.rumble(Mm.start + 1.5 - imp, lp=140.0, vel=0.9, attack=0.05, release=3.0, seed=4), 0)
+        self.put(self.amb, imp, ins.rumble(Mm.start + 0.5 - imp, lp=140.0, vel=0.9, attack=0.05, release=3.5, seed=4), -2)
 
     def mammals(self):
         """162-168: a soft dawn chord (C add9)."""
         Mm, H = self.B('mammals'), self.B('humans')
         if not self.want(Mm.start, H.start + 2):
             return
+        self.sec('mammals')
         self.put(self.strings, Mm.start, ins.strings(['C3', 'G3', 'D4', 'E4', 'G4'], Mm.dur + 0.5, attack=2.5,
                                                      release=2.5, bright=3200, vibrato=9, seed=360), -8)
         self.put(self.organ, Mm.start + 0.5, ins.organ(['C3', 'G3', 'D4', 'E4'], Mm.dur, 'soft', attack=2.5,
@@ -666,6 +741,7 @@ class Score:
         H, Cv, fire = self.B('humans'), self.B('caves'), self.cue('fire')
         if not self.want(H.start, Cv.end):
             return
+        self.sec('humans')
         for t, note, d in theme_events([1, 2], H.start):
             self.put(self.piano, t, ins.piano(note, dur=d + 0.6, vel=0.42, tone=0.5), 0)
         for dt, chord in ((0.0, ['A2', 'E3', 'A3']), (4.0, ['F2', 'C3', 'A3'])):
@@ -674,6 +750,7 @@ class Score:
         self.put(self.amb, fire, ins.fire(Cv.end + 1.5 - fire, 0.8, 0.5, seed=1), -8,
                  shape=[(fire, -8), (fire + 2, 0), (Cv.end - 1, 0), (Cv.end + 1.5, -24)])
         # caves
+        self.sec('caves')
         self.put(self.pad, Cv.start, ins.breath_pad(['C4', 'E4', 'G4'], 3.0, attack=1.2, release=1.5, vel=0.7, seed=1), 0)
         self.put(self.pad, Cv.start + 3.0, ins.breath_pad(['B3', 'D4', 'G4'], 2.6, attack=1.0, release=1.2, vel=0.7,
                                                           seed=2), 0)
@@ -696,6 +773,7 @@ class Score:
         a0, step, now = self.cue('accelStart'), self.cue('moonStep'), self.cue('now')
         if not self.want(a0, now):
             return
+        self.sec('ascent')
         mont = [float(m['t']) for m in self.tl.montage('civilization')]
         # chord plan: one core chord per montage accent, then the landing and the peak
         plan = [(t, CYCLE[k % 4]) for k, t in enumerate(mont)]
@@ -715,11 +793,13 @@ class Score:
             o_steps.append((t, b, u))
         self.organ_prog([s for s in o_steps if s[0] < mont[4]], mont[4], 'principal', attack=0.05, release=0.4,
                         shape=cres, seed=400)
-        self.organ_prog([s for s in o_steps if s[0] >= mont[4]], now + 0.5, 'full', attack=0.05, release=0.4,
-                        shape=cres, pedal='pedal', seed=410)
+        self.organ_prog([s for s in o_steps if mont[4] <= s[0] < ne.start], ne.start, 'principal', attack=0.05,
+                        release=0.4, shape=cres, pedal='pedal', seed=410)
+        self.organ_prog([s for s in o_steps if s[0] >= ne.start], now + 0.5, 'full', attack=0.05, release=0.4,
+                        shape=cres, pedal='pedal', seed=415)
         # sustained strings (high, E pedal on top), entering at Philosophy
         s_steps = [(t, None, up(CORE[ch][1])) for t, ch in plan if t >= mont[4]]
-        self.string_prog(s_steps, now + 0.5, attack=0.3, release=0.5, shape=cres, gain_db=-4, bright=6000, seed=420)
+        self.string_prog(s_steps, now + 0.5, attack=0.3, release=0.5, shape=cres, gain_db=-5, bright=4200, seed=420)
         # accents: hit + stab on every montage time
         for k, t in enumerate(mont):
             ch = CYCLE[k % 4]
@@ -727,33 +807,38 @@ class Score:
             self.put(self.perc, t, ins.taiko(v, 1.15, seed=10 + k), -1)
             if k >= 4:
                 self.put(self.perc, t, ins.taiko(v, 1.6, seed=20 + k), -4)
-            self.put(self.boom, t, ins.sub_boom(2.5, 75.0, 38.0, 0.15, 0.6, 0.45 + 0.04 * k, click=0.5, seed=40 + k), -3)
+            self.put(self.boom, t, ins.sub_boom(2.0, 80.0, 42.0, 0.12, 0.45, 0.45 + 0.04 * k, click=0.5, seed=40 + k),
+                     -4 if k in (0, len(mont) - 1) else -9)
             self.put(self.brass, t, ins.brass(TRIAD[ch], 0.4, attack=0.015, release=0.5, vel=0.9, bright=1.3,
                                               seed=50 + k), -4 + 0.4 * k)
             self.put(self.strings, t, ins.strings(TRIAD[ch] + up([TRIAD[ch][0]]), 0.28, attack=0.008, release=0.35,
                                                   voices=5, vibrato=0, bright=7500, air=0.0, seed=60 + k), -5 + 0.3 * k)
-        atom = mont[8] if len(mont) > 8 else mont[-1]
+        atom = next((float(m['t']) for m in self.tl.montage('civilization') if 'atom' in m.get('title', '').lower()),
+                    mont[-1])
         self.put(self.boom, atom, ins.sub_boom(4.0, 60.0, 28.0, 0.3, 1.6, 0.8, click=0.6, seed=70), -2)
         self.put(self.sfx, atom, ins.noise_burst(3.0, 10000.0, 300.0, 0.8, 0.6, 0.6, seed=71), -10)
         self.put(self.sfx, mont[-1], ins.riser(ml.start + 1.0 - mont[-1], 150.0, 6000.0, q=1.5, vel=0.8, seed=72), -12)
-        # tick-locked string ostinato (8ths) and drums
+        # string ostinato interlocking with the accelerating clock, plus drums on the ticks
         for i in range(len(ticks)):
             t = ticks[i]
             nxt = ticks[i + 1] if i + 1 < len(ticks) else now
             u = (t - a0) / span
-            for h, tt in enumerate((t, (t + nxt) / 2)):
+            # strings interlock with the clock: offbeat 8ths (+ a 16th pickup once it is fast)
+            offs = [0.5, 0.75] if nxt - t > 0.52 else [0.5]
+            for h, frac in enumerate(offs):
+                tt = t + (nxt - t) * frac
                 if tt >= now - 0.02:
                     continue
                 ch = chord_at(tt)
-                note = FIGURE[ch][(2 * i + h) % 4]
-                v = 0.5 + 0.5 * u
+                note = FIGURE[ch][(2 * i + h + 1) % 4]
                 x = self.cached(('ost', note, h), lambda: ins.strings([note], 0.2, attack=0.006, release=0.14, voices=4,
-                                                                      vibrato=0, bright=6500, air=0.0, seed=h))
-                self.put(self.strings, tt, x, -12 + 8 * u + (0 if h == 0 else -2.5))
+                                                                      vibrato=0, bright=5500, air=0.0, seed=h))
+                self.put(self.strings, tt, x, -10 + 7 * u - 3.0 * h)
             vt = round(min(0.95, 0.35 + 0.55 * u), 2)
             f = 95.0 if i % 2 else 120.0
-            self.put(self.perc, t, self.cached(('ctom', f, vt), lambda: ins.tom(f, vt, seed=2)), -9 + 4 * u,
-                     pan=-0.25 if i % 2 else 0.25)
+            self.put(self.perc, t, self.cached(('ctom', f, vt), lambda: ins.drum(f, vt, decay=0.3, drop=0.35, noise=0.15,
+                                                                                noise_lp=1500.0, seed=2)),
+                     -9 + 4 * u, pan=-0.25 if i % 2 else 0.25)
             if t >= ml.start and i % 2 == 0:
                 self.put(self.perc, t, self.cached(('ctaiko', vt), lambda: ins.taiko(vt, 1.0, seed=5)), -6)
         # choir from Philosophy, swelling
@@ -788,6 +873,7 @@ class Score:
         bd, T = self.cue('blueDot'), self.B('turn')
         if not self.want(bd, T.start):
             return
+        self.sec('now')
         self.put(self.piano_far, bd, ins.piano('A4', dur=7.0, vel=0.42, tone=0.6), 0)
         self.put(self.piano_far, bd + 3.0, ins.piano('E5', dur=6.0, vel=0.38, tone=0.6), -1)
 
@@ -797,6 +883,7 @@ class Score:
         Ma, Dr, He, R = self.B('mars'), self.B('drift'), self.B('hotearth'), self.B('redgiant')
         if not self.want(Ma.start, R.start):
             return
+        self.sec('future')
         s = Ma.start
         steps = [(s, 'A2', ['E3', 'B3', 'C#4', 'E4']), (s + 4, 'A2', ['F#3', 'B3', 'D#4', 'F#4']),
                  (Dr.start, 'D3', ['F#3', 'A3', 'C#4', 'E4']), (Dr.start + 3, 'E2', ['B3', 'E4', 'A4'])]
@@ -807,8 +894,8 @@ class Score:
         arps = {0: ['A3', 'E4', 'B4', 'C#5', 'E5', 'C#5', 'B4', 'E4'], 1: ['A3', 'F#4', 'B4', 'D#5', 'F#5', 'D#5', 'B4', 'F#4'],
                 2: ['D4', 'A4', 'C#5', 'E5', 'F#5', 'E5', 'C#5', 'A4'], 3: ['E4', 'B4', 'E5', 'A5', 'B5', 'A5', 'E5', 'B4']}
         bounds = [st[0] for st in steps] + [He.start]
-        for k in range(4):
-            for j, t in enumerate(grid(bounds[k], bounds[k + 1], 0.5)):
+        for k in range(4):   # harp-like arpeggio a 16th off the clock, interlocking with the ticks
+            for j, t in enumerate(grid(bounds[k] + 0.25, bounds[k + 1], 0.5)):
                 note = arps[k][j % 8]
                 self.put(self.pluck, t, ins.pluck(note, 2.5, 0.5 if j % 4 == 0 else 0.38, bright=0.35, decay=3.5,
                                                   seed=j), -3, pan=0.3 * math.sin(j * 1.3))
@@ -831,10 +918,11 @@ class Score:
         R, W, sw = self.B('redgiant'), self.B('whitedwarf'), self.cue('redGiantSwell')
         if not self.want(R.start, W.end):
             return
-        swell = [(sw, -12), (sw + 5.0, 0), (R.end - 0.5, -5), (R.end + 1.0, -30)]
+        self.sec('redgiant')
+        swell = [(sw, -12), (sw + 5.0, 0), (R.end - 1.6, -2), (R.end, -15), (R.end + 0.8, -40)]
         steps = [(sw, 'A2', ['A2', 'E3', 'F3', 'C4']), (R.start + 4, 'A2', ['F2', 'C3', 'F3', 'A3', 'C4']),
                  (R.start + 6, 'A2', ['Bb2', 'D3', 'F3', 'Bb3'])]
-        self.organ_prog(steps, R.end + 0.3, 'full', attack=0.4, release=1.2, gain_db=0, shape=swell, pedal='pedal',
+        self.organ_prog(steps, R.end + 0.3, 'grand', attack=0.4, release=1.2, gain_db=0, shape=swell, pedal='pedal',
                         seed=600)
         for (t, b, u), nxt, br in zip(steps, [s[0] for s in steps[1:]] + [R.end + 0.3],
                                       (['A1', 'E2', 'A2'], ['F1', 'C2', 'F2'], ['Bb1', 'F2', 'Bb2'])):
@@ -844,9 +932,10 @@ class Score:
                                                  seed=610), -2, shape=swell)
         for k, v in enumerate((1.0, 0.7, 0.95, 0.75)):
             self.put(self.perc, sw + 2.0 * k, ins.taiko(v, 1.5, seed=40 + k), -1)
-        self.put(self.boom, sw, ins.sub_boom(8.0, 60.0, 25.0, 0.6, 3.0, 0.7, click=0.2, seed=90), -3)
-        self.put(self.amb, sw, ins.rumble(R.dur + 1.0, lp=160.0, vel=0.6, attack=3.0, release=2.0, seed=6), -6)
+        self.put(self.boom, sw, ins.sub_boom(R.dur, 60.0, 25.0, 0.6, 2.5, 0.7, click=0.2, seed=90), -3)
+        self.put(self.amb, sw, ins.rumble(R.dur + 0.3, lp=160.0, vel=0.6, attack=3.0, release=1.5, seed=6), -6)
         # white dwarf
+        self.sec('whitedwarf')
         r = rng('dwarf')
         pool = ['A5', 'B5', 'C6', 'E6', 'A6', 'B6']
         for k, t in enumerate(grid(W.start + 0.2, W.end - 1.0, 0.6)):
@@ -862,16 +951,17 @@ class Score:
         Mg = self.B('merger')
         if not self.want(Mg.start, Mg.end):
             return
+        self.sec('merger')
         s = Mg.start
         dyn = [(s, -5), (s + 4.5, 0), (Mg.end - 1.0, -2), (Mg.end + 0.5, -10)]
         steps = [(s, 'F2', ['A3', 'C4', 'E4']), (s + 4, 'C3', ['G3', 'C4', 'E4']), (s + 6, 'B2', ['G3', 'B3', 'D4'])]
-        self.organ_prog(steps, Mg.end + 0.5, 'full', attack=0.4, release=1.5, gain_db=-2, shape=dyn, pedal='pedal',
+        self.organ_prog(steps, Mg.end + 0.5, 'principal', attack=0.4, release=1.5, gain_db=-1, shape=dyn, pedal='pedal',
                         seed=700)
         self.string_prog([(t, b, up(u)) for t, b, u in steps], Mg.end + 0.5, attack=1.2, release=1.8, shape=dyn,
-                         gain_db=-2, bright=6000, seed=710)
+                         gain_db=-2, bright=4800, seed=710)
         for t, note, d in theme_events([5, 6], s, 1.0):
             self.put(self.lead, t, ins.strings([note, up([note], -1)[0]], d + 0.2, attack=0.35, release=1.0, voices=6,
-                                               vibrato=16, bright=5500, seed=720), 0, shape=dyn)
+                                               vibrato=16, bright=4500, seed=720), -1, shape=dyn)
         self.put(self.choir, s, ins.choir(['F3', 'A3', 'C4', 'E4', 'A4'], 4.0, 'a', attack=1.0, release=1.2, seed=730),
                  0, shape=dyn)
         self.put(self.choir, s + 4.0, ins.choir(['E3', 'G3', 'C4', 'E4', 'G4'], 2.0, 'a', attack=0.5, release=1.0,
@@ -893,6 +983,7 @@ class Score:
         lf = self.cue('lastFlash')
         if not self.want(Ls.start, Hd.end):
             return
+        self.sec('laststars')
         thin = [(Ls.start, -3), (Ls.end, -16)]
         self.put(self.strings, Ls.start, ins.strings(['A3', 'C4', 'E4'], Ls.dur, attack=1.0, release=3.0, voices=4,
                                                      bright=3000, vibrato=8, seed=800), -6, shape=thin)
@@ -905,11 +996,13 @@ class Score:
             self.put(self.bells, t, ins.bell(m, 6.0, v, 'glass', glide=1.0, fm=0.3, seed=810 + k), 0,
                      pan=0.5 * math.sin(k * 2.1))
         # black holes
-        self.put(self.boom, Bh.start - 1.0, ins.drone(['A0', 'A1'], Bh.dur + 1.5, attack=3.0, release=3.5, beat=0.21,
-                                                     vel=1.0), -4)
+        self.sec('blackholes')
+        self.put(self.boom, Bh.start - 1.0, ins.drone(['A0', 'A1'], Bh.dur + 1.0, attack=3.0, release=2.5, beat=0.21,
+                                                     vel=1.0), -2)
         self.put(self.choir, Bh.start, ins.choir(['A2', 'Bb2', 'E3'], Bh.dur, 'u', attack=3.0, release=3.0, voices=4,
                                                  detune=30.0, drift=22.0, vibrato=6.0, seed=820), -6)
         # evaporation
+        self.sec('evaporation')
         self.put(self.glass, Ev.start, ins.shimmer(lf - Ev.start + 0.4, 'A6', 10.0, 7.0, 9, 0.5, seed=6), -4)
         for k, note in enumerate(('A6', 'E6', 'A5')):
             self.put(self.bells, lf + 0.03 * k, ins.bell(note, 6.0, 0.8, 'glass', fm=0.5, seed=830 + k), 0,
@@ -926,24 +1019,25 @@ class Score:
         fin = self.cue('finalTick')
         if not self.want(Ep.start, Ep.end):
             return
+        self.sec('epilogue')
         ts = pc - 12.0                          # theme bars 1-3 end exactly on the Picardy chord
         fade = [(pc, 0), (ft, -1.5), (fin - 0.3, -30), (Ep.end, -60)]
         steps = [(Ep.start, 'A2', ['A3', 'C4', 'E4']), (ts + 4, 'F2', ['A3', 'C4', 'E4']), (ts + 8, 'C3', ['G3', 'C4', 'E4']),
                  (ts + 10, 'G2', ['G3', 'B3', 'D4']), (pc, 'A2', ['A3', 'C#4', 'E4'])]
-        self.organ_prog(steps, ft + 2.0, 'soft', attack=2.5, release=2.5, gain_db=-4,
-                        shape=[(Ep.start, -10), (ts + 8, -5), (pc, 0)] + fade[1:], seed=900)
-        self.put(self.organ, pc, ins.organ(['A1', 'E3', 'A3', 'C#4', 'E4', 'A4'], ft - pc + 2.0, 'principal', attack=0.8,
-                                           release=2.5, seed=901), -6, shape=fade)
+        self.organ_prog(steps, ft + 2.0, 'soft', attack=2.5, release=2.5, gain_db=-5,
+                        shape=[(Ep.start, -12), (ts + 8, -7), (pc - 0.5, -4), (pc + 1, 0)] + fade[1:], seed=900)
+        self.put(self.organ, pc, ins.organ(['A2', 'E3', 'A3', 'C#4', 'E4', 'A4'], ft - pc + 2.0, 'principal', attack=0.8,
+                                           release=2.5, seed=901), -3, shape=fade)
         s_steps = [(ts + 4, 'F2', ['A4', 'C5', 'E5']), (ts + 8, 'C3', ['G4', 'C5', 'E5']),
                    (ts + 10, 'G2', ['G4', 'B4', 'D5']), (pc, 'A2', ['A4', 'C#5', 'E5'])]
-        self.string_prog(s_steps, ft + 2.0, attack=2.0, release=2.5, gain_db=-4,
-                         shape=[(ts + 4, -12), (pc - 0.5, -5), (pc + 1.5, 0)] + fade[1:], bright=5000, seed=910)
+        self.string_prog(s_steps, ft + 2.0, attack=2.0, release=2.5, gain_db=-5,
+                         shape=[(ts + 4, -14), (pc - 0.5, -7), (pc + 1.5, 0)] + fade[1:], bright=5000, seed=910)
         self.put(self.strings, pc, ins.strings(['E3', 'A3', 'C#4', 'A5', 'C#6'], ft - pc + 2.0, attack=1.5, release=2.5,
-                                               bright=5500, seed=911), -6, shape=fade)
+                                               bright=5500, seed=911), -3, shape=fade)
         self.put(self.choir, ts + 10, ins.choir(['G3', 'B3', 'D4', 'G4'], 2.0, 'a', attack=1.5, release=0.8, seed=920),
                  -9)
         self.put(self.choir, pc, ins.choir(['A3', 'C#4', 'E4', 'A4', 'C#5', 'E5'], ft - pc + 1.5, 'a', attack=1.0,
-                                           release=2.5, seed=921), -1, shape=fade)
+                                           release=2.5, seed=921), 2, shape=fade)
         self.put(self.sfx, pc - 1.5, ins.reverse_swell(1.5, 0.7, 0.6, seed=7), -16)
         # the theme on piano: bars 1-3, then bar 4's D5 arrives on the Picardy chord and resolves to C#5
         for t, note, d in theme_events([1, 2, 3], ts):
@@ -999,23 +1093,22 @@ def main(argv=None):
     sc.compose()
     print(f'[score] composed in {time.time() - T0:.1f}s; mixing')
     y = sc.mix.render(args.t0, t1, stems_dir=args.stems)
+    if t1 >= tl.duration:
+        # the film ends: let the last reverb tail (after finalTick) fade to exact silence
+        k = min(y.shape[-1], ns(END_FADE))
+        y[:, -k:] *= (0.5 + 0.5 * np.cos(np.linspace(0.0, math.pi, k))).astype(F32)
     print(f'[score] mixed in {time.time() - T0:.1f}s; mastering')
     if not np.all(np.isfinite(y)):
         raise SystemExit('non-finite samples in mix')
-    if partial:
-        gain = None
-        if full_report.exists():
-            try:
-                gain = json.loads(full_report.read_text())['master']['gain_db']
-            except Exception:
-                gain = None
-        if gain is None:
-            y, rep = master.master(y, args.lufs, args.tp)
-        else:
-            pre = master.integrated_loudness(y) if y.shape[-1] > SR else float('-inf')
-            y, g = master.limit(y * F32(db(gain)), args.tp - 0.25)
-            rep = {'gain_db': gain, 'pre_lufs': pre, 'lufs': master.integrated_loudness(y), 'true_peak': master.true_peak(y),
-                   'note': 'partial render: master gain reused from the last full render'}
+    prev = None
+    if partial and full_report.exists():
+        try:
+            prev = json.loads(full_report.read_text())['master']
+        except (OSError, ValueError, KeyError):
+            prev = None
+    if prev and 'gain_db' in prev:
+        # partial preview: same glue threshold and make-up gain as the full mix
+        y, rep = master.master_fixed(y, prev['gain_db'], prev.get('glue_threshold'), args.tp)
     else:
         y, rep = master.master(y, args.lufs, args.tp)
     expected = ns(t1 - args.t0)
