@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: npm ci
+      - run: pip install -r requirements.txt
+      - name: Typecheck the engine, tools and every project
+        run: npm run typecheck
+      - name: Scaffold a film from the template and synthesize its score
+        run: |
+          npm run new -- ci-smoke --title "CI Smoke"
+          npm run typecheck
+          npm run audio -- ci-smoke

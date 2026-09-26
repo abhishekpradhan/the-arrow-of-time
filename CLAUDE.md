@@ -43,6 +43,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `{ sky: true }`. The `animate`/`shade` GLSL hooks run per sprite and per fragment.
 - **Uniforms** are typed by reflection (`Program.set`). Arrays: pass flat JS arrays. Unknown
   names are ignored silently, so a misspelt uniform just does nothing.
+- **CI** (`.github/workflows/ci.yml`) typechecks everything and scaffolds and scores a film
+  from the template. Keep `npm run typecheck` clean: the engine is shared by every film.
 
 ## Pitfalls (all have bitten this repo)
 
