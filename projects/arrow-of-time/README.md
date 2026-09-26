@@ -5,6 +5,8 @@
 
 ![Frames from the film](poster.jpg)
 
+Watch: [1080p](../../releases/arrow-of-time/arrow-of-time-1080p.mp4) ·
+[720p preview](../../releases/arrow-of-time/arrow-of-time-720p.mp4) (Git LFS).
 The final render took 1 h 23 min on a 4-core CPU without a GPU (Mesa llvmpipe, 2 workers,
 motion blur on; about 0.8 s of GPU time per frame).
 

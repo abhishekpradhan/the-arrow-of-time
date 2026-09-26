@@ -10,6 +10,10 @@ universe, in 5 minutes 18 seconds.
 
 ![Frames from The Arrow of Time](projects/arrow-of-time/poster.jpg)
 
+Watch: [1080p](releases/arrow-of-time/arrow-of-time-1080p.mp4) ·
+[720p preview](releases/arrow-of-time/arrow-of-time-720p.mp4) (Git LFS; use the download button
+on GitHub, or `git lfs pull` in a clone).
+
 ## Quick start
 
 Requirements: Node 20+, Python 3.10+, ffmpeg, and Chromium for Playwright.
