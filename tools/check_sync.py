@@ -2,8 +2,10 @@
 
     .venv/bin/python tools/check_sync.py out/<id>/renders/<file>.mp4 projects/<id>/timeline.json [cue ...]
 
-For each cue it finds the loudest audio onset and the brightest frame change within +-0.5 s
-and prints both offsets relative to the cue. Well-synced hits agree within about a frame.
+For each cue it finds the biggest jump in audio level (RMS in dB, adjacent 20 ms windows, 5 ms
+steps) and the biggest frame-to-frame luma change within +-0.5 s, and prints both offsets
+relative to the cue. Well-synced hits agree within about a frame. Cues whose name contains
+"now" or "cut" are hard cuts to silence, so for those the biggest *drop* in level is reported.
 """
 
 import json
@@ -37,17 +39,21 @@ def main() -> None:
     cues = sys.argv[3:] or ["bang", "theia", "asteroidImpact", "now", "lastFlash"]
     sr = 8000
     a = audio_env(video, sr)
+    win, hop = int(0.02 * sr), int(0.005 * sr)
+    lag = win // hop
     for name in cues:
         c = T["cues"][name]
-        lo, hi = max(0, int((c - 0.5) * sr)), int((c + 0.5) * sr)
-        seg = np.abs(a[lo:hi])
-        win = int(0.01 * sr)
-        env = np.convolve(seg, np.ones(win) / win, mode="same")
-        d = np.diff(env)
-        onset = (lo + int(np.argmax(d))) / sr - c
-        # For NOW the audio should *drop*: report the steepest fall instead.
-        if name == "now":
-            onset = (lo + int(np.argmin(d))) / sr - c
+        lo, hi = max(0, int((c - 0.5) * sr) - win), int((c + 0.5) * sr) + win
+        seg = a[lo:hi]
+        starts = np.arange(0, len(seg) - win, hop)
+        rms = np.sqrt(np.array([np.mean(np.square(seg[i:i + win])) for i in starts]) + 1e-12)
+        db = 20 * np.log10(rms)
+        # Level change between adjacent, non-overlapping windows; the boundary between them is
+        # the event time.
+        jump = db[lag:] - db[:-lag]
+        cut = "now" in name.lower() or "cut" in name.lower()
+        k = int(np.argmin(jump) if cut else np.argmax(jump))
+        onset = (lo + starts[k + lag]) / sr - c
         luma = frame_luma(video, fps, c - 0.5, c + 0.5)
         dl = np.abs(np.diff(luma))
         vshift = (int(np.argmax(dl)) + 1) / fps - 0.5
