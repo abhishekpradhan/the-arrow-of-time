@@ -1,0 +1,31 @@
+{
+  "name": "movies",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A code-driven studio for cinematic, procedurally animated films (WebGL2 engine + Python score synthesis).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "render": "tsx tools/render.ts",
+    "still": "tsx tools/still.ts",
+    "audio": "tsx tools/audio.ts",
+    "new": "tsx tools/new-project.ts",
+    "setup": "tsx tools/setup.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "playwright": "^1.56.1",
+    "tsx": "^4.23.15",
+    "typescript": "5.9",
+    "vite": "^7.3.6"
+  },
+  "dependencies": {
+    "@fontsource/cinzel": "^5.3.0",
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/jost": "^5.3.0"
+  }
+}

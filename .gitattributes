@@ -1,0 +1,5 @@
+# Final films are large binaries: keep them in Git LFS.
+releases/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
+releases/**/*.mov filter=lfs diff=lfs merge=lfs -text
+releases/**/*.wav filter=lfs diff=lfs merge=lfs -text
+*.glsl linguist-language=GLSL

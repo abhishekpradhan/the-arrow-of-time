@@ -1,0 +1,33 @@
+:root {
+  color-scheme: dark;
+  --bg: #07080b;
+  --panel: #0f1116;
+  --line: #22262f;
+  --text: #d9dde6;
+  --muted: #7d8595;
+  --accent: #f0b86a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
+#app, .player { height: 100%; }
+.player { display: flex; flex-direction: column; }
+header, .transport { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header .title { font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+header .spacer { flex: 1; }
+header .shot { color: var(--accent); font-family: ui-monospace, monospace; }
+header .stat, .transport .time { color: var(--muted); font-family: ui-monospace, monospace; }
+select, button { background: #171a21; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit; cursor: pointer; }
+button:hover, select:hover { border-color: #3a404d; }
+button.play { min-width: 44px; }
+.stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
+.stage canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; width: auto; height: 100%; object-fit: contain; }
+.loading { position: absolute; color: var(--muted); font-family: ui-monospace, monospace; }
+footer { background: var(--panel); border-top: 1px solid var(--line); }
+.transport { border-bottom: none; }
+.timeline { position: relative; height: 46px; margin: 0 12px 12px; background: #0b0d12; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; cursor: pointer; user-select: none; touch-action: none; }
+.seg { position: absolute; top: 0; bottom: 0; border-right: 1px solid #000; overflow: hidden; }
+.seg span { position: absolute; left: 4px; top: 4px; font-size: 10px; color: #aeb5c3; white-space: nowrap; pointer-events: none; }
+.seg0 { background: #1a2130; }
+.seg1 { background: #222a3b; }
+.marker { position: absolute; bottom: 0; width: 1px; height: 12px; background: var(--accent); }
+.playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 6px #fff; pointer-events: none; }
