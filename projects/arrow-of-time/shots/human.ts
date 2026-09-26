@@ -343,8 +343,12 @@ void main() {
   if (p.y < fg) {
     float z = 1.0 / max(fg + 0.02 - p.y, 0.01);
     float rows = 0.5 + 0.5 * sin(p.x * z * 3.0);
-    vec3 field = mix(vec3(0.05, 0.06, 0.03), vec3(0.2, 0.18, 0.08), rows) * (0.3 + 0.7 * day) * uS[0];
+    // Fields give way to roads and street lights as the modern world arrives.
+    float farm = uS[0] * (1.0 - 0.85 * uS[6]);
+    vec3 field = mix(vec3(0.05, 0.06, 0.03), vec3(0.2, 0.18, 0.08), rows) * (0.3 + 0.7 * day) * farm;
     col = mix(near, near + field * 0.6, 0.8);
+    float road = exp(-abs(p.x * z * 0.4 - 0.2) * 6.0) * uS[6];
+    col += vec3(1.0, 0.75, 0.4) * road * night * 0.25 * step(0.5, fract(z * 2.0));
   }
   // Flight: a biplane crossing. Space: a rocket climbing on a pillar of fire.
   if (uPlane > 0.0 && uPlane < 1.0) {

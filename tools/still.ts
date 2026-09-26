@@ -5,7 +5,7 @@
 //   npm run still -- <project> --sheet [--from 0 --to 60] [--n 12] [--cols 4]
 //   npm run still -- <project> --t 10 --t 20 --t 30 --grid     several times as one sheet
 //   npm run still -- <project> --t 10 --t 20 --bench --scale 1     per-frame render cost
-//   common: [--scale 0.5] [--debug] (burn in timecode) [--mb 0|1] [--gl ...]
+//   common: [--scale 0.5] [--debug] (burn in timecode) [--clean] (no timecode on sheets) [--out file.png] [--mb 0|1] [--gl ...]
 
 import { writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -70,7 +70,7 @@ try {
     project: id,
     width: W,
     height: H,
-    debug: !!args.debug || sheetMode,
+    debug: !args.clean && (!!args.debug || sheetMode),
     motionBlur: str(args.mb, '0') !== '0',
   });
   const t0 = Date.now();
@@ -79,7 +79,7 @@ try {
   if (sheetMode) {
     const cols = num(args.cols, Math.min(frames.length, frames.length <= 4 ? 2 : 3));
     const sheet = contactSheet(frames.map((f) => new Uint8Array(got.get(f)!)), W, H, cols);
-    const file = join(dir, `${label}.png`);
+    const file = args.out ? join(ROOT, str(args.out, '')) : join(dir, `${label}.png`);
     writeFileSync(file, encodePNG(sheet.data, sheet.width, sheet.height));
     console.log(relative(ROOT, file));
   } else {

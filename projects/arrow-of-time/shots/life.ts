@@ -461,6 +461,24 @@ const YUCATAN: Vec3 = (() => {
   return [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
 })();
 
+const TRAIL = `
+#include <common>
+#include <color>
+in vec2 vUv; out vec4 fragColor;
+uniform vec2 uRes; uniform float uAspect, uHeat;
+uniform vec2 uHead, uTail;
+void main() {
+  vec2 p = centered(vUv, uAspect);
+  vec2 ab = uTail - uHead;
+  float h = saturate(dot(p - uHead, ab) / dot(ab, ab));
+  float d = length(p - uHead - ab * h);
+  float w = 0.002 + 0.01 * h;
+  float trail = exp(-d * d / (w * w)) * pow(1.0 - h, 1.5);
+  float glow = exp(-length(p - uHead) / 0.012);
+  vec3 col = fireRamp(0.55 + 0.4 * (1.0 - h)) * trail * 2.2 + vec3(1.0, 0.9, 0.75) * glow * 2.0;
+  fragColor = vec4(col * uHeat, 1.0);
+}`;
+
 function impact(): Shot<EarthShot & { maps: EarthMaps; rock: Planet; ejecta: Sprites }> {
   const start = cues.asteroidStreak + 0.7;
   return {
@@ -521,9 +539,19 @@ function impact(): Shot<EarthShot & { maps: EarthMaps; rock: Planet; ejecta: Spr
         dustDir: YUCATAN, dustR: age > 0 ? 0.1 + 0.9 * (1 - Math.exp(-age * 0.55)) : 0, dust: age > 0 ? 0.92 : 0,
       });
       if (age < 0) {
-        // The asteroid streaking in, wrapped in plasma.
+        // The asteroid streaking in, wrapped in plasma, trailing a glowing wake.
         const k = -age;
         const pos: Vec3 = [site[0] + 0.55 * k, site[1] + 0.9 * k, site[2] + 0.25 * k];
+        const head = s.cam.project(pos);
+        const tail = s.cam.project([pos[0] + 0.55 * 0.35, pos[1] + 0.9 * 0.35, pos[2] + 0.25 * 0.35]);
+        c.gl.enable(c.gl.BLEND);
+        c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
+        c.fullscreen(c.e.program(TRAIL, 'trail'), {
+          uHead: [(head.x - 0.5) * c.aspect, head.y - 0.5],
+          uTail: [(tail.x - 0.5) * c.aspect, tail.y - 0.5],
+          uHeat: 0.6 + 0.4 * Math.exp(-k * 1.5),
+        });
+        c.gl.disable(c.gl.BLEND);
         s.rock.draw(c, s.cam, { center: pos, radius: 0.012, sunDir: sun, seed: 5, lava: 0.6, crust: 0.8, atmo: 0 });
       }
       s.ejecta.draw(s.cam, c.time, { uAge: age, uSite: site }, { blend: 'add' });

@@ -343,7 +343,7 @@ function oceans(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
     setup: (e) => ({ planet: new Planet(e), cam: new Camera({ fov: 34 }), sky: new Sprites(e, starSphere(rng(108), { count: 8000, brightness: 0.35 })) }),
     render(c, s) {
       const t = c.time - beat('oceans').start;
-      s.cam.set({ pos: [0.3, 0.35, keys(t, [[-1, 3.9], [9, 3.4, 'inOutSine']])], target: [-0.2, 0, 0] });
+      s.cam.set({ pos: [0.3, 0.35, keys(t, [[-1, 5.2], [9, 4.3, 'inOutSine']])], target: [-0.1, 0, 0] });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       const cool = prog(t, -0.5, 3.5, 'inOutSine');
       const flashes: [number, number, number, number][] = [];
@@ -356,7 +356,7 @@ function oceans(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
         ocean: prog(t, 2, 8, 'inOutSine'),
         seaLevel: keys(t, [[2, -0.6], [8, 0.08, 'outCubic']]),
         oceanColor: [0.03, 0.1, 0.16],
-        clouds: keys(t, [[-1, 0.2], [2, 0.85], [8, 0.6]]),
+        clouds: keys(t, [[-1, 0.2], [2, 0.7], [8, 0.5]]),
         storm: keys(t, [[-1, 0.8], [8, 0.3]]),
         cloudT: c.time * 0.02,
         atmo: 0.6,

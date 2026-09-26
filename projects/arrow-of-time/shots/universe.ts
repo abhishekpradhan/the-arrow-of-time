@@ -309,7 +309,7 @@ const CMB = `
 #include <color>
 #include <camera>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uFog, uMap, uRot;
+uniform vec2 uRes; uniform float uAspect, uGTime, uFog, uMap, uRot, uBurst;
 vec3 planck(float v) {
   // Planck-style diverging map: deep blue - cyan - pale - orange - red.
   vec3 c0 = vec3(0.02, 0.05, 0.35), c1 = vec3(0.1, 0.45, 0.9), c2 = vec3(1.0, 0.9, 0.62);
@@ -340,8 +340,17 @@ void main() {
   // The opaque fireball fog we are emerging from.
   float fogN = fbm(vec3(p * 2.2, uGTime * 0.1), 5);
   float fogN2 = fbm(vec3(p * 6.0 + 3.0, uGTime * 0.2), 4);
-  vec3 fog = fireRamp(0.45 + 0.35 * fogN + 0.15 * fogN2) * (0.35 + 0.6 * fogN * fogN2);
+  vec3 fog = fireRamp(0.5 + 0.35 * fogN + 0.15 * fogN2) * (0.45 + 0.9 * fogN * fogN2);
   col = mix(col, fog, uFog);
+  // Light breaks free: photons streaming outward as the fog turns transparent.
+  if (uBurst > 0.0) {
+    float a = atan(p.y, p.x);
+    float r = length(p);
+    float s1 = pow(vnoise(vec2(a * 70.0, r * 1.5 - uGTime * 6.0)), 10.0);
+    float s2 = pow(vnoise(vec2(a * 130.0 + 3.0, r * 2.5 - uGTime * 9.0)), 14.0);
+    col += vec3(1.0, 0.86, 0.65) * (s1 + 0.8 * s2) * smoothstep(0.03, 0.35, r) * uBurst * 1.4;
+    col += vec3(1.0, 0.8, 0.55) * exp(-r * 4.0) * uBurst * 0.35;
+  }
   fragColor = vec4(col, 1.0);
 }`;
 
@@ -359,6 +368,7 @@ function firstLight(): Shot<{ cam: Camera }> {
         ...s.cam.uniforms(),
         uFog: 1 - prog(t, clear - 0.3, clear + 1.6, 'inOutSine'),
         uMap: prog(t, clear + 1.2, clear + 3.2, 'inOutSine'),
+        uBurst: prog(t, clear - 0.5, clear + 0.3, 'inOutSine') * (1 - prog(t, clear + 0.8, clear + 2.6, 'inOutSine')),
         uRot: t * 0.05,
       });
     },

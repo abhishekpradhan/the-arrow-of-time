@@ -284,13 +284,21 @@ vec4 shade(vec2 q, vec3 col, vec4 x) {
 export function galaxyData(seed: number, o: { stars?: number; glow?: number; scale?: number } = {}) {
   const r = rng(seed);
   const nStars = o.stars ?? 110000, nGlow = o.glow ?? 26000, nHII = 900, nBulge = 9000;
-  const stars = allocSprites(nStars + nGlow + nHII + nBulge);
-  let i = 0;
+  // Point-like stars render at full resolution; the smooth glow layer at half resolution.
+  const stars = allocSprites(nStars + nHII);
+  const glow = allocSprites(nGlow + nBulge);
+  let i = 0, j = 0;
   const put = (p: Vec3, c: Vec3, b: number, size: number) => {
     stars.position.set(p, i * 3);
     stars.color.set([c[0] * b, c[1] * b, c[2] * b], i * 3);
     stars.size[i] = size;
     i++;
+  };
+  const putGlow = (p: Vec3, c: Vec3, b: number, size: number) => {
+    glow.position.set(p, j * 3);
+    glow.color.set([c[0] * b, c[1] * b, c[2] * b], j * 3);
+    glow.size[j] = size;
+    j++;
   };
   const barAngle = 0.45, barLen = 0.2;
   const pitch = (19 * Math.PI) / 180;
@@ -333,7 +341,7 @@ export function galaxyData(seed: number, o: { stars?: number; glow?: number; sca
     const cool: Vec3 = arm ? [0.55, 0.72, 1.0] : [0.85, 0.85, 0.9];
     const hot: Vec3 = [1.0, 0.7, 0.38];
     const c: Vec3 = [cool[0] + (hot[0] - cool[0]) * warm, cool[1] + (hot[1] - cool[1]) * warm, cool[2] + (hot[2] - cool[2]) * warm];
-    put(s0.p, c, 0.0032 * (0.6 + 0.8 * warm + 0.45 * s0.armW), r.range(0.022, 0.045));
+    putGlow(s0.p, c, 0.0032 * (0.6 + 0.8 * warm + 0.45 * s0.armW), r.range(0.022, 0.045));
   }
   for (let k = 0; k < nHII; k++) {
     let rr = 0;
@@ -345,7 +353,7 @@ export function galaxyData(seed: number, o: { stars?: number; glow?: number; sca
   for (let k = 0; k < nBulge; k++) {
     const rr = Math.abs(r.gauss()) * 0.07;
     const d = r.onSphere();
-    put([d[0] * rr, d[1] * rr * 0.6, d[2] * rr], blackbody(r.range(3200, 4200)), 0.014, r.range(0.012, 0.03));
+    putGlow([d[0] * rr, d[1] * rr * 0.6, d[2] * rr], blackbody(r.range(3200, 4200)), 0.011, r.range(0.012, 0.03));
   }
   const nDust = 30000;
   const dust = allocSprites(nDust);
@@ -364,15 +372,17 @@ export function galaxyData(seed: number, o: { stars?: number; glow?: number; sca
     dust.color.set([r.range(0.04, 0.16) * a.w, 0, 0], k * 3);
     dust.size[k] = r.range(0.006, 0.016);
   }
-  return { stars, dust };
+  return { stars, glow, dust };
 }
 
-function milkyWay(): Shot<{ stars: Sprites; dust: Sprites; sky: Sprites; cam: Camera }> {
+function milkyWay(): Shot<{ stars: Sprites; glow: Sprites; dust: Sprites; sky: Sprites; cam: Camera; half: RenderTarget }> {
   return {
     ...span('milkyway', { dIn: 1.4, dOut: 1.2 }),
     setup(e) {
-      const { stars, dust } = galaxyData(70);
+      const { stars, glow, dust } = galaxyData(70);
       return {
+        half: scratch(e, 0.5),
+        glow: new Sprites(e, glow, { animate: MW_ANIMATE, minPixels: 1.0, extent: 2.6 }),
         stars: new Sprites(e, stars, { animate: MW_ANIMATE, minPixels: 0.6 }),
         dust: new Sprites(e, dust, { animate: MW_ANIMATE, shade: DUST_SHADE, minPixels: 1.0 }),
         sky: new Sprites(e, starSphere(rng(71), { count: 9000, brightness: 0.35 })),
@@ -381,16 +391,24 @@ function milkyWay(): Shot<{ stars: Sprites; dust: Sprites; sky: Sprites; cam: Ca
     },
     render(c, s) {
       const t = c.time - beat('milkyway').start;
-      const el = keys(t, [[-1, 0.5], [10.5, 1.0, 'inOutSine']]);
-      const az = keys(t, [[-1, 2.1], [10.5, 2.7, 'inOutSine']]);
-      const dist = keys(t, [[-1, 1.1], [3.5, 1.95, 'outCubic'], [10.5, 2.2]]);
+      // A sweeping reveal: from low over the disk up to a high, three-quarter view.
+      const el = keys(t, [[-1, 0.3], [10.5, 1.05, 'inOutSine']]);
+      const az = keys(t, [[-1, 1.75], [10.5, 2.95, 'inOutSine']]);
+      const dist = keys(t, [[-1, 1.05], [3.5, 1.85, 'outCubic'], [10.5, 2.25]]);
       s.cam.set({
         pos: [Math.cos(el) * Math.sin(az) * dist, Math.sin(el) * dist, Math.cos(el) * Math.cos(az) * dist],
         target: [0, -0.05, 0],
         roll: keys(t, [[-1, -0.25], [10.5, 0.05, 'inOutSine']]),
       });
       const spin = 0.02 * t;
+      s.half.clear(0, 0, 0, 1);
+      s.glow.draw(s.cam, c.time, { uSpin: spin }, { blend: 'add', brightness: 1.0 });
+      c.target.bind();
       s.sky.draw(s.cam, c.time, {}, { sky: true });
+      c.gl.enable(c.gl.BLEND);
+      c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
+      c.fullscreen(c.e.program(WEB_COMPOSITE, 'web.comp'), { uSrc: s.half });
+      c.gl.disable(c.gl.BLEND);
       s.stars.draw(s.cam, c.time, { uSpin: spin }, { blend: 'add', brightness: 1.0 });
       s.dust.draw(s.cam, c.time, { uSpin: spin }, { blend: 'premul' });
     },

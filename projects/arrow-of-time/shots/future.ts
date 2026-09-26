@@ -525,11 +525,13 @@ void main() {
   vec3 h3 = cross(pos, vel);
   float h2 = dot(h3, h3);
   // Integrate the photon path: a'' = -1.5 rs h^2 r / |r|^5 (Schwarzschild null geodesic).
-  for (int i = 0; i < 150; i++) {
+  // Per-pixel jitter of the step length turns integration banding into fine noise.
+  float jit = 0.75 + 0.5 * hash12(gl_FragCoord.xy);
+  for (int i = 0; i < 260; i++) {
     float r = length(pos);
     if (r < rs) { captured = true; break; }
     if (r > 40.0 && dot(pos, vel) > 0.0) break;
-    float dt = clamp(0.06 * r, 0.02, 1.2);
+    float dt = clamp(0.032 * r * jit, 0.008, 1.0);
     vec3 acc = -1.5 * rs * h2 * pos / pow(r, 5.0);
     vec3 np = pos + vel * dt + 0.5 * acc * dt * dt;
     vec3 acc2 = -1.5 * rs * h2 * np / pow(max(length(np), 1e-3), 5.0);
@@ -631,7 +633,7 @@ function epilogue(): Shot<{ cam: Camera; sky: Sprites; dot: Sprites }> {
       const d = allocSprites(1);
       d.position.set([0, 0, -1000]);
       d.color.set([0.35, 0.55, 1.0]);
-      d.size[0] = 0.4;
+      d.size[0] = 0.7;
       return { cam: new Camera({ fov: 32 }), sky: new Sprites(e, starSphere(rng(296), { count: 7000, brightness: 0.22 })), dot: new Sprites(e, d, { minPixels: 0.9 }) };
     },
     render(c, s) {
@@ -655,7 +657,7 @@ void main() {
   fragColor = vec4(c * band * (0.9 + 0.2 * fbm(vec2(dot(p, d) * 3.0, x * 20.0), 3)) * uAmt * 0.1, 1.0);
 }`, 'epibeam'), { uAmt: dot, uWarm: warm });
       c.gl.disable(c.gl.BLEND);
-      s.dot.draw(s.cam, c.time, {}, { brightness: dot * (1.8 + 1.5 * warm) });
+      s.dot.draw(s.cam, c.time, {}, { brightness: dot * (3.0 + 2.0 * warm) });
     },
   };
 }

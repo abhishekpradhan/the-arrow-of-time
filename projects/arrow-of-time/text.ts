@@ -1,5 +1,5 @@
 // Typography for The Arrow of Time: every caption is generated from timeline.json.
-import { drawText, lifeOf, type TextItem, type TextStyle } from '@engine';
+import { drawText, ease, lifeOf, type TextItem, type TextStyle } from '@engine';
 import T from './timeline.json';
 
 export const STYLE = {
@@ -152,6 +152,47 @@ function mainTitle(start: number, end: number, text: string): TextItem {
   };
 }
 
+/** The film's signature: a hairline arrow that draws itself left to right beneath the title. */
+function arrowLine(start: number, end: number, y = 0.63): TextItem {
+  return {
+    start,
+    end,
+    draw(ctx, t, L) {
+      const life = lifeOf(t, start, end, 2.2, 1.6);
+      const grow = ease.inOutCubic(life.inP);
+      const alpha = 1 - ease.inOutSine(life.outP);
+      if (grow <= 0 || alpha <= 0) return;
+      const w = 520 * L.s;
+      const x0 = L.w / 2 - w / 2;
+      const x1 = x0 + w * grow;
+      const yy = L.top + y * (L.bottom - L.top);
+      ctx.globalAlpha = alpha;
+      const g = ctx.createLinearGradient(x0, 0, x1, 0);
+      g.addColorStop(0, 'rgba(255,230,200,0)');
+      g.addColorStop(0.35, 'rgba(255,230,200,0.55)');
+      g.addColorStop(1, 'rgba(255,240,220,0.95)');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = Math.max(1, 1.4 * L.s);
+      ctx.beginPath();
+      ctx.moveTo(x0, yy);
+      ctx.lineTo(x1, yy);
+      ctx.stroke();
+      // Arrowhead with a soft glow.
+      const h = 9 * L.s;
+      ctx.shadowColor = 'rgba(255,200,150,0.9)';
+      ctx.shadowBlur = 14 * L.s;
+      ctx.strokeStyle = 'rgba(255,245,230,1)';
+      ctx.beginPath();
+      ctx.moveTo(x1 - h, yy - h * 0.6);
+      ctx.lineTo(x1, yy);
+      ctx.lineTo(x1 - h, yy + h * 0.6);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    },
+  };
+}
+
 export function buildText(): TextItem[] {
   const items: TextItem[] = [];
   for (const b of T.beats as Beat[]) {
@@ -161,6 +202,9 @@ export function buildText(): TextItem[] {
   }
   for (const l of T.prologueLines) items.push(whisper(l.start, l.end, l.text));
   for (const l of T.epilogueLines) items.push(whisper(l.start, l.end, l.text));
-  for (const c of T.titleCards) items.push(mainTitle(c.start, c.end, c.text));
+  for (const c of T.titleCards) {
+    items.push(mainTitle(c.start, c.end, c.text));
+    items.push(arrowLine(c.start + 1.2, c.end));
+  }
   return items;
 }

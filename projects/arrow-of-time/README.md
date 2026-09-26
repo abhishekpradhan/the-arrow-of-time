@@ -1,0 +1,74 @@
+# The Arrow of Time
+
+*The history and future of everything, from the first instant to the last.* 5:18, 1920×1080,
+24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
+
+![Frames from the film](poster.jpg)
+
+```bash
+npm run audio -- arrow-of-time      # score  -> out/arrow-of-time/audio/score.wav
+npm run render -- arrow-of-time     # film   -> out/arrow-of-time/renders/arrow-of-time-final-latest.mp4
+```
+
+## Concept
+
+Time has one direction. The film follows it from the Big Bang to the heat death of the
+universe and is paced by a ticking clock. The clock falls silent in the Big Bang, accelerates
+through human history, stops dead at **NOW**, and resumes and slows down as the stars die
+until the last tick. After it, the universe (and the audience) has one brief moment to look
+at itself. See `MUSIC.md` for the score design.
+
+## Structure
+
+| Time | Act | Beats |
+|---|---|---|
+| 0:00 | Prologue | "Everything that has ever happened…", a single point of light gathering energy |
+| 0:20 | The Universe | Big Bang and title, inflation, first elements (3 min), first light / CMB (380,000 yr) |
+| 0:50 | Cosmic Dawn | dark ages, first stars igniting on the score's bell notes, galaxies, the Milky Way |
+| 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
+| 1:56 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
+| 2:42 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils, civilization montage, the Moon landing, Earth at night |
+| 3:28 | Now | the pale blue dot, and silence |
+| 3:36 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
+| 4:22 | The End | the last stars, the black hole era, evaporation, the end of time |
+| 4:56 | Epilogue | "That moment is now." |
+
+## Visual techniques
+
+- **Big Bang, inflation, first light**: domain-warped fbm plasma with a fire colour ramp, a
+  log-scale infinite zoom with radially streaking quantum fluctuations, a bokeh particle field,
+  and a Planck-style CMB sphere with photons "breaking free".
+- **Cosmic web**: a 112³ periodic Voronoi density volume (filaments where three cells meet),
+  ray-marched at half resolution, with sprite stars and galaxies placed on its nodes.
+- **Milky Way**: about 170k sprites (sparkle stars, a smooth glow layer, HII knots, a bulge)
+  following a barred four-arm logarithmic spiral with 19° pitch, with absorbing dust lanes and
+  differential rotation.
+- **Planets**: one shader for every era. Voronoi lava cracks, procedural oceans and ice lines,
+  real present-day Earth from Natural Earth maps (bathymetry shelves, deserts, city lights from
+  populated places and roads), clouds, atmospheric rim and twilight, impact dust and fires,
+  Mars terraforming, the Moon.
+- **Life and humanity**: animated signed-distance silhouettes (Anomalocaris, trilobites,
+  jellyfish, Tiktaalik, sauropods, T. rex, pterosaurs, mammals, people) over painted-light
+  skies, underwater god rays and caustics, a bump-mapped cave wall lit by a moving torch, and
+  an architectural montage from huts to rockets.
+- **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
+  nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
+  friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.
+
+## Science notes
+
+The captions follow current mainstream estimates and hedge where science does:
+
+- Inflation ends around 10⁻³² s; Big Bang nucleosynthesis at about 3 minutes;
+  recombination (the CMB) at about 380,000 years.
+- First stars at about 100–200 million years; galaxies are already present by about 300–400 million years (JWST).
+- Solar system: 4.6 Gyr ago. Earth: 4.54 Gyr. Moon-forming impact (Theia, the leading hypothesis): about 4.5 Gyr.
+- Liquid water by about 4.4 Gyr (zircons); life by about 3.8 Gyr; Great Oxidation about 2.4 Gyr;
+  Cryogenian Snowball Earth about 720–635 Myr; Cambrian explosion 538.8 Myr; tetrapods about 375 Myr;
+  dinosaurs about 230 Myr; Chicxulub 66 Myr; *Homo sapiens* about 300,000 years; hand stencils more than 40,000 years.
+- Future: the constellations change noticeably within about 100,000 years (the Big Dipper uses
+  real proper motions); the Sun brightens enough to evaporate the oceans in about 1 Gyr;
+  it leaves the main sequence at about 5 Gyr and becomes a white dwarf by about 8 Gyr.
+  A 2025 study (Sawala et al.) puts the chance of a Milky Way–Andromeda merger within
+  10 Gyr at about 50%, hence "may merge". The last stars fade at about 10¹⁴ years; black holes dominate
+  after about 10⁴⁰ years (if protons decay); the largest evaporate by about 10¹⁰⁰ years.

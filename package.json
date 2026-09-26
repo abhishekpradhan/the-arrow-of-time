@@ -11,7 +11,8 @@
     "still": "tsx tools/still.ts",
     "audio": "tsx tools/audio.ts",
     "new": "tsx tools/new-project.ts",
-    "setup": "tsx tools/setup.ts"
+    "setup": "tsx tools/setup.ts",
+    "release": "tsx tools/release.ts"
   },
   "engines": {
     "node": ">=20"

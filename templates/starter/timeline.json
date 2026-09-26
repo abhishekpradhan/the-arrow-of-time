@@ -1,0 +1,15 @@
+{
+  "title": "__TITLE__",
+  "fps": 24,
+  "duration": 24,
+  "notes": "Single source of truth for timing, read by project.ts (visuals, captions) and score.py (music). Times in seconds.",
+  "beats": [
+    { "id": "intro", "start": 0, "end": 8, "card": "title", "title": "__TITLE__" },
+    { "id": "voyage", "start": 8, "end": 18, "card": "chapter", "era": "Chapter one", "title": "The Voyage", "line": "Replace this with your story." },
+    { "id": "outro", "start": 18, "end": 24, "card": "none" }
+  ],
+  "cues": {
+    "hit": 8.0,
+    "end": 23.0
+  }
+}

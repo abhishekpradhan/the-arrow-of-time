@@ -36,7 +36,8 @@ export class TextLayer {
     this.canvas = document.createElement('canvas');
     this.canvas.width = width;
     this.canvas.height = height;
-    this.ctx = this.canvas.getContext('2d', { alpha: true })!;
+    // CPU raster: on software-GL renderers, GPU canvas blur filters cost seconds per frame.
+    this.ctx = this.canvas.getContext('2d', { alpha: true, willReadFrequently: true })!;
   }
 
   /** Draw all active items. Returns the uploaded texture, or null if nothing is on screen. */
@@ -171,11 +172,15 @@ export function drawText(
   const outA = 1 - ease.inOutSine(saturate(r.outP));
   const color = st.color ?? '#fff';
 
+  // Blur is rendered with Canvas2D's shadow path (glyph drawn off-canvas, only its blurred
+  // shadow lands in frame): it is an order of magnitude faster than ctx.filter = 'blur()'.
+  const OFF = 20000;
   const drawAll = (alpha: number, blurPx: number, dy: number, glyphFn?: (i: number) => { a: number; b: number; dy: number }) => {
     const passes: { color: string; blur: number; alpha: number }[] = [];
     if (st.shadow) passes.push({ color: st.shadow.color, blur: st.shadow.blur * s, alpha: 1 });
     if (st.glow) passes.push({ color: st.glow.color, blur: st.glow.blur * s, alpha: st.glow.strength ?? 1 });
     passes.push({ color: '', blur: 0, alpha: 1 });
+    ctx.filter = 'none';
     for (const pass of passes) {
       for (let i = 0; i < glyphs.length; i++) {
         const gl = glyphs[i];
@@ -185,22 +190,30 @@ export function drawText(
         if (a <= 0.002) continue;
         const b = blurPx + g.b;
         ctx.globalAlpha = clamp(a, 0, 1);
-        ctx.filter = b > 0.25 ? `blur(${b.toFixed(2)}px)` : 'none';
-        if (pass.color) {
-          ctx.shadowColor = pass.color;
-          ctx.shadowBlur = pass.blur;
-          ctx.fillStyle = pass.color;
+        ctx.font = gl.font;
+        const gx = x0 + gl.x, gy = y + dy + g.dy + gl.dy;
+        const fill = pass.color || color;
+        const passBlur = pass.color ? pass.blur : 0;
+        const total = Math.hypot(passBlur, b * 2); // shadowBlur ~ 2 sigma; blurs add in quadrature
+        if (total > 0.5) {
+          ctx.shadowColor = fill;
+          ctx.shadowBlur = total;
+          ctx.shadowOffsetX = OFF;
+          ctx.shadowOffsetY = 0;
+          ctx.fillStyle = fill;
+          ctx.fillText(gl.ch, gx - OFF, gy);
         } else {
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
-          ctx.fillStyle = color;
+          ctx.shadowOffsetX = 0;
+          ctx.fillStyle = fill;
+          ctx.fillText(gl.ch, gx, gy);
         }
-        ctx.font = gl.font;
-        ctx.fillText(gl.ch, x0 + gl.x, y + dy + g.dy + gl.dy);
       }
     }
-    ctx.filter = 'none';
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowColor = 'transparent';
     ctx.globalAlpha = 1;
   };
 
