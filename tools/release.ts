@@ -37,12 +37,12 @@ if (!duration) throw new Error('could not read the master duration');
 
 const COLOR = ['-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv'];
 
-/** Two-pass x264 encode at a fixed video bitrate (kbit/s). */
-function twoPass(out: string, vkbps: number, akbps: number, vf: string) {
+/** Two-pass x264 encode at a fixed video bitrate (kbit/s). aq-mode 3 spends bits on dark gradients. */
+function twoPass(out: string, vkbps: number, akbps: number, vf: string, preset = 'slow') {
   const log = join(tmp, 'x264-2pass');
-  const common = ['-i', input, '-vf', vf, '-c:v', 'libx264', '-preset', 'slow', '-tune', 'film', '-b:v', `${vkbps}k`,
-    '-maxrate', `${Math.round(vkbps * 2)}k`, '-bufsize', `${Math.round(vkbps * 4)}k`, '-pix_fmt', 'yuv420p', ...COLOR,
-    '-passlogfile', log];
+  const common = ['-i', input, '-vf', vf, '-c:v', 'libx264', '-preset', preset, '-tune', 'film', '-x264-params', 'aq-mode=3',
+    '-b:v', `${vkbps}k`, '-maxrate', `${Math.round(vkbps * 2)}k`, '-bufsize', `${Math.round(vkbps * 4)}k`, '-pix_fmt', 'yuv420p',
+    ...COLOR, '-passlogfile', log];
   run([...common, '-pass', '1', '-an', '-f', 'null', '-']);
   run([...common, '-pass', '2', '-c:a', 'aac', '-b:a', `${akbps}k`, '-ar', '48000', '-movflags', '+faststart', out]);
   for (const f of [`${log}-0.log`, `${log}-0.log.mbtree`]) rmSync(f, { force: true });
@@ -56,11 +56,11 @@ let preview: string | null = null;
 if (!args['no-preview']) {
   preview = join(dir, `${id}-720p.mp4`);
   const budgetBits = num(args['preview-mb'], 28) * 1e6 * 8 * 0.96; // leave room for container overhead
-  const akbps = 96;
+  const akbps = 128;
   const vkbps = Math.max(200, Math.floor(budgetBits / duration / 1000 - akbps));
   console.log(`[release] 720p preview at ${vkbps} kbps video to fit ${num(args['preview-mb'], 28)} MB …`);
   // Light temporal denoise: grain is noise to an encoder at this bitrate.
-  twoPass(preview, vkbps, akbps, 'scale=1280:720:flags=lanczos,hqdn3d=2:1.5:4:3');
+  twoPass(preview, vkbps, akbps, 'scale=1280:720:flags=lanczos,hqdn3d=2:1.5:4:3', 'veryslow');
 }
 
 const poster = join(dir, 'poster.jpg');
