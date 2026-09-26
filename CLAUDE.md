@@ -51,6 +51,17 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   must render a second frame of the same shot.
 - `starLayer` glows must stay inside one cell (3x3 search) or square halos appear.
 
+## Audio
+
+- Scores are Python (`projects/<id>/score.py`) using `audio/studio` (read `audio/README.md`).
+  Run with `npm run audio -- <id>`; `--from/--to` renders a window in seconds for fast iteration.
+- Take every time from `Timeline.load(.../timeline.json)` (`tl.cue()`, `tl.beat()`); express
+  extra times as offsets from cues. Use `mix.cut(t)` for hard cuts (it stops reverb tails too).
+- Master to -14 LUFS / -1 dBTP with `master.master()`. Verify with
+  `.venv/bin/python audio/analyze.py <wav> --timeline <json> --onsets <cues> --cut <cue> --png <file>`
+  and `.venv/bin/python tools/check_sync.py <mp4> <timeline.json>` on a rendered film.
+  You cannot listen: judge from spectrograms, loudness curves, onsets and stems.
+
 ## Review loop (do this constantly)
 
 ```bash
