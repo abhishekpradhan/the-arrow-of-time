@@ -69,5 +69,8 @@ over the image, letterbox framing, and transitions between shots.
 - `npm run render -- <id>`: final 1080p, x264 CRF 17 `slow`, Rec.709, AAC 320k. Outputs
   `out/<id>/renders/<id>-final-<stamp>.mp4` and `...-final-latest.mp4`.
 - Run `npm run audio -- <id>` first or the render is silent (a warning is printed).
+- Long renders: segments are written to `out/<id>/segments/`. If the container restarts, re-run
+  the same command with `--resume` to continue. If only the score changed, don't re-render:
+  re-mux the audio with ffmpeg (`-map 0:v -map 1:a -c:v copy -c:a aac -b:a 320k`).
 - Container note: there is no GPU; `--gl auto` picks Mesa llvmpipe via EGL (needs `libegl1`
   and `mesa-vulkan-drivers`/`libgl1-mesa-dri`). Install ffmpeg with apt if it is missing.
