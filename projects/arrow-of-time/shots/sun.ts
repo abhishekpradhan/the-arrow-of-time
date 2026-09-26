@@ -13,7 +13,7 @@ import {
   type Vec3,
 } from '@engine';
 import { beat, cues, scratch, span } from '../lib';
-import { Planet, loadEarth } from '../planet';
+import { Planet, loadEarth } from '@engine';
 
 // ------------------------------------------------------------------ collapsing nebula
 const NEBULA = `

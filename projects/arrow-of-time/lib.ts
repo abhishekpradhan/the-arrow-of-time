@@ -1,11 +1,6 @@
 // Shared helpers for this film's shots.
-import { registerChunks, type RenderTarget, type Shot, type ShotContext, type Engine } from '@engine';
+import { type RenderTarget, type Shot, type ShotContext, type Engine } from '@engine';
 import T from './timeline.json';
-
-registerChunks(
-  import.meta.glob('./shaders/*.glsl', { query: '?raw', import: 'default', eager: true }) as Record<string, string>,
-  'aot/',
-);
 
 export type BeatId = (typeof T.beats)[number]['id'];
 export const cues = T.cues;

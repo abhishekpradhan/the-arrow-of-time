@@ -70,14 +70,17 @@ engine/                 WebGL2 film engine (TypeScript, browser)
   gl/                   programs with reflected uniforms, render targets, 3D textures, #include
   post/post.ts          bloom (13-tap down / tent up), streaks, ACES/AgX/neutral, grade, grain, letterbox
   text/                 typography layer and caption builders
-  components/sprites.ts instanced flux-conserving sprites (stars, galaxies, particles)
-  shaders/*.glsl        common, noise (value/gradient/fbm/ridged/Worley/warp), color, sdf, stars, camera
+  components/           sprites (instanced, flux-conserving: stars, dust, particles), planet (any era
+                        of Earth, Mars, the Moon), galaxy (rotating barred spiral)
+  shaders/*.glsl        common, noise (value/gradient/fbm/ridged/Worley/warp), color, sdf, stars,
+                        camera, creatures and structures (silhouette SDFs: trilobites to people,
+                        huts to rockets)
   runtime/              preview player (index.html) and headless renderer (render.html)
 audio/studio/           Python synthesizer, effects, theory, mastering (see audio/README.md)
 tools/                  render, still, audio and new-project CLIs, plus asset builders
 assets/earth/           Earth maps generated from Natural Earth (see assets/earth/README.md)
 templates/starter/      skeleton copied by `npm run new`
-projects/<id>/          one folder per film: timeline.json, project.ts, shots/, shaders/, score.py
+projects/<id>/          one folder per film: timeline.json, project.ts, shots/, score.py
 out/                    renders, stills, audio (git-ignored)
 ```
 

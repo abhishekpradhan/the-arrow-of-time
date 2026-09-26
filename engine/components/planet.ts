@@ -1,6 +1,11 @@
-// A general planet renderer for every era of Earth (and Mars, Theia, the Moon):
-// molten crust, oceans, ice, real present-day geography, city lights, clouds, atmosphere.
-import { type Camera, type Engine, type Mat4, type Program, type ShotContext, type Texture, type Vec3, m4 } from '@engine';
+// A general planet renderer: molten crust, oceans, ice lines, real present-day Earth geography
+// (assets/earth), city lights, clouds, atmosphere and twilight, impact scars, Mars and terraforming,
+// the Moon. One full-screen shader per planet; composite several with depth or draw order.
+import type { Camera } from '../core/camera';
+import type { Engine } from '../core/engine';
+import { m4, type Mat4, type Vec3 } from '../core/math';
+import type { ShotContext } from '../core/types';
+import type { Program, Texture } from '../gl/gl';
 
 const PLANET = `
 #include <noise>

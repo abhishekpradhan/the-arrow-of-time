@@ -1,7 +1,7 @@
 // Act IV: the first life, oxygen, snowball Earth, the Cambrian seas, onto land, dinosaurs, the asteroid.
 import { Camera, Sprites, allocSprites, blackbody, keys, prog, rng, starSphere, type RenderTarget, type Shot, type Vec3 } from '@engine';
 import { beat, cues, scratch, span } from '../lib';
-import { Planet, loadEarth, type EarthMaps } from '../planet';
+import { Planet, loadEarth, type EarthMaps } from '@engine';
 
 // ------------------------------------------------------------------ hydrothermal vent
 const VENT = `
@@ -181,7 +181,7 @@ function snowball(): Shot<EarthShot> {
 const CAMBRIAN = `
 #include <noise>
 #include <color>
-#include <aot/creatures>
+#include <creatures>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime, uT;
 vec3 water(float y) {
@@ -279,7 +279,7 @@ function cambrian(): Shot {
 const LAND = `
 #include <noise>
 #include <color>
-#include <aot/creatures>
+#include <creatures>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime, uT;
 vec3 sky(vec2 p, vec2 sun) {
@@ -354,7 +354,7 @@ function land(): Shot {
 const DINOS = `
 #include <noise>
 #include <color>
-#include <aot/creatures>
+#include <creatures>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime, uT, uStreak, uPan;
 vec3 skyCol(vec2 p, vec2 sun, float disk) {

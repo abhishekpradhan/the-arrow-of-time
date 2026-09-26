@@ -24,8 +24,16 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   are `uRes` (the bound target's size), `uTime` (shot-local), `uDur`, `uProg`, `uGTime`
   (global), `uAspect` and `uScale`. Use `centered(vUv, uAspect)`: y spans [-0.5, 0.5]. With the
   2.39:1 letterbox only |y| < 0.372 is visible, so keep subjects inside it.
-- **GLSL includes**: `#include <common|noise|color|sdf|stars|camera>`. Project chunks are
-  registered with a prefix (`#include <aot/planet>`-style) from `projects/<id>/shaders/*.glsl`.
+- **GLSL includes**: `#include <common|noise|color|sdf|stars|camera|creatures|structures>`
+  (`engine/shaders/*.glsl`, registered by file name). `creatures` and `structures` are 2D
+  silhouette SDF libraries, from trilobites to people and from huts to rockets. For
+  film-specific chunks, call `registerChunks(import.meta.glob('./shaders/*.glsl', { query: '?raw',
+  import: 'default', eager: true }), '<id>/')` in a module the shots import, then
+  `#include <<id>/name>`.
+- **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
+  (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
+  documented on `PlanetParams`). `Galaxy` (or raw `galaxyData`) is a rotating sprite spiral.
+  Promote anything a second film could use into the engine rather than copying it.
 - **Camera**: `engine/core/camera.ts` feeds both sprites and ray-marched shaders
   (`...cam.uniforms()` plus `#include <camera>` and `camRay(p)`). The chunk declares
   `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj`, so do not

@@ -8,7 +8,7 @@
 //   common: [--scale 0.5] [--debug] (burn in timecode) [--clean] (no timecode on sheets) [--out file.png] [--mb 0|1] [--gl ...]
 
 import { writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { contactSheet, encodePNG } from './lib/png';
 import { pageInfo, startSession, type GlMode } from './lib/session';
 import { ROOT, list, num, outDir, parseArgs, projectDir, str } from './lib/util';
@@ -79,7 +79,7 @@ try {
   if (sheetMode) {
     const cols = num(args.cols, Math.min(frames.length, frames.length <= 4 ? 2 : 3));
     const sheet = contactSheet(frames.map((f) => new Uint8Array(got.get(f)!)), W, H, cols);
-    const file = args.out ? join(ROOT, str(args.out, '')) : join(dir, `${label}.png`);
+    const file = args.out ? resolve(ROOT, str(args.out, '')) : join(dir, `${label}.png`);
     writeFileSync(file, encodePNG(sheet.data, sheet.width, sheet.height));
     console.log(relative(ROOT, file));
   } else {

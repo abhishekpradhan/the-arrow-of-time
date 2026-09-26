@@ -1,7 +1,7 @@
 // Act V: mammals, the first people, cave art, civilization, the Moon landing, Earth at night, NOW.
 import { Camera, Sprites, allocSprites, keys, m4, prog, rng, starSphere, type Mat4, type Shot, type Vec3 } from '@engine';
 import { beat, cues, span, timeline } from '../lib';
-import { Planet, loadEarth, type EarthMaps } from '../planet';
+import { Planet, loadEarth, type EarthMaps } from '@engine';
 
 const latLon = (lat: number, lon: number): Vec3 => {
   const a = (lat * Math.PI) / 180, o = (lon * Math.PI) / 180;
@@ -12,7 +12,7 @@ const latLon = (lat: number, lon: number): Vec3 => {
 const MAMMALS = `
 #include <noise>
 #include <color>
-#include <aot/creatures>
+#include <creatures>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime, uT, uDawn;
 void main() {
@@ -73,7 +73,7 @@ const CAMPFIRE = `
 #include <noise>
 #include <color>
 #include <stars>
-#include <aot/creatures>
+#include <creatures>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime, uT;
 void main() {
@@ -230,7 +230,7 @@ const CIV = `
 #include <noise>
 #include <color>
 #include <stars>
-#include <aot/structures>
+#include <structures>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime, uT;
 uniform float uS[10];        // stage visibility 0..1 (fades in on its montage beat)

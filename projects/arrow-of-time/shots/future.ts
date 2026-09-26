@@ -14,7 +14,7 @@ import {
   type Vec3,
 } from '@engine';
 import { beat, cues, scratch, span, timeline } from '../lib';
-import { Planet, loadEarth } from '../planet';
+import { Planet, loadEarth } from '@engine';
 
 const COPY_ADD = `
 in vec2 vUv; out vec4 fragColor;

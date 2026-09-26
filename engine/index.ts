@@ -10,3 +10,5 @@ export { registerChunks, registerChunk } from './gl/shaderlib';
 export * from './text/text';
 export * from './text/captions';
 export * from './components/sprites';
+export * from './components/planet';
+export * from './components/galaxy';
