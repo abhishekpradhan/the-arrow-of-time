@@ -92,7 +92,9 @@ over the image, letterbox framing, and transitions between shots.
   took 1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on); the master is about
   1 GB because film grain is expensive to encode.
 - `npm run release -- <id> --poster <s>` makes the distribution encodes in `releases/<id>/`
-  (Git LFS). Check sync on the master first with `tools/check_sync.py`.
+  (Git LFS). Check sync on the master first with `tools/check_sync.py`. Pushing LFS objects
+  needs `lfs.github.com` (the upload's verify step). If the network blocks it, the whole push
+  fails: undo the commit and keep the files in `out/`. Never commit video as plain git blobs.
 - Run `npm run audio -- <id>` first or the render is silent (a warning is printed).
 - Long renders: segments are written to `out/<id>/segments/`. If the container restarts, re-run
   the same command with `--resume` to continue. If only the score changed, don't re-render:
