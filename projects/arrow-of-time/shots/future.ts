@@ -1,20 +1,24 @@
 // Act VI: the future, all the way to the end of time, and the epilogue.
 import {
   Camera,
+  Planet,
   Sprites,
   allocSprites,
   blackbody,
   keys,
+  loadEarth,
   prog,
   rng,
+  smoothstep,
   starSphere,
+  v3,
+  type EarthMaps,
   type RenderTarget,
   type Shot,
   type SpriteData,
   type Vec3,
 } from '@engine';
 import { beat, cues, scratch, span, timeline } from '../lib';
-import { Planet, loadEarth } from '@engine';
 
 const COPY_ADD = `
 in vec2 vUv; out vec4 fragColor;
@@ -199,67 +203,165 @@ function hotEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
 }
 
 // ------------------------------------------------------------------ red giant
+// The Sun as a red giant, ray-traced in AU: a few giant convection cells boiling on a strongly
+// limb-darkened surface, an extended atmosphere of plumes and dust. First it swells past the
+// orbits of Mercury and Venus (each flashes as it is swallowed); then the view from a scorched,
+// dried-out Earth, silhouetted against a star that fills half the sky from 1.3 AU. The star is
+// rendered in AU with the same camera orientation as the Earth-scale camera, so they composite.
 const GIANT = `
+#include <common>
 #include <noise>
 #include <color>
+#include <camera>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uR;
-uniform vec4 uPlanets[3];   // xy position, z radius, w vaporised (0..1 flash)
+uniform vec2 uRes;
+uniform float uAspect, uGTime, uR, uHeat, uDetail, uAtmo;
+uniform vec3 uStar;
+uniform vec4 uPl[3];      // planet centre (AU) and drawn radius; 0 radius = gone
+uniform float uFlash[3];  // engulfment flash, 0..1
+vec3 surface(vec3 n, float mu) {
+  float a = uGTime * 0.012;
+  vec3 q = vec3(cos(a) * n.x - sin(a) * n.z, n.y, sin(a) * n.x + cos(a) * n.z) * uDetail;
+  vec3 warp = vec3(fbm(q * 2.0 + uGTime * 0.02, 4), fbm(q * 2.0 + 7.3 - uGTime * 0.015, 4), fbm(q * 2.0 + 13.1, 4));
+  // A handful of giant cells (like Betelgeuse), dark lanes between them, hot centres.
+  vec2 w = worley(q * 2.4 + warp * 1.6 + vec3(0.0, uGTime * 0.015, 0.0));
+  float lanes = smoothstep(0.0, 0.75, w.y - w.x + 0.25 * (warp.x - 0.5));
+  float centre = 1.0 - smoothstep(0.0, 0.9, w.x);
+  float gran = fbm(q * 14.0 + warp * 3.0 + uGTime * 0.04, 4);
+  float big = fbm(q * 1.3 - uGTime * 0.01, 3);
+  // Medium cells inside the giant ones: the surface boils at every scale.
+  vec2 w2 = worley(q * 6.5 + warp * 2.0 + vec3(uGTime * 0.03));
+  float mid = smoothstep(0.0, 0.5, w2.y - w2.x);
+  float I = (0.38 + 0.62 * lanes * (0.55 + 0.45 * centre) * (0.75 + 0.5 * gran) * (0.75 + 0.5 * big)) * (0.68 + 0.32 * mid);
+  float T = 2300.0 + 1000.0 * I;
+  float limb = 1.0 - 0.7 * (1.0 - mu) - 0.22 * (1.0 - mu * mu);
+  return blackbody(T) * I * max(limb, 0.04) * 1.7;
+}
 void main() {
   vec2 p = centered(vUv, uAspect);
-  vec2 c = vec2(-0.95, -0.05);
-  vec2 d = p - c;
-  float r = length(d);
-  float px = 1.0 / uRes.y;
+  vec3 rd = camRay(p), ro = uCamPos;
+  vec3 oc = ro - uStar;
+  float b = dot(oc, rd), h = b * b - dot(oc, oc) + uR * uR;
   vec3 col = vec3(0.0);
-  if (r < uR) {
-    float mu = sqrt(max(1.0 - (r * r) / (uR * uR), 0.0));
-    vec3 n = vec3(d / uR, mu);
-    // A few giant, blotchy convection cells boiling on the surface (like Betelgeuse).
-    vec3 q = n * 2.2;
-    vec3 warp = vec3(fbm(q * 1.5 + uGTime * 0.03, 4), fbm(q * 1.5 + 5.0 - uGTime * 0.02, 4), fbm(q * 1.5 + 9.0, 4));
-    vec2 w = worley(q * 1.6 + warp * 1.3 + uGTime * 0.02);
-    float cell = smoothstep(0.0, 0.55, w.y - w.x);
-    float mott = fbm(q * 6.0 + warp * 2.0 + uGTime * 0.05, 5);
-    float I = 0.3 + 0.95 * cell * (0.55 + 0.9 * mott);
-    float limb = pow(mu, 0.8);
-    col = blackbody(2400.0 + 900.0 * I) * vec3(1.0, 0.8, 0.62) * I * limb * 0.95;
+  float tc = max(-b, 0.0);
+  vec3 cp = ro + rd * tc;
+  float dr = length(cp - uStar) / uR;
+  float tHit = 1e9;
+  if (h > 0.0) {
+    tHit = -b - sqrt(h);
+    vec3 n = normalize(ro + rd * tHit - uStar);
+    col = surface(n, max(dot(n, -rd), 0.0));
   }
-  // Chromosphere glow and flame-like prominences beyond the limb.
-  float out1 = max(r - uR, 0.0);
-  float ang = atan(d.y, d.x);
-  float flames = fbm(vec2(ang * 9.0, out1 * 20.0 - uGTime * 0.3), 5);
-  col += vec3(1.0, 0.3, 0.1) * exp(-out1 / (0.01 + 0.03 * flames)) * 0.8 * step(uR, r);
-  col += vec3(1.0, 0.4, 0.15) * exp(-out1 / 0.25) * 0.15;
-  // The inner planets in silhouette; they flash as the swelling star engulfs them.
+  // Extended atmosphere: a glow with rising plumes, broken by dark dust.
+  if (dr > 0.97) {
+    float x = max(dr - 1.0, 0.0);
+    vec3 dirc = normalize(cp - uStar);
+    float plume = fbm(dirc * 5.0 + vec3(0.0, 0.0, -x * 7.0) + uGTime * 0.04, 5);
+    // Only rays that look toward the star cross its atmosphere (the camera may sit inside it).
+    float toward = smoothstep(0.0, 0.5, dot(rd, normalize(uStar - ro)));
+    float glow = (exp(-x / (0.025 + 0.1 * plume)) * 0.85 + exp(-x / 0.4) * 0.1) * toward;
+    float dust = smoothstep(0.5, 0.78, fbm(dirc * 8.0 + x * 4.0 + 3.0, 4)) * exp(-x / 0.3);
+    col += blackbody(2200.0 + 700.0 * plume) * glow * (1.0 - 0.75 * dust) * 1.3 * uAtmo;
+  }
+  // The inner planets: tiny sunlit dots, gone in a flash when the surface reaches them.
   for (int i = 0; i < 3; i++) {
-    vec4 pl = uPlanets[i];
-    if (pl.z <= 0.0) continue;
-    float dp = length(p - pl.xy) - pl.z;
-    float body = 1.0 - smoothstep(-px, px, dp);
-    col = mix(col, vec3(0.01, 0.004, 0.002), body * (1.0 - pl.w));
-    col += vec3(1.0, 0.8, 0.5) * exp(-max(dp, 0.0) / (0.01 + 0.03 * pl.w)) * pl.w * 4.0 * (1.0 - pl.w * 0.7);
+    vec4 pl = uPl[i];
+    vec3 d = pl.xyz - ro;
+    float t = dot(d, rd);
+    if (t <= 0.0) continue;
+    float px = 2.0 * uTanHalfFov / uRes.y * t;
+    float dist = length(d - rd * t);
+    if (pl.w > 0.0 && t < tHit) {
+      float body = smoothstep(pl.w + px, pl.w - px, dist);
+      vec3 lit = blackbody(2800.0) * 0.35 * max(dot(normalize(uStar - pl.xyz), normalize(rd * t - d)), 0.15);
+      col = mix(col, lit, body);
+    }
+    float f = uFlash[i];
+    if (f > 0.0) col += vec3(1.0, 0.75, 0.45) * f * (exp(-dist / (px * 3.0 + 0.004)) * 6.0 + exp(-dist / 0.06) * 0.5);
   }
-  fragColor = vec4(col, 1.0);
+  // The disk is opaque (hides the sky behind it); the atmosphere adds light.
+  float px = 2.0 * uTanHalfFov / uRes.y * max(tc, 1e-3) / uR;
+  fragColor = vec4(col * uHeat, smoothstep(1.0 + px, 1.0 - px, dr));
 }`;
 
-function redGiant(): Shot<{ half: RenderTarget }> {
+const ORBITS = { mercury: 0.39, venus: 0.72, earth: 1.3 };
+/** The star's radius (AU) during the swell: past Mercury's orbit, then Venus's. */
+const giantR = (t: number) => keys(t, [[-1, 0.26], [0.2, 0.28], [3.6, 1.0, 'inOutSine'], [9, 1.06]]);
+
+function redGiantSwell(): Shot<{ cam: Camera; sky: Sprites }> {
+  const b = beat('redgiant');
   return {
-    ...span('redgiant', { dIn: 1.0, dOut: 1.0 }),
-    render(c) {
-      const t = c.time - beat('redgiant').start;
-      const R = keys(t, [[-1, 0.28], [1.0, 0.3], [7.8, 1.52, 'inOutCubic']]);
-      const cx = -0.95;
-      // Mercury, Venus, Earth sit along a line out from the star; each vaporises when the limb reaches it.
-      const pl: [number, number, number][] = [[cx + 0.62, 0.02, 0.009], [cx + 1.05, -0.06, 0.016], [cx + 1.62, 0.04, 0.017]];
-      const planets = pl.flatMap(([x, y, r], i) => {
-        const dist = Math.hypot(x - cx, y + 0.05);
-        const hit = R - dist;
-        const vap = hit > 0 ? Math.min(1, hit * 18) : 0;
-        const gone = hit > 0.12 && i < 2;
-        return [x, y, gone ? 0 : r, i < 2 ? vap : Math.min(vap, 0.5)];
+    id: 'redgiant-swell',
+    start: b.start - 0.5,
+    end: b.start + 3.7,
+    fadeIn: 1.0,
+    fadeOut: 0.8,
+    setup: (e) => ({ cam: new Camera({ fov: 40, far: 100 }), sky: new Sprites(e, starSphere(rng(240), { count: 9000, brightness: 0.3 })) }),
+    render(c, s) {
+      const t = c.time - b.start;
+      s.cam.set({
+        pos: [keys(t, [[-1, -1.3], [4, -1.0]]), 0.45, keys(t, [[-1, 3.0], [4, 3.3]])],
+        target: [keys(t, [[-1, -0.25], [4, -0.05]]), 0.0, 0.0],
       });
-      c.fullscreen(c.e.program(GIANT, 'giant'), { uR: R, uPlanets: planets });
+      s.sky.draw(s.cam, c.time, {}, { sky: true });
+      const R = giantR(t);
+      const { right } = s.cam.basis();
+      // The planets sit to the camera's left of the star, a little in front of it.
+      const at = (r: number, y: number): Vec3 => v3.add(v3.scale(right, -r * 0.93), [0, y, r * 0.35]);
+      const pl = [at(ORBITS.mercury, 0.02), at(ORBITS.venus, -0.03), at(ORBITS.earth, 0.04)];
+      const flash = pl.map((q, i) => {
+        if (i === 2) return 0;
+        const tHit = [0.45, 2.15][i];
+        return t > tHit ? Math.exp(-(t - tHit) * 3.5) : 0;
+      });
+      const uPl = pl.flatMap((q, i) => [...q, i < 2 && v3.len(q) < R * 1.02 ? 0 : [0.006, 0.011, 0.012][i]]);
+      c.gl.enable(c.gl.BLEND);
+      c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
+      c.fullscreen(c.e.program(GIANT, 'giant'), { ...s.cam.uniforms(), uStar: [0, 0, 0], uR: R, uHeat: 1.0, uDetail: 1, uAtmo: 1, uPl, uFlash: flash });
+      c.gl.disable(c.gl.BLEND);
+    },
+  };
+}
+
+function redGiantEarth(): Shot<{ planet: Planet; cam: Camera; starCam: Camera; maps: EarthMaps }> {
+  const b = beat('redgiant');
+  // Earth at 1.3 AU; the star, 1 AU in radius, fills half the sky. The view is past Earth's
+  // night side, toward the star's limb: Earth in silhouette against the boiling surface.
+  const earthAU: Vec3 = [ORBITS.earth, 0, 0];
+  const toStar = v3.norm(v3.scale(earthAU, -1));
+  return {
+    id: 'redgiant-earth',
+    start: b.start + 3.1,
+    end: b.end + 0.5,
+    fadeIn: 0.9,
+    fadeOut: 1.0,
+    async setup(e) {
+      const maps = await loadEarth(e);
+      return { maps, planet: new Planet(e, maps), cam: new Camera({ fov: 42 }), starCam: new Camera({ fov: 42, far: 100 }) };
+    },
+    render(c, s) {
+      const t = c.time - b.start - 3.1;
+      // Earth-scale camera (Earth radius 1): behind and to the side of Earth, looking starward.
+      // Look 43 degrees off the star's centre: its limb crosses just left of centre, and Earth
+      // (shifted left and a little down on screen) sits on the limb, half against the star.
+      const dist = keys(t, [[0, 6.2], [5.5, 5.3, 'inOutSine']]);
+      const fwd = v3.norm(v3.add(toStar, [0, 0, Math.tan((43 * Math.PI) / 180)]));
+      s.cam.set({ pos: v3.scale(fwd, -dist), target: [0, 0, 0], up: [0, 1, 0], roll: 0.04 });
+      const { right, up } = s.cam.basis();
+      const pos = v3.add(v3.scale(fwd, -dist), v3.add(v3.scale(right, dist * 0.16), v3.scale(up, dist * 0.06)));
+      s.cam.set({ pos, target: v3.add(pos, fwd), up: [0, 1, 0], roll: 0.04 });
+      // The star is drawn from Earth's position in AU with the same orientation.
+      s.starCam.set({ pos: earthAU, target: v3.add(earthAU, fwd), up: [0, 1, 0], roll: 0.04 });
+      s.starCam.aspect = c.aspect;
+      c.fullscreen(c.e.program(GIANT, 'giant'), {
+        ...s.starCam.uniforms(), uStar: [0, 0, 0], uR: giantR(t + 3.1), uHeat: 1.0, uDetail: 2.6, uAtmo: 0.4,
+        uPl: new Array(12).fill(0), uFlash: [0, 0, 0],
+      });
+      s.planet.draw(c, s.cam, {
+        center: [0, 0, 0], radius: 1, spin: c.time * 0.03, tilt: 0.41, yaw: 2.2, sunDir: toStar,
+        sunColor: [2.2, 0.85, 0.36], earth: 1, desert: 1, retreat: 1, lava: 0.12, crust: 0.85,
+        nightGlow: 1.2, atmo: 0.22, atmoColor: [0.9, 0.35, 0.12], glint: 0,
+      });
     },
   };
 }
@@ -664,5 +766,5 @@ void main() {
 }
 
 export function futureShots(): Shot[] {
-  return [turn(), mars(), drift(), hotEarth(), redGiant(), whiteDwarf(), merger(), lastStars(), blackHoles(), heatDeath(), epilogue()];
+  return [turn(), mars(), drift(), hotEarth(), redGiantSwell(), redGiantEarth(), whiteDwarf(), merger(), lastStars(), blackHoles(), heatDeath(), epilogue()];
 }

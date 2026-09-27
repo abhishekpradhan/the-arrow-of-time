@@ -48,7 +48,7 @@
     { "id": "mars", "act": "future", "start": 220, "end": 228, "card": "chapter", "layout": "right", "era": "+1,000 years", "title": "New Worlds", "line": "Perhaps we learn to make other worlds our home." },
     { "id": "drift", "act": "future", "start": 228, "end": 234, "card": "chapter", "era": "+100,000 years", "line": "The stars drift. The constellations dissolve." },
     { "id": "hotearth", "act": "future", "start": 234, "end": 240, "card": "chapter", "layout": "upper-left", "era": "+1 billion years", "line": "The Sun brightens. Earth's oceans boil away." },
-    { "id": "redgiant", "act": "future", "start": 240, "end": 248, "card": "chapter", "layout": "right", "era": "+5 billion years", "title": "Red Giant", "line": "The Sun swells, swallowing Mercury and Venus." },
+    { "id": "redgiant", "act": "future", "start": 240, "end": 248, "card": "chapter", "layout": "upper-left", "era": "+5 billion years", "title": "Red Giant", "line": "The Sun swells, swallowing Mercury and Venus." },
     { "id": "whitedwarf", "act": "future", "start": 248, "end": 254, "card": "chapter", "layout": "lower-left", "era": "+8 billion years", "line": "It sheds its outer layers. A cooling ember remains." },
     { "id": "merger", "act": "future", "start": 254, "end": 262, "card": "chapter", "layout": "right", "era": "+10 billion years", "line": "The Milky Way and Andromeda may merge into one." },
     { "id": "laststars", "act": "end", "start": 262, "end": 270, "card": "chapter", "layout": "center", "era": "+100 trillion years", "title": "The Last Stars", "line": "One by one, the lights go out." },
