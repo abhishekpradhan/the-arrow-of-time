@@ -32,7 +32,7 @@ function scene(a: Age, start: number, end: number, fadeIn = 0, fadeOut = 0): Sho
     end,
     fadeIn,
     fadeOut,
-    motionBlur: a.mb ?? 3,
+    motionBlur: a.mb ?? 2,
     setup: async (e) => ({ cam: new Camera({ fov: 35, near: 0.05, far: 20000 }), fixed: (await a.setup?.(e)) ?? {} }),
     render(c, s) {
       const t = c.time - start;
@@ -170,8 +170,6 @@ const LAUNCH: Age = {
   uniforms: (t) => ({ uIgnite: t + LAUNCH_START - cues.launch, uLift: liftOf(t + LAUNCH_START) }),
 };
 let LAUNCH_START = 0;
-
-const SLATE = (id: string): Age => ({ id: 'slate', cam: () => ({ pos: [0, 1, 0], target: [0, 1, -1], fov: 35 }), uniforms: () => ({ uSlate: id.length }), mb: 1 });
 
 export function ages(): Shot[] {
   const list: Age[] = [FARMING, URUK, CUNEIFORM, GIZA, COLONNADE, PRESS, INDUSTRY, FLIGHT, TRINITY, LAUNCH];

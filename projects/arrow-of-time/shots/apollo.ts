@@ -16,7 +16,7 @@ const EARTH_DIR: Vec3 = [-0.0515, 0.1822, -0.9819];
 export function moonLanding(): Shot<{ planet: Planet; cam: Camera }> {
   return {
     ...span('moonlanding', { dIn: 1.0, dOut: 1.0 }),
-    motionBlur: 3,
+    motionBlur: 2,
     async setup(e) {
       return { planet: new Planet(e, await loadEarth(e)), cam: new Camera({ fov: 38, near: 0.02, far: 30000 }) };
     },

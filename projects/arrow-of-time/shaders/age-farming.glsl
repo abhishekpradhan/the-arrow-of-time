@@ -19,8 +19,8 @@ uniform vec2 uRes; uniform float uAspect, uT;
 const vec3 SUN = vec3(0.4049, 0.0958, -0.9093);  // just above the far hills, off to the right
 const vec3 SUN_COL = vec3(1.0, 0.62, 0.3) * 3.2;
 const vec3 GOLD = vec3(1.0, 0.72, 0.32);
-const float LAYERS = 34.0;
-const float DZ = 0.26;       // spacing of the near wheat planes
+const float LAYERS = 28.0;
+const float DZ = 0.3;        // spacing of the near wheat planes
 const float CANOPY = 0.95;   // height of the ripe ears
 
 float hills(vec2 xz) {
@@ -73,7 +73,12 @@ float wheatRow(vec2 q, float k, float t, out float ear, out float awns) {
     float leafY = H * (0.35 + 0.2 * h.z);
     vec2 lq = q - vec2(x0 + bend * 0.1, leafY);
     float side = h.x > 0.5 ? 1.0 : -1.0;
-    float leaf = abs(lq.y) < 0.12 && abs(lq.x) < 0.2 ? sdBezierTaper(lq, vec2(0.0), vec2(0.08 * side, 0.07), vec2(0.16 * side, -0.02), 0.004, 0.0005) : 1e9;
+    // (A two-segment blade: a curve drawn with fewer segments than sdBezierTaper, which is costly here.)
+    float leaf = 1e9;
+    if (abs(lq.y) < 0.1 && abs(lq.x) < 0.18) {
+      vec2 mid = vec2(0.085 * side, 0.045);
+      leaf = min(sdTaper(lq, vec2(0.0), mid, 0.004, 0.0025), sdTaper(lq, mid, vec2(0.16 * side, -0.02), 0.0025, 0.0005));
+    }
     // Ear: tilted with the stalk's bend, with awns fanning upwards.
     vec2 top = vec2(x0 + bend, H);
     float ang = -2.0 * bend / H;
@@ -242,7 +247,8 @@ void main() {
     col = vec3(0.025, 0.018, 0.01) * (0.6 + 0.4 * fbm(g.xz * 3.0, 3));
   } else {
     float t0 = ((k0 + LAYERS) * DZ + ro.z) / -rd.z;
-    float t = march(ro, rd, max(t0, 1.0), 3000.0, pix);
+    // (Rays climbing above the highest hills can only meet the sky.)
+    float t = rd.y > 0.12 ? -1.0 : march(ro, rd, max(t0, 1.0), 3000.0, pix);
     if (t > 0.0) col = mist(shadeFar(ro + rd * t, rd, t), t, rd);
     else col = sky(rd);
   }

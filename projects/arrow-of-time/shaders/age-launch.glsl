@@ -116,22 +116,28 @@ float mapD(vec3 p) {
 // Searchlights on the ground, aimed at the rocket.
 const vec3 LIGHTS[3] = vec3[3](vec3(-75.0, 1.0, 55.0), vec3(85.0, 1.0, 70.0), vec3(-25.0, 1.0, 120.0));
 
-// Exhaust clouds billowing out of the flame trench to either side, then rising around the pad.
-float clouds(vec3 p, float tau) {
+// Steam and exhaust from the flame trench: two banks rolling out along the ground to either
+// side, and a column rising round the pad once the rocket climbs. The density thresholds shape
+// plus noise, so the billows have edges; the noise swells with the cloud, so lobes grow as they
+// roll out. `oct` trades detail for speed (the lighting taps need little).
+float clouds(vec3 p, float tau, int oct) {
   if (tau <= 0.0) return 0.0;
-  float d = 0.0;
+  float shape = -1.0;
   for (int s = -1; s <= 1; s += 2) {
     float reach = 30.0 + 120.0 * sqrt(tau);
-    vec3 c = vec3(float(s) * reach * 0.6, 12.0 + 10.0 * tau, -10.0);
-    vec3 q = (p - c) / vec3(reach * 0.55, 18.0 + 22.0 * tau, 40.0 + 20.0 * tau);
-    d = max(d, smoothstep(1.0, 0.3, length(q)));
+    vec3 c = vec3(float(s) * reach * 0.6, 10.0 + 9.0 * tau, -10.0);
+    vec3 q = (p - c) / vec3(reach * 0.6, 16.0 + 20.0 * tau, 40.0 + 20.0 * tau);
+    shape = max(shape, 1.0 - length(q));
   }
-  // A rising column around the base once the rocket lifts.
-  float col = smoothstep(26.0 + 8.0 * tau, 8.0, length(p.xz)) * step(p.y, 20.0 + 25.0 * tau) * smoothstep(0.5, 2.0, tau);
-  d = max(d, col * 0.8);
-  float n = fbm(p * 0.03 + vec3(0.0, -tau * 0.5, tau * 0.2), 5);
-  // Billows: dense cauliflower lobes with gaps between them.
-  return d * smoothstep(0.42, 0.62, n + 0.2 * d);
+  // (Signed like the banks: negative outside, so it is absent above its top and before it forms.)
+  float colTop = 20.0 + 25.0 * tau;
+  float column = min(1.0 - length(p.xz) / (24.0 + 10.0 * tau), (colTop - p.y) / colTop);
+  shape = max(shape, column - 1.5 * (1.0 - smoothstep(0.5, 2.0, tau)));
+  // (It pours out of the trench in the first moments rather than appearing whole.)
+  shape -= 0.6 * (1.0 - smoothstep(0.0, 0.8, tau));
+  if (shape < -0.4) return 0.0;
+  vec3 np = p * (0.035 / (1.0 + 0.25 * tau)) + vec3(0.0, -0.15 * tau, 0.0);
+  return smoothstep(0.0, 0.3, shape + 1.4 * (fbm(np, oct) - 0.5));
 }
 
 // Liquid-oxygen boil-off streaming from vents and drifting down the flanks.
@@ -197,16 +203,22 @@ void main() {
     col = c;
     col = mix(col, vec3(0.02, 0.025, 0.04) + FIRE * firePower * 1e-8, 1.0 - exp(-t * 0.0012));
   }
-  // Participating media, front to back: searchlight beams in the humid air, vapour, exhaust
-  // clouds. One march, jittered.
+  // Participating media, front to back: searchlight beams in the humid air, vapour, the flame,
+  // exhaust clouds. One march, jittered, through the box around the pad that holds them all
+  // (it grows upwards with the flame).
   float jit = hash12(gl_FragCoord.xy);
-  float span = min(tEnd, 700.0);
-  const int N = 52;
-  float dt = span / float(N);
+  vec3 rdn = mix(rd, vec3(1e-6), step(abs(rd), vec3(1e-6)));
+  vec3 ba = (vec3(-360.0, -5.0, -170.0) - ro) / rdn, bb = (vec3(360.0, max(230.0, BASE + uLift + 10.0), 130.0) - ro) / rdn;
+  vec3 bmin = min(ba, bb), bmax = max(ba, bb);
+  float m0 = clamp(max(max(bmin.x, bmin.y), bmin.z), 0.0, tEnd);
+  float m1 = clamp(min(min(bmax.x, bmax.y), bmax.z), m0, tEnd);
+  const int N = 56;
+  float dt = (m1 - m0) / float(N);
   vec3 acc = vec3(0.0);
   float T = 1.0;
   for (int i = 0; i < N; i++) {
-    vec3 q = ro + rd * ((float(i) + jit) * dt);
+    if (dt <= 0.0) break;
+    vec3 q = ro + rd * (m0 + (float(i) + jit) * dt);
     // Beams: narrow cones from each light towards the rocket's middle.
     float beam = 0.0;
     for (int k = 0; k < 3; k++) {
@@ -214,7 +226,7 @@ void main() {
       vec3 v = q - LIGHTS[k];
       float along = dot(v, axis);
       float off = length(v - axis * along);
-      beam += along > 0.0 ? exp(-pow(off / (0.9 + 0.035 * along), 2.0)) * 0.0016 * smoothstep(4.0, 40.0, along) : 0.0;
+      beam += along > 0.0 ? exp(-pow(off / (0.9 + 0.035 * along), 2.0)) * 0.0016 * smoothstep(4.0, 40.0, along) * smoothstep(420.0, 200.0, along) : 0.0;
     }
     acc += T * vec3(0.8, 0.85, 1.0) * beam * dt * (1.0 - smoothstep(0.0, 1.5, tau));
     // The engines' flame: a blinding column below the bells, longer once the rocket is up.
@@ -230,15 +242,25 @@ void main() {
       acc += T * fc * flame * 1.6 * dt;
     }
     float vp = vapour(q);
-    float cl = clouds(q, tau);
-    float dens = vp * 0.03 + cl * 0.022 + flame * 0.02;
+    float cl = clouds(q, tau, 5);
+    float dens = vp * 0.03 + cl * 0.045 + flame * 0.02;
     if (dens > 0.001) {
       float a = 1.0 - exp(-dens * dt);
-      // Vapour glows in the searchlights; the exhaust clouds are lit by the fire inside them,
-      // orange where it is close, grey and shadowed farther off.
-      vec3 lf = firePos - q;
-      float fireLight = firePower / (dot(lf, lf) + 400.0);
-      vec3 cc = vp > cl ? vec3(0.5, 0.52, 0.55) * 0.25 : vec3(0.55, 0.52, 0.5) * 0.03 + FIRE * fireLight * 0.018 * (0.6 + 0.8 * cl);
+      vec3 cc = vec3(0.5, 0.52, 0.55) * 0.25;
+      if (cl > vp) {
+        // Steam lit by the fire at its foot: two taps towards the fire estimate how much cloud
+        // shadows this point, so faces turned to the fire blaze and the far sides and tops fall
+        // into shadow. Where the fire is brightest the light turns from orange to white.
+        vec3 lf = firePos - q;
+        float r2 = dot(lf, lf);
+        vec3 ld = lf * inversesqrt(r2);
+        float occ = clouds(q + ld * 10.0, tau, 3) * 10.0 + clouds(q + ld * 28.0, tau, 3) * 18.0;
+        float lit = exp(-occ * 0.09);
+        float fireLight = firePower / (r2 + 400.0) * 0.018;
+        vec3 hot = mix(vec3(1.0, 0.5, 0.2), vec3(1.0, 0.86, 0.66), smoothstep(0.3, 2.5, fireLight));
+        // (Light scattered deep inside comes out redder; the night fills the shadows with blue.)
+        cc = vec3(0.8, 0.78, 0.76) * (fireLight * (hot * lit + vec3(0.9, 0.35, 0.12) * 0.1 * (1.0 - lit)) + vec3(0.025, 0.032, 0.055));
+      }
       acc += T * a * cc;
       T *= 1.0 - a;
       if (T < 0.01) break;

@@ -4,8 +4,8 @@
 // drawn beforehand by the Planet component; this pass leaves the sky transparent).
 // Metres; the lander stands at the origin with its ladder facing +z; y up.
 #define MARCH_STEPS 160
-#define SHADOW_STEPS 64
-#define SHADOW_MIN_STEP 0.012
+#define SHADOW_STEPS 48
+#define SHADOW_MIN_STEP 0.015
 #include <noise>
 #include <color>
 #include <camera>
@@ -50,12 +50,17 @@ float bootprint(vec2 p) {
   return smoothstep(0.01, -0.01, sole) * (0.03 + 0.012 * tread);
 }
 
+float groundCoarse(vec2 p) {
+  return 0.35 * fbm(p * 0.05, 3) - 0.2 + craters(p, 22.0, 7.0, 1.0);
+}
+
+// 1 where the ground is kept level: under the lander and around the step.
+float levelAt(vec2 p) { return smoothstep(9.0, 4.0, length(p - vec2(0.0, 1.5))); }
+
 float ground(vec2 p) {
-  float h = 0.35 * fbm(p * 0.05, 3) - 0.2;
-  h += craters(p, 22.0, 7.0, 1.0) + craters(p, 6.0, 1.6, 7.0) + craters(p, 1.8, 0.45, 13.0);
-  // Keep the ground level under the lander and around the step.
-  float level = smoothstep(9.0, 4.0, length(p - vec2(0.0, 1.5)));
-  h = mix(h, 0.0, level);
+  float h = groundCoarse(p);
+  h += craters(p, 6.0, 1.6, 7.0) + craters(p, 1.8, 0.45, 13.0);
+  h = mix(h, 0.0, levelAt(p));
   // Fine regolith and a scatter of small rocks.
   h += 0.012 * fbm(p * 3.0, 3);
   vec2 rid = floor(p / 0.9);
@@ -210,8 +215,10 @@ vec3 flagColor(vec2 uv) {
 float mapD(vec3 p) {
   float m;
   vec2 uv;
-  float d = p.y - ground(p.xz);
-  d *= 0.8;
+  // Well above the surface the small craters and stones cannot matter: the height over the
+  // coarse ground (levelled like the real one) less their greatest height is a safe bound.
+  float above = p.y - mix(groundCoarse(p.xz), 0.0, levelAt(p.xz)) - 0.6;
+  float d = (above > 0.4 ? above : p.y - ground(p.xz)) * 0.8;
   d = min(d, lander(p, m));
   d = min(d, astronaut(p, m));
   d = min(d, flag(p, uv));
