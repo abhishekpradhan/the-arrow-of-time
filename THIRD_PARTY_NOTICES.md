@@ -52,6 +52,12 @@ SOFTWARE.
 - **Big Dipper** (`projects/arrow-of-time/shots/future.ts`): positions, proper motions and
   magnitudes of seven stars from the Hipparcos catalogue (ESA).
 - **Vocal formants** (`audio/studio/instruments.py`): the formant table in the Csound manual.
+- **Giant impact** (`assets/giant-impact/`): our own SPH simulation, run with
+  [SWIFT](https://github.com/SWIFTSIM/SWIFT) (LGPL-3.0), initial conditions from
+  [WoMa](https://github.com/srbonilla/WoMa) and [SEAGen](https://github.com/jkeger/seagen)
+  (GPL-3.0), and the ANEOS forsterite and Fe85Si15 equations of state (S. T. Stewart et al.).
+  None of that software or those tables are redistributed here; the data is ours. Credits and the
+  recipe are in [`tools/assets/giant_impact/README.md`](tools/assets/giant_impact/README.md).
 
 ## Fonts
 
