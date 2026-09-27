@@ -9,7 +9,8 @@
 //                    only from a 4K master (render with --scale 2)
 //   <id>-1080p.mp4   two-pass x264 at --mbps (default 8, YouTube's 1080p guidance)
 //   <id>-720p.mp4    preview sized to fit --preview-mb (default 28 MB, fits chat uploads)
-//   poster.jpg       frame at --poster seconds (default: the timeline's "poster", else 10)
+//   poster.jpg       frame at --poster seconds (default: the timeline's "poster", else the middle of
+//                    its title card, else 10% of the way in)
 //   info.json, SHA256SUMS
 // Publish them with the "Render on Modal" workflow or `gh release create` (see docs/releasing.md).
 import { spawnSync } from 'node:child_process';
@@ -47,10 +48,15 @@ if (!duration || !height) throw new Error('could not read the master');
 
 const COLOR = ['-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv'];
 
-/** Two-pass x264 encode at a fixed video bitrate (kbit/s). aq-mode 3 spends bits on dark gradients. */
+/**
+ * Two-pass x264 encode at a fixed video bitrate (kbit/s). aq-mode 3 spends bits on dark gradients.
+ * Both passes use constant-frame-rate output: left to itself, ffmpeg passes frames straight through
+ * to the null muxer of pass 1 but fills timestamp gaps for MP4 in pass 2, and a pass 2 with more
+ * frames than pass 1 dies with "Incomplete MB-tree stats file".
+ */
 function twoPass(out: string, vkbps: number, akbps: number, vf: string, preset = 'slow') {
   const log = join(tmp, `x264-2pass-${basename(out, '.mp4')}`);
-  const common = ['-i', input, '-vf', vf, '-c:v', 'libx264', '-preset', preset, '-tune', 'film', '-x264-params', 'aq-mode=3',
+  const common = ['-i', input, '-vf', vf, '-fps_mode', 'cfr', '-c:v', 'libx264', '-preset', preset, '-tune', 'film', '-x264-params', 'aq-mode=3',
     '-b:v', `${vkbps}k`, '-maxrate', `${Math.round(vkbps * 2)}k`, '-bufsize', `${Math.round(vkbps * 4)}k`, '-pix_fmt', 'yuv420p',
     ...COLOR, '-passlogfile', log];
   run([...common, '-pass', '1', '-an', '-f', 'null', '-']);
@@ -85,9 +91,12 @@ if (variants.has('720p')) {
   files.push(out);
 }
 if (variants.has('poster')) {
-  const timeline = JSON.parse(readFileSync(join(pdir, 'timeline.json'), 'utf8')) as { poster?: number };
+  type Beat = { start: number; end: number; card?: string };
+  const timeline = JSON.parse(readFileSync(join(pdir, 'timeline.json'), 'utf8')) as { poster?: number; beats?: Beat[] };
+  const title = timeline.beats?.find((b) => b.card === 'title');
+  const at = num(args.poster, timeline.poster ?? (title ? (title.start + title.end) / 2 : duration * 0.1));
   const out = join(dir, 'poster.jpg');
-  run(['-ss', String(num(args.poster, timeline.poster ?? 10)), '-i', input, '-frames:v', '1', '-q:v', '2', out]);
+  run(['-ss', String(at), '-i', input, '-frames:v', '1', '-q:v', '2', out]);
   files.push(out);
 }
 

@@ -110,6 +110,11 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   slopes; derive them from a smooth measure over a wide range.
 - Chromatic aberration fringes thousands of tiny bright lights red and blue (city lights read
   pink): keep `aberration` low in those shots.
+- Joining MP4s by stream copy (the concat demuxer) can leave timestamp gaps at the seams,
+  depending on the ffmpeg version. A gap makes players stutter and kills a two-pass encode with
+  "Incomplete MB-tree stats file" (ffmpeg fills gaps for MP4 in pass 2 but not for the null
+  muxer of pass 1). The Modal assembly renumbers every frame with the `setts` filter, and
+  `release.ts` uses `-fps_mode cfr` in both passes.
 
 ## Audio
 

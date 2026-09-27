@@ -38,6 +38,7 @@ import os
 import shutil
 import subprocess
 import time
+from fractions import Fraction
 from pathlib import Path
 
 import modal
@@ -161,7 +162,14 @@ def assemble(project: str, slices: list[str], audio: str, frames: int, fps: floa
     listing = work / "concat.txt"
     listing.write_text("".join(f"file '{CACHE / s}'\n" for s in slices))
     video = work / "video.mp4"
-    _ffmpeg(["-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", str(video)])
+    # Joining files (pages into slices, then slices here) can leave gaps or overlaps in the
+    # timestamps at the seams, depending on the ffmpeg version, and a gap makes players stutter
+    # and two-pass encodes fail. Renumber every frame from its place in the stream: an exact
+    # constant frame rate, with each frame's B-frame reordering offset kept.
+    rate = Fraction(fps).limit_denominator(1001)
+    step = f"({rate.denominator}/({rate.numerator}*TB))"
+    setts = f"setts=dts=N*{step}+STARTDTS:pts=N*{step}+STARTDTS+PTS-DTS"
+    _ffmpeg(["-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", "-bsf:v", setts, str(video)])
     if _frames_in(video) != frames:
         raise RuntimeError(f"assembled {_frames_in(video)} frames, expected {frames}")
     out = CACHE / rel
