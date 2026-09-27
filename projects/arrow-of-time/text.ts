@@ -63,7 +63,8 @@ type Beat = (typeof T.beats)[number] & {
   layout?: LayoutSpec;
   /** Seconds to hold the card back (let an event play before the text arrives). */
   captionDelay?: number;
-  montage?: { t: number; year?: number; era: string; title: string }[];
+  /** Fast cards; each may override the beat's `layout` to sit clear of its scene. */
+  montage?: { t: number; year?: number; era: string; title: string; layout?: LayoutSpec }[];
 };
 
 export interface Place {
@@ -151,8 +152,8 @@ function chapter(b: Beat): TextItem {
 /** Fast date/title flashes for the civilization montage. */
 function montage(b: Beat): TextItem[] {
   const m = b.montage ?? [];
-  const at = placeOf(b.layout);
   return m.map((it, i) => {
+    const at = placeOf((it.layout ?? b.layout) as LayoutSpec | undefined);
     const next = i + 1 < m.length ? m[i + 1].t : b.end;
     const start = it.t;
     const end = next - 0.02;

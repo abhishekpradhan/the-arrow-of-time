@@ -7,9 +7,13 @@ uniform float uTanHalfFov;
 uniform float uNear;
 uniform float uFar;
 uniform mat4 uViewProj;
+// Sub-pixel offset of the current motion-blur sample, in picture heights (set by the engine),
+// so accumulating samples also anti-aliases ray-marched edges.
+uniform vec2 uJitter;
 
 // p: centered picture coordinates (y in [-0.5, 0.5]).
 vec3 camRay(vec2 p) {
+  p += uJitter;
   return normalize(uCamFwd + (p.x * uCamRight + p.y * uCamUp) * (2.0 * uTanHalfFov));
 }
 

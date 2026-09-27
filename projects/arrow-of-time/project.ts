@@ -38,12 +38,15 @@ function letterbox(t: number) {
  */
 function scrimAt(t: number): Pick<Look, 'scrim' | 'scrimCenter' | 'scrimRadius'> {
   let best = { scrim: 0, scrimCenter: [0.5, 1.0] as [number, number], scrimRadius: [1.1, 0.42] as [number, number] };
-  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec; captionDelay?: number }[]) {
+  type Card = { t: number; layout?: LayoutSpec };
+  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec; captionDelay?: number; montage?: Card[] }[]) {
     if (b.card !== 'chapter' && b.card !== 'montage') continue;
     const s0 = b.start + (b.captionDelay ?? 0);
     const s = keys(t, [[s0, 0], [s0 + 1.0, 1, 'inOutSine'], [b.end - 1.0, 1], [b.end, 0, 'inOutSine']]);
     if (s * 0.8 > best.scrim) {
-      const sc = scrimFor(placeOf(b.layout));
+      // A montage card may sit somewhere else than its beat's layout: follow the current card.
+      const card = b.montage?.filter((m) => m.t <= t).pop();
+      const sc = scrimFor(placeOf(card?.layout ?? b.layout));
       best = { scrim: s * 0.8, scrimCenter: sc.center, scrimRadius: sc.radius };
     }
   }

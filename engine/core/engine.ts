@@ -23,6 +23,16 @@ import { ease } from './anim';
 import { saturate } from './math';
 import { DEFAULT_LOOK, type Look, type Project, type Shot, type ShotContext } from './types';
 
+/** Halton low-discrepancy sequence in [0, 1). */
+function halton(i: number, base: number): number {
+  let f = 1, r = 0;
+  for (; i > 0; i = Math.floor(i / base)) {
+    f /= base;
+    r += f * (i % base);
+  }
+  return r;
+}
+
 const COPY_FS = `
 in vec2 vUv; out vec4 fragColor;
 uniform sampler2D uSrc; uniform float uWeight;
@@ -55,6 +65,8 @@ export class Engine {
   private states = new Map<Shot, unknown>();
   private textures = new Map<string, Promise<Texture>>();
   lastFrameMs = 0;
+  /** Sub-pixel offset (pixels) of the motion-blur sample being rendered. */
+  private jitter: [number, number] = [0, 0];
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -203,6 +215,8 @@ export class Engine {
       uGTime: time,
       uAspect: this.width / this.height,
       uScale: this.scale,
+      // Sub-pixel camera offset of this motion-blur sample (picture heights; see <camera>).
+      uJitter: [this.jitter[0] / this.height, this.jitter[1] / this.height],
     };
     const scissor = band.top > 1;
     return {
@@ -292,6 +306,9 @@ export class Engine {
       this.accumRT.clear(0, 0, 0, 1);
       for (let k = 0; k < samples; k++) {
         const ts = time + ((k + 0.5) / samples - 0.5) * (shutter / this.fps);
+        // Each sample also shifts camera rays by a sub-pixel Halton offset, so ray-marched
+        // shots are anti-aliased by the same accumulation.
+        this.jitter = [halton(k + 1, 2) - 0.5, halton(k + 1, 3) - 0.5];
         this.renderScene(ts, frame, this.sceneRT, band);
         this.accumRT.bind();
         setBlend(gl, 'add');
@@ -299,6 +316,7 @@ export class Engine {
         this.drawFullscreen();
         setBlend(gl, 'none');
       }
+      this.jitter = [0, 0];
       input = this.accumRT;
     }
 
