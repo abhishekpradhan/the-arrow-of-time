@@ -1,5 +1,6 @@
-// Typography layer: items draw with Canvas2D at output resolution each frame,
-// then the canvas is uploaded once and composited (after tonemapping) by Post.
+// Typography layer: items draw with Canvas2D at output resolution each frame (glyphs come
+// from a sub-pixel sprite cache, see GlyphCache), then the canvas is uploaded once and
+// composited (after tonemapping) by Post.
 //
 // All sizes are authored in "design pixels" for a 1080-pixel-tall frame and
 // scaled automatically, so previews at lower resolution keep the same layout.
@@ -88,6 +89,198 @@ export function fontString(st: TextStyle, s: number) {
 
 export type Align = 'left' | 'center' | 'right';
 
+// --------------------------------------------------------------- sub-pixel glyphs
+
+/** Sub-pixel phases per pixel (and the supersampling factor used to rasterize each phase). */
+const PHASES = 4;
+
+interface GlyphSprite {
+  canvas: HTMLCanvasElement;
+  /** Offset from the pen's whole-pixel position to the sprite's top-left, in pixels. */
+  ox: number;
+  oy: number;
+}
+
+interface Coverage {
+  /** Antialiased coverage 0..1, w x h, row-major. */
+  a: Float32Array;
+  w: number;
+  h: number;
+  ox: number;
+  oy: number;
+}
+
+/**
+ * Canvas2D snaps every fillText origin (and every shadow offset) to whole pixels, measured in
+ * headless Chromium, so text that drifts or eases by fractions of a pixel per frame moves in
+ * one-pixel steps, letter by letter: jitter. Instead, each glyph is rasterized at PHASES x
+ * size, where every quarter-pixel offset is a whole pixel, and box-filtered down to a coverage
+ * mask. Blurred passes (shadows, glows, blur-in reveals) blur that mask in JS (three box blurs
+ * approximate a Gaussian), because drawImage with shadowBlur is ~60x slower than fillText.
+ * Sprites are cached per glyph, font, phase, colour and blur, and drawn at whole pixels, so
+ * motion is smooth to 1/4 px and sharpness never changes as text moves.
+ */
+class GlyphCache {
+  private coverage = new Map<string, Coverage>();
+  private sprites = new Map<string, GlyphSprite>();
+  private big = document.createElement('canvas');
+  private bctx = this.big.getContext('2d', { willReadFrequently: true })!;
+
+  get(ch: string, font: string, color: string, fx: number, fy: number, sigma: number): GlyphSprite {
+    const key = `${font}|${ch}|${fx}|${fy}|${color}|${sigma}`;
+    let sp = this.sprites.get(key);
+    if (!sp) {
+      if (this.sprites.size > 8000) this.sprites.clear();
+      sp = this.sprite(this.cover(ch, font, fx, fy), color, sigma);
+      this.sprites.set(key, sp);
+    }
+    return sp;
+  }
+
+  private cover(ch: string, font: string, fx: number, fy: number): Coverage {
+    const key = `${font}|${ch}|${fx}|${fy}`;
+    let c = this.coverage.get(key);
+    if (c) return c;
+    if (this.coverage.size > 4000) this.coverage.clear();
+    const N = PHASES;
+    const bigFont = font.replace(/([0-9.]+)px/, (_, n) => `${(parseFloat(n) * N).toFixed(2)}px`);
+    const b = this.bctx;
+    b.font = bigFont;
+    const m = b.measureText(ch);
+    // Mask bounds in output pixels relative to the pen's whole-pixel position (+1 px margin).
+    const x0 = Math.floor(-m.actualBoundingBoxLeft / N) - 1;
+    const x1 = Math.ceil((m.actualBoundingBoxRight + fx) / N) + 1;
+    const y0 = Math.floor(-m.actualBoundingBoxAscent / N) - 1;
+    const y1 = Math.ceil((m.actualBoundingBoxDescent + fy) / N) + 1;
+    const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+    this.big.width = w * N;
+    this.big.height = h * N;
+    b.font = bigFont;
+    b.fillStyle = '#fff';
+    b.textBaseline = 'alphabetic';
+    b.textAlign = 'left';
+    // Integer pen position in the supersampled grid: nothing for Canvas2D to snap.
+    b.fillText(ch, fx - x0 * N, fy - y0 * N);
+    const src = b.getImageData(0, 0, w * N, h * N).data;
+    const a = new Float32Array(w * h);
+    const stride = w * N * 4;
+    const inv = 1 / (255 * N * N);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        for (let sy = 0; sy < N; sy++) {
+          let i = (y * N + sy) * stride + x * N * 4 + 3;
+          for (let sx = 0; sx < N; sx++, i += 4) sum += src[i];
+        }
+        a[y * w + x] = sum * inv;
+      }
+    }
+    c = { a, w, h, ox: x0, oy: y0 };
+    this.coverage.set(key, c);
+    return c;
+  }
+
+  private sprite(c: Coverage, color: string, sigma: number): GlyphSprite {
+    let { a, w, h, ox, oy } = c;
+    if (sigma > 0) {
+      const pad = Math.ceil(sigma * 3) + 1;
+      const W = w + 2 * pad, H = h + 2 * pad;
+      const buf = new Float32Array(W * H);
+      for (let y = 0; y < h; y++) buf.set(a.subarray(y * w, y * w + w), (y + pad) * W + pad);
+      gaussianBlur(buf, W, H, sigma);
+      a = buf;
+      w = W;
+      h = H;
+      ox -= pad;
+      oy -= pad;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    const img = ctx.createImageData(w, h);
+    const d = img.data;
+    for (let i = 0; i < w * h; i++) {
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255;
+      d[i * 4 + 3] = a[i] * 255 + 0.5;
+    }
+    ctx.putImageData(img, 0, 0);
+    // Tint with the canvas's own colour parsing (any CSS colour, including its alpha).
+    ctx.globalCompositeOperation = 'source-in';
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, w, h);
+    return { canvas, ox, oy };
+  }
+}
+
+/** In-place Gaussian blur approximated by three box blurs (Kutskir's box sizes). */
+function gaussianBlur(buf: Float32Array, w: number, h: number, sigma: number) {
+  const n = 3;
+  const wIdeal = Math.sqrt((12 * sigma * sigma) / n + 1);
+  let wl = Math.floor(wIdeal);
+  if (wl % 2 === 0) wl--;
+  const m = Math.round((12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4));
+  const tmp = new Float32Array(buf.length);
+  for (let i = 0; i < n; i++) {
+    const r = ((i < m ? wl : wl + 2) - 1) / 2;
+    boxBlurH(buf, tmp, w, h, r);
+    boxBlurV(tmp, buf, w, h, r);
+  }
+}
+
+function boxBlurH(src: Float32Array, dst: Float32Array, w: number, h: number, r: number) {
+  const inv = 1 / (2 * r + 1);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    let acc = 0;
+    for (let x = -r; x <= r; x++) acc += x >= 0 && x < w ? src[row + x] : 0;
+    for (let x = 0; x < w; x++) {
+      dst[row + x] = acc * inv;
+      const add = x + r + 1, sub = x - r;
+      if (add < w) acc += src[row + add];
+      if (sub >= 0) acc -= src[row + sub];
+    }
+  }
+}
+
+function boxBlurV(src: Float32Array, dst: Float32Array, w: number, h: number, r: number) {
+  const inv = 1 / (2 * r + 1);
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    for (let y = -r; y <= r; y++) acc += y >= 0 && y < h ? src[y * w + x] : 0;
+    for (let y = 0; y < h; y++) {
+      dst[y * w + x] = acc * inv;
+      const add = y + r + 1, sub = y - r;
+      if (add < h) acc += src[add * w + x];
+      if (sub >= 0) acc -= src[sub * w + x];
+    }
+  }
+}
+
+let glyphCache: GlyphCache | null = null;
+
+/** Blur sigmas are cached at fine steps where the eye can tell them apart, coarser above. */
+function quantizeSigma(sigma: number) {
+  if (sigma < 0.25) return 0;
+  if (sigma < 2) return Math.round(sigma * 4) / 4;
+  if (sigma < 6) return Math.round(sigma * 2) / 2;
+  return Math.round(sigma);
+}
+
+/**
+ * Draw one glyph with its alphabetic-baseline pen at (x, y), positioned to 1/PHASES px,
+ * optionally blurred (sigma in pixels, the Canvas2D shadowBlur / 2 convention).
+ */
+export function drawGlyph(ctx: CanvasRenderingContext2D, ch: string, font: string, color: string, x: number, y: number, sigma = 0) {
+  glyphCache ??= new GlyphCache();
+  let ix = Math.floor(x), fx = Math.round((x - ix) * PHASES);
+  let iy = Math.floor(y), fy = Math.round((y - iy) * PHASES);
+  if (fx === PHASES) (ix++, (fx = 0));
+  if (fy === PHASES) (iy++, (fy = 0));
+  const sp = glyphCache.get(ch, font, color, fx, fy, quantizeSigma(sigma));
+  ctx.drawImage(sp.canvas, ix + sp.ox, iy + sp.oy);
+}
+
 interface Glyph {
   ch: string;
   x: number;
@@ -172,15 +365,12 @@ export function drawText(
   const outA = 1 - ease.inOutSine(saturate(r.outP));
   const color = st.color ?? '#fff';
 
-  // Blur is rendered with Canvas2D's shadow path (glyph drawn off-canvas, only its blurred
-  // shadow lands in frame): it is an order of magnitude faster than ctx.filter = 'blur()'.
-  const OFF = 20000;
+  // Every pass draws cached glyph sprites (see GlyphCache): sub-pixel exact, blurred in JS.
   const drawAll = (alpha: number, blurPx: number, dy: number, glyphFn?: (i: number) => { a: number; b: number; dy: number }) => {
     const passes: { color: string; blur: number; alpha: number }[] = [];
     if (st.shadow) passes.push({ color: st.shadow.color, blur: st.shadow.blur * s, alpha: 1 });
     if (st.glow) passes.push({ color: st.glow.color, blur: st.glow.blur * s, alpha: st.glow.strength ?? 1 });
     passes.push({ color: '', blur: 0, alpha: 1 });
-    ctx.filter = 'none';
     for (const pass of passes) {
       for (let i = 0; i < glyphs.length; i++) {
         const gl = glyphs[i];
@@ -190,30 +380,13 @@ export function drawText(
         if (a <= 0.002) continue;
         const b = blurPx + g.b;
         ctx.globalAlpha = clamp(a, 0, 1);
-        ctx.font = gl.font;
         const gx = x0 + gl.x, gy = y + dy + g.dy + gl.dy;
         const fill = pass.color || color;
         const passBlur = pass.color ? pass.blur : 0;
         const total = Math.hypot(passBlur, b * 2); // shadowBlur ~ 2 sigma; blurs add in quadrature
-        if (total > 0.5) {
-          ctx.shadowColor = fill;
-          ctx.shadowBlur = total;
-          ctx.shadowOffsetX = OFF;
-          ctx.shadowOffsetY = 0;
-          ctx.fillStyle = fill;
-          ctx.fillText(gl.ch, gx - OFF, gy);
-        } else {
-          ctx.shadowColor = 'transparent';
-          ctx.shadowBlur = 0;
-          ctx.shadowOffsetX = 0;
-          ctx.fillStyle = fill;
-          ctx.fillText(gl.ch, gx, gy);
-        }
+        drawGlyph(ctx, gl.ch, gl.font, fill, gx, gy, total > 0.5 ? total / 2 : 0);
       }
     }
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowColor = 'transparent';
     ctx.globalAlpha = 1;
   };
 

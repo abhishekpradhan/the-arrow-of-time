@@ -38,7 +38,16 @@ async function main() {
   const api: Partial<HeadlessApi> = { status: 'loading' };
   window.__movie = api as HeadlessApi;
   try {
-    const project = await loadProject(q.get('p') ?? '');
+    let project = await loadProject(q.get('p') ?? '');
+    if (q.get('textonly') === '1') {
+      // Typography checks: captions over black, with nothing that moves pixels by itself.
+      const look = project.look;
+      project = {
+        ...project,
+        shots: [],
+        look: (t) => ({ ...look?.(t), grain: 0, vignette: 0, bloom: 0, streak: 0, aberration: 0, scrim: 0, flash: 0, shake: [0, 0] }),
+      };
+    }
     const width = Number(q.get('w') ?? project.width);
     const height = Number(q.get('h') ?? project.height);
     const describe = () => ({

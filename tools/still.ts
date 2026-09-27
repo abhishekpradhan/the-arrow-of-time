@@ -6,6 +6,7 @@
 //   npm run still -- <project> --t 10 --t 20 --t 30 --grid     several times as one sheet
 //   npm run still -- <project> --t 10 --t 20 --bench --scale 1     per-frame render cost
 //   common: [--scale 0.5] [--debug] (burn in timecode) [--clean] (no timecode on sheets) [--out file.png] [--mb 0|1] [--gl ...]
+//           [--textonly] (captions over black, no grain/bloom: for typography checks)
 
 import { writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -72,6 +73,7 @@ try {
     height: H,
     debug: !args.clean && (!!args.debug || sheetMode),
     motionBlur: str(args.mb, '0') !== '0',
+    textOnly: !!args.textonly,
   });
   const t0 = Date.now();
   const ms = await page.evaluate(([fr]) => window.__movie.renderRange(0, 0, 'still', fr as number[]), [frames]);

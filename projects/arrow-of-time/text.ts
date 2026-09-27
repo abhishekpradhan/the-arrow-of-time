@@ -10,7 +10,7 @@ export const STYLE = {
     tracking: 0.42,
     uppercase: true,
     color: '#eadfcd',
-    shadow: { color: 'rgba(0,0,0,0.85)', blur: 14 },
+    shadow: { color: 'rgba(0,0,0,0.72)', blur: 14 },
   },
   title: {
     family: 'Cinzel',
@@ -19,8 +19,8 @@ export const STYLE = {
     tracking: 0.16,
     uppercase: true,
     color: '#ffffff',
-    shadow: { color: 'rgba(0,0,0,0.7)', blur: 24 },
-    glow: { color: 'rgba(255,214,170,0.45)', blur: 26, strength: 0.8 },
+    shadow: { color: 'rgba(0,0,0,0.49)', blur: 24 },
+    glow: { color: 'rgba(255,214,170,0.2)', blur: 26, strength: 0.8 },
   },
   line: {
     family: 'Cormorant Garamond',
@@ -29,7 +29,7 @@ export const STYLE = {
     size: 35,
     tracking: 0.02,
     color: '#f3ece1',
-    shadow: { color: 'rgba(0,0,0,0.9)', blur: 16 },
+    shadow: { color: 'rgba(0,0,0,0.81)', blur: 16 },
   },
   whisper: {
     family: 'Cormorant Garamond',
@@ -38,7 +38,7 @@ export const STYLE = {
     size: 44,
     tracking: 0.03,
     color: '#efe7da',
-    glow: { color: 'rgba(255,230,200,0.25)', blur: 18 },
+    glow: { color: 'rgba(255,230,200,0.06)', blur: 18 },
   },
   main: {
     family: 'Cinzel',
@@ -47,8 +47,8 @@ export const STYLE = {
     tracking: 0.2,
     uppercase: true,
     color: '#ffffff',
-    shadow: { color: 'rgba(40,10,0,0.55)', blur: 40 },
-    glow: { color: 'rgba(255,200,140,0.55)', blur: 36 },
+    shadow: { color: 'rgba(40,10,0,0.3)', blur: 40 },
+    glow: { color: 'rgba(255,200,140,0.3)', blur: 36 },
   },
 } satisfies Record<string, TextStyle>;
 

@@ -13,7 +13,7 @@ const title: TextStyle = {
   size: 64,
   tracking: 0.16,
   uppercase: true,
-  glow: { color: 'rgba(255,214,170,0.45)', blur: 26 },
+  glow: { color: 'rgba(255,214,170,0.2)', blur: 26 },
 };
 const line: TextStyle = { family: 'Cormorant Garamond', italic: true, size: 36, color: '#f3ece1' };
 

@@ -68,7 +68,16 @@ export interface Session {
   url: string;
   browser: Browser;
   setHandler(h: FrameHandler): void;
-  openRenderPage(opts: { project: string; width?: number; height?: number; motionBlur?: boolean; debug?: boolean; infoOnly?: boolean }): Promise<Page>;
+  openRenderPage(opts: {
+    project: string;
+    width?: number;
+    height?: number;
+    motionBlur?: boolean;
+    debug?: boolean;
+    infoOnly?: boolean;
+    /** Captions only, over black, with no grain, bloom or vignette (typography checks). */
+    textOnly?: boolean;
+  }): Promise<Page>;
   close(): Promise<void>;
 }
 
@@ -108,6 +117,7 @@ export async function startSession(gl: GlMode = 'auto'): Promise<Session> {
       if (o.motionBlur === false) q.set('mb', '0');
       if (o.debug) q.set('debug', '1');
       if (o.infoOnly) q.set('info', '1');
+      if (o.textOnly) q.set('textonly', '1');
       await page.goto(`${url}render.html?${q}`);
       await page.waitForFunction(() => window.__movie && window.__movie.status !== 'loading', null, {
         timeout: 0,

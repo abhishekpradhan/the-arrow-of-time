@@ -55,8 +55,12 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   the pixel is still wrong.
 - Ray/sphere: use the front hit `t = -b - sqrt(h)`, not the closest approach.
 - PNG data textures: never pack data into alpha (browsers premultiply on decode). Use RGB files.
-- Canvas2D `ctx.filter = 'blur()'` is catastrophically slow on software GL. The text layer
-  blurs via `shadowBlur` with the glyph drawn off-canvas. Keep it that way.
+- Canvas2D snaps every `fillText` origin (and shadow offset) to whole pixels, so animated
+  text drawn with it jitters letter by letter. Draw text with `drawText`/`drawGlyph`: glyphs
+  come from a cache rasterized at 4 sub-pixel phases and blurred in JS. Never blur with
+  `ctx.filter` (seconds per frame) or `drawImage` + `shadowBlur` (~60x slower than fillText).
+  Check typography with `npm run still -- <id> --textonly`.
+- Text shadow/glow colours apply their alpha once (`rgba(0,0,0,0.5)` is a 50% shadow).
 - The first frame that uses a big shader pays a one-time LLVM compile (seconds). Benchmarks
   must render a second frame of the same shot.
 - `starLayer` glows must stay inside one cell (3x3 search) or square halos appear.
