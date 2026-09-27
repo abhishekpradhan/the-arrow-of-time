@@ -5,8 +5,8 @@
 (full legal code: [`LICENSES/CC-BY-4.0.txt`](../../LICENSES/CC-BY-4.0.txt)).
 
 This covers the film itself and everything in this folder that makes it: the script and
-captions (`timeline.json`), the shots, the score (`score.py`) and the rendered films in
-`releases/arrow-of-time/`. You may share, re-cut, remix, translate and build on it, including
+captions (`timeline.json`), the shots, the score (`score.py`) and the rendered films published
+on the repository's Releases page. You may share, re-cut, remix, translate and build on it, including
 commercially, as long as you give credit.
 
 ## How to credit

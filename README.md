@@ -10,9 +10,8 @@ universe, in 5 minutes 18 seconds.
 
 ![Frames from The Arrow of Time](projects/arrow-of-time/poster.jpg)
 
-Watch: [1080p](releases/arrow-of-time/arrow-of-time-1080p.mp4) ·
-[720p preview](releases/arrow-of-time/arrow-of-time-720p.mp4) (Git LFS; use the download button
-on GitHub, or `git lfs pull` in a clone).
+Watch: the latest cut is on the [Releases page](https://github.com/abhishekpradhan/movies/releases)
+(1080p, a 720p preview and a poster).
 
 ## Quick start
 
@@ -38,7 +37,7 @@ npm run render -- arrow-of-time          # 1080p24 film -> out/arrow-of-time/ren
 | `npm run still -- <id> --t 10 --t 20 --bench --scale 1` | Per-frame render cost, for planning renders. |
 | `npm run still -- <id> --t 73 --textonly` | Captions only, over black, without grain or bloom: for checking typography. |
 | `npm run render -- <id> [--preset draft\|final]` | Render the film. `draft` is half resolution, fast x264 and no motion blur. Rendering is split into 20 s segments that workers pull from a queue; an interrupted render continues with `--resume`. Also takes `--from/--to` seconds, `--workers n`, `--segment s`, `--crf`, `--scale`, `--gl auto\|egl\|vulkan\|swiftshader\|gpu` and `--no-audio`. |
-| `npm run release -- <id> [--poster 75]` | Package the latest final render into `releases/<id>/` (tracked with Git LFS): a two-pass 1080p encode at 8 Mbps (`--mbps`), a 720p preview sized to fit `--preview-mb` (default 28), a poster frame and `info.json`. |
+| `npm run release -- <id> [--variants 1080p,720p,poster]` | Make the distribution encodes of the latest final render in `out/<id>/release/`: a two-pass 1080p encode at 8 Mbps (`--mbps`), a 720p preview sized to fit `--preview-mb` (default 28), a poster frame, `info.json` and `SHA256SUMS` (`2160p` from a 4K master). Publish them as a GitHub Release. |
 | `npm run audio -- <id>` | Run `projects/<id>/score.py` and write `out/<id>/audio/score.wav`. |
 | `npm run new -- <id> --title "My Film"` | Scaffold a new film from `templates/starter`. |
 | `npm run setup` | One-time setup: creates `.venv` with the audio dependencies, installs Playwright's Chromium, checks for ffmpeg. |
@@ -108,7 +107,7 @@ and Windows) everything is much faster. Tips:
 
 - **Code** (the engine, tools, audio synthesizer and templates): [Apache License 2.0](LICENSE).
   Keep the [`NOTICE`](NOTICE) file with copies and forks, and mark files you change.
-- **Films** (each `projects/<id>/` folder and its renders in `releases/<id>/`):
+- **Films** (each `projects/<id>/` folder and its released renders):
   [CC BY 4.0](LICENSES/CC-BY-4.0.txt). Re-cut them, remix them, translate them, use them,
   with credit. For *The Arrow of Time*: "*The Arrow of Time* by Abhishek Pradhan,
   https://github.com/abhishekpradhan/movies, CC BY 4.0", plus a note of what you changed

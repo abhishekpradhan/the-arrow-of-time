@@ -58,7 +58,7 @@ CACHE = Path("/cache")
 
 # The working tree is mounted when a container starts (not baked into the image), so editing a
 # shot does not rebuild anything. Generated and heavy folders stay behind.
-IGNORE = ["node_modules", ".venv", "out", "releases", ".git", "dist", ".vite", "**/__pycache__", "**/*.pyc", "**/.DS_Store"]
+IGNORE = ["node_modules", ".venv", "out", ".git", "dist", ".vite", "**/__pycache__", "**/*.pyc", "**/.DS_Store"]
 
 image = (
     modal.Image.debian_slim(python_version="3.12")

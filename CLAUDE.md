@@ -10,7 +10,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 - `tools/`: Node CLIs (`render`, `still`, `audio`, `new-project`) and `tools/assets/` builders.
 - `projects/<id>/`: one film per folder. `timeline.json` + `project.ts` + `shots/` + `score.py`.
 - `templates/starter/`: copied by `npm run new -- <id>`.
-- `out/`: all generated media (git-ignored). `releases/` holds published films (Git LFS).
+- `out/`: all generated media (git-ignored). Finished films are published as GitHub Releases,
+  never committed (`docs/releasing.md`).
 
 ## Workflow and conventions
 
@@ -112,10 +113,13 @@ over the image, letterbox framing, and transitions between shots.
   `out/<id>/renders/<id>-final-<stamp>.mp4` and `...-final-latest.mp4`. The Arrow of Time
   took 1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on); the master is about
   1 GB because film grain is expensive to encode.
-- `npm run release -- <id> --poster <s>` makes the distribution encodes in `releases/<id>/`
-  (Git LFS). Check sync on the master first with `tools/check_sync.py`. Pushing LFS objects
-  needs `lfs.github.com` (the upload's verify step). If the network blocks it, the whole push
-  fails: undo the commit and keep the files in `out/`. Never commit video as plain git blobs.
+- `npm run release -- <id>` makes the distribution encodes in `out/<id>/release/` (1080p, 720p
+  preview, poster, checksums; `--variants 2160p,...` from a 4K master). Check sync on the master
+  first with `tools/check_sync.py`. Publish them as a GitHub Release; never commit video.
+- Modal (`tools/modal/studio.py`, `docs/modal.md`) renders slices of the film in parallel CPU
+  containers with the same renderer, caching slices by source hash. The "Render on Modal" GitHub
+  workflow drives it and can publish the Release. Claude's cloud sessions cannot reach Modal
+  (its gRPC API needs HTTP/2, which their egress proxy does not relay): trigger the workflow.
 - Run `npm run audio -- <id>` first or the render is silent (a warning is printed).
 - Long renders: segments are written to `out/<id>/segments/`. If the container restarts, re-run
   the same command with `--resume` to continue. If only the score changed, don't re-render:

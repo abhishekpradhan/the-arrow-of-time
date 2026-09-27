@@ -15,7 +15,7 @@ export default defineConfig({
     fs: { allow: [root] },
     watch: {
       // Renders and generated audio live in out/; never hot-reload on them.
-      ignored: ['**/out/**', '**/.venv/**', '**/releases/**'],
+      ignored: ['**/out/**', '**/.venv/**'],
     },
   },
   optimizeDeps: {

@@ -6,7 +6,7 @@ Thanks for helping! Fixes, engine features, new films and re-cuts of existing on
 
 - Changes to the studio code (`engine/`, `tools/`, `audio/`, `templates/`, ...) are contributed
   under the [Apache License 2.0](LICENSE), as its section 5 describes.
-- Changes to a film (`projects/<id>/`, `releases/<id>/`) are contributed under that film's
+- Changes to a film (`projects/<id>/` and its released videos) are contributed under that film's
   license (CC BY 4.0 for *The Arrow of Time*; see its `LICENSE.md`).
 - Please sign off your commits (`git commit -s`) to certify the
   [Developer Certificate of Origin](https://developercertificate.org/): that you wrote the
@@ -25,7 +25,7 @@ npm run still -- <id> --t 12 --t 30 --grid --scale 0.25   # look at what you cha
 - Read [CLAUDE.md](CLAUDE.md): it lists the conventions and the pitfalls this codebase has hit.
 - Engine changes affect every film: render stills of the shots that use what you touched.
 - Timing belongs in `timeline.json`, never in shot code.
-- Don't commit rendered media except through `npm run release` (Git LFS).
+- Don't commit rendered media: films are published as GitHub Releases (see `docs/releasing.md`).
 
 ## Making your own film
 
