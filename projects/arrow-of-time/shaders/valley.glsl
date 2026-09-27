@@ -33,7 +33,7 @@ const vec2 CENTER = vec2(6.5, 88.0);
 const vec2 ACROPOLIS = vec2(22.0, 58.0);
 const vec2 PLATEAU = vec2(-40.0, 160.0);
 const vec3 PAD = vec3(34.0, 0.45, 338.0);
-const vec3 PLANT = vec3(-15.0, 0.45, 125.0);
+const vec3 PLANT = vec3(-18.0, 0.45, 100.0);
 
 // ---------------------------------------------------------------- land
 float riverX(float z) { return 6.0 * sin(z * 0.022 + 0.4) + 2.5 * sin(z * 0.061 + 2.0); }
@@ -552,7 +552,8 @@ vec3 buildingAlbedo(vec3 p, vec3 n, out vec3 emit) {
   float modern = yearMix(1890.0, 1950.0);
   vec3 ancient = mix(vec3(0.55, 0.45, 0.32), vec3(0.62, 0.56, 0.47), yearMix(-1500.0, 800.0));
   vec3 brick = vec3(0.42, 0.24, 0.17);
-  vec3 concrete = mix(vec3(0.52, 0.53, 0.55), vec3(0.26, 0.34, 0.42), step(0.55, h.y) * uTowers);
+  vec3 concrete = mix(vec3(0.36, 0.36, 0.37), vec3(0.2, 0.26, 0.32), step(0.55, h.y) * uTowers);
+  concrete *= h.x < 0.3 ? vec3(1.1, 0.98, 0.9) : h.x > 0.75 ? vec3(0.92, 0.96, 1.04) : vec3(1.0);
   vec3 wall = mix(ancient, brick, yearMix(1700.0, 1850.0) * step(0.4, h.x));
   wall = mix(wall, concrete, modern);
   wall *= 0.8 + 0.4 * h.z;
@@ -573,11 +574,14 @@ vec3 buildingAlbedo(vec3 p, vec3 n, out vec3 emit) {
   vec3 hw = hash33(vec3(floor(cellW), dot(c, vec2(1.0, 57.0)) + uNight * 13.0));
   float pLit = mix(0.07, 0.1, yearMix(-1000.0, 1500.0));
   pLit = mix(pLit, 0.14, yearMix(1800.0, 1900.0));
-  pLit = mix(pLit, 0.26, yearMix(1910.0, 1960.0));
+  pLit = mix(pLit, mix(0.12, 0.3, step(5.0, b.z)), yearMix(1910.0, 1960.0));
   vec3 lampC = mix(vec3(1.0, 0.45, 0.12), vec3(1.0, 0.62, 0.3), yearMix(1850.0, 1920.0));
   lampC = mix(lampC, vec3(0.78, 0.86, 1.0), step(0.75, hw.y) * step(6.0, b.z) * uTowers);
   float bright = mix(2.0, 2.4, yearMix(1880.0, 1950.0));
   emit = lampC * win * step(hw.x, pLit) * nl * bright * (0.6 + 0.8 * hw.z);
+  // Street light washes the lower floors at night.
+  float street = yearMix(1850.0, 1920.0) * nl * exp(-max(v, 0.0) / 0.6);
+  emit += wall * vec3(1.0, 0.55, 0.22) * street * 0.9;
   // By day, glass reads darker (and mirrors the sky on towers).
   return mix(wall, wall * 0.45, win * (0.4 + 0.5 * modern));
 }
@@ -600,7 +604,9 @@ vec3 shadeHit(vec3 p, vec3 rd, float t, int mat, vec3 sd) {
   // Sun, sky, a little bounce; moonlight at night.
   vec3 sunC = mix(vec3(1.0, 0.5, 0.25), vec3(1.0, 0.93, 0.82), smoothstep(0.02, 0.35, sd.y)) * 4.4;
   float diff = max(dot(n, sd), 0.0);
-  float sh = diff > 0.0 && sd.y > -0.02 ? (t < 240.0 ? softShadow(p + n * 0.12, sd) : 1.0) : 0.0;
+  // Terrain starts its shadow ray further out: the baked heightfield is faceted at texel scale,
+  // and a grazing Sun would otherwise stripe the hills.
+  float sh = diff > 0.0 && sd.y > -0.02 ? (t < 240.0 ? softShadow(p + n * (mat == 0 ? 0.45 : 0.12), sd) : 1.0) : 0.0;
   // Clouds shade the ground.
   float cs = 1.0;
   if (sd.y > 0.02) cs = 1.0 - 0.55 * cloudCover(p.xz + sd.xz / sd.y * (CLOUD_Y - p.y));
@@ -789,12 +795,12 @@ void main() {
 
   // The first aeroplanes.
   if (uPlane > 0.0 && uPlane < 1.0) {
-    vec3 P = vec3(55.0 - uPlane * 110.0, 21.0 + 1.5 * sin(uPlane * 5.0), 8.0);
+    vec3 P = uCamPos + vec3(38.0 - uPlane * 76.0, 3.5 + 0.8 * sin(uPlane * 5.0), 34.0);
     vec4 cl = uViewProj * vec4(P, 1.0);
     if (cl.w > 0.0) {
       vec2 sp = cl.xy / cl.w;
       vec2 q = (pp - vec2(sp.x * 0.5 * uAspect, sp.y * 0.5));
-      float s = 0.9 / cl.w;
+      float s = 1.5 / cl.w;
       float d = sdBiplane(q / s) * s;
       col = mix(col, vec3(0.02) + skyCol(rd, sd) * 0.15, 1.0 - smoothstep(-0.0008, 0.0008, d));
     }

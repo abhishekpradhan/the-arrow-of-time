@@ -123,7 +123,8 @@ export default defineProject({
       (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2) ? 6 : 2.5,
     vignette: 0.32,
     grain: 0.034,
-    aberration: 0.6,
+    // Thousands of tiny city lights fringe red and blue under aberration: keep it low there.
+    aberration: t > beat('civilization').start && t < beat('nightearth').end ? 0.12 : 0.35,
     tonemap: 'aces',
   }),
 });
