@@ -178,8 +178,8 @@ over the image, letterbox framing, and transitions between shots.
   first with `tools/check_sync.py`. Publish them as a GitHub Release; never commit video.
 - Modal (`tools/modal/studio.py`, `docs/modal.md`) renders slices of the film in parallel CPU
   containers with the same renderer, caching slices by source hash. The "Render on Modal" GitHub
-  workflow drives it and can publish the Release (the 5:38 cut: about 10 minutes and $1 from
-  scratch). Claude's cloud sessions cannot reach Modal (its gRPC API needs HTTP/2, which their
+  workflow drives it and can publish the Release (the 5:38 cut: about 15 minutes and $1.13 from
+  scratch, paced by its slowest slice; publishing again from cached slices takes about 6). Claude's cloud sessions cannot reach Modal (its gRPC API needs HTTP/2, which their
   egress proxy does not relay): trigger the workflow with the GitHub tools, and fetch its 720p
   preview with `download_workflow_run_artifact` (release assets of a private repo are not
   downloadable from the session).

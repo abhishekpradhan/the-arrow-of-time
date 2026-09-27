@@ -98,15 +98,17 @@ Modal bills CPU per core-second and memory per GiB-second. At the list prices in
 12 GiB costs about $0.40 an hour. Every run prints its own estimate from the time its containers
 actually spent.
 
-Measured on *The Arrow of Time* v0.3 (5:38, 8,112 frames, 1080p with motion blur): its 43
-slices rendered in 4 minutes on 43 containers at once, for about $0.85, and joining them plus the
-1080p, 720p and poster encodes took another 6 minutes and $0.10. Rough numbers for a five-minute
-film:
+Measured on *The Arrow of Time* v0.4 (5:38, 8,112 frames, 1080p with motion blur): its 43
+slices rendered in 9 minutes on 43 containers at once, for about $1.00, and joining them plus the
+1080p, 720p and poster encodes took another 5 minutes and $0.10. The slowest slice sets the pace:
+most finished within 5 minutes, but the ray-marched Moon landing takes about 8 s a frame (v0.3,
+without the ray-marched scenes, rendered in 4 minutes for $0.85). Rough numbers for a
+five-minute film:
 
 | Render | Compute | Wall-clock time |
 | --- | --- | --- |
 | Draft (960×540, no motion blur) | about $0.15 | 2 to 4 min |
-| Final 1080p master | about $1 | 4 to 8 min |
+| Final 1080p master | about $1 | 4 to 10 min |
 | Final 4K master | about $2 to $4 | 10 to 20 min |
 | Release encodes (1080p, 720p, poster) | about $0.10 | 5 to 7 min |
 
