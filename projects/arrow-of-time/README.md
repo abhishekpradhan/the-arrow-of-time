@@ -1,6 +1,6 @@
 # The Arrow of Time
 
-*The history and future of everything, from the first instant to the last.* 5:34, 1920×1080,
+*The history and future of everything, from the first instant to the last.* 5:38, 1920×1080,
 24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
 
 ![Frames from the film](poster.jpg)
@@ -31,13 +31,13 @@ at itself. See `MUSIC.md` for the score design.
 | 0:20 | The Universe | Big Bang and title, inflation, first elements (3 min), first light / CMB (380,000 yr) |
 | 0:50 | Cosmic Dawn | dark ages, first stars igniting on the score's bell notes, galaxies, the Milky Way |
 | 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
-| 1:56 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
-| 2:42 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
-| 3:02 | Civilization | one river valley from the first fields to the first rocket, twelve thousand years in thirty seconds; the Moon landing; Earth at night |
-| 3:44 | Now | the pale blue dot, and silence |
-| 3:52 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
-| 4:38 | The End | the last stars, the black hole era, evaporation, the end of time |
-| 5:12 | Epilogue | "That moment is now." |
+| 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
+| 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
+| 3:06 | Civilization | one river valley from the first fields to the first rocket, twelve thousand years in thirty seconds; the Moon landing; Earth at night |
+| 3:48 | Now | the pale blue dot, and silence |
+| 3:56 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
+| 4:42 | The End | the last stars, the black hole era, evaporation, the end of time |
+| 5:16 | Epilogue | "That moment is now." |
 
 ## Visual techniques
 
@@ -49,6 +49,15 @@ at itself. See `MUSIC.md` for the score design.
 - **Milky Way**: about 170k sprites (sparkle stars, a smooth glow layer, HII knots, a bulge)
   following a barred four-arm logarithmic spiral with 19° pitch, with absorbing dust lanes and
   differential rotation.
+- **The Moon-forming impact** (`shots/moon.ts`): a real smoothed-particle hydrodynamics
+  simulation, not an animation. Theia (0.13 Earth masses) strikes the proto-Earth at 45° and the
+  mutual escape speed, run with SWIFT on 61,139 particles for the first day after contact
+  ([how](../../tools/assets/giant_impact/README.md)). The film plays back 20,000 of them:
+  every particle thrown clear of the Earth and a thinned sample of the rest. Each one glows at its
+  simulated temperature and absorbs what lies behind it. Theia grazes the Earth, its remnant
+  swings out and hits again six hours later, and a long arm breaks into clumps and a disk. A
+  cut to years later shows the molten Earth and the newborn Moon, which recedes as the oceans
+  form.
 - **Planets**: one shader for every era. Voronoi lava cracks, procedural oceans and ice lines,
   real present-day Earth from Natural Earth maps (bathymetry shelves, deserts, city lights from
   populated places and roads), clouds, atmospheric rim and twilight, impact dust and fires,
@@ -76,6 +85,10 @@ The captions follow current mainstream estimates and hedge where science does:
   recombination (the CMB) at about 380,000 years.
 - First stars at about 100–200 million years; galaxies are already present by about 300–400 million years (JWST).
 - Solar system: 4.6 Gyr ago. Earth: 4.54 Gyr. Moon-forming impact (Theia, the leading hypothesis): about 4.5 Gyr.
+  The impact is a canonical graze-and-merge collision (after Kegerreis et al. 2022) simulated for
+  this film. At its resolution no satellite survives the first day (the disk holds 0.7 lunar
+  masses), so the film then skips ahead to the Moon that accretes from the disk, a few Earth radii
+  out. Its orbit has widened ever since.
 - Liquid water by about 4.4 Gyr (zircons); life by about 3.8 Gyr; Great Oxidation about 2.4 Gyr;
   Cryogenian Snowball Earth about 720–635 Myr; Cambrian explosion 538.8 Myr; tetrapods about 375 Myr;
   dinosaurs about 230 Myr; Chicxulub 66 Myr; *Homo sapiens* about 300,000 years; hand stencils more than 40,000 years.

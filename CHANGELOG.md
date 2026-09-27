@@ -20,9 +20,18 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 - `npm run render -- --frames a:b` for exact frame ranges.
 - Guides in `docs/`: getting started, making a film, the engine, rendering, Modal, releasing.
 - `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue and pull-request templates.
-- The Arrow of Time: a 30-second civilization sequence (one river valley over twelve thousand
-  years, ray-marched, with a baked terrain texture), binary fission in the cell scene, the main
-  theme threaded through the score, and a launch cue.
+- The Arrow of Time: the Moon-forming impact from an SPH simulation, a 30-second civilization
+  sequence (one river valley over twelve thousand years, ray-marched, with a baked terrain
+  texture), binary fission in the cell scene, the main theme threaded through the score, and a
+  launch cue.
+- **Giant-impact data** (`assets/giant-impact/`): a SWIFT simulation of the Moon-forming impact,
+  with its recipe and post-processing scripts in `tools/assets/giant_impact/` and a packer,
+  `tools/assets/build_giant_impact.py`. Packing predicts each frame from the last two and stores
+  the residuals, which keeps 20k particles over 138 frames to 7.5 MB.
+- `spline()` in the engine: monotone cubic keyframes (no jumps in speed, no overshoot), for time
+  remaps and camera moves.
+- `tools/retime.py` inserts or removes time in a `timeline.json` (beats, cues, lists), keeping its
+  layout.
 
 ### Changed
 
@@ -36,6 +45,9 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 
 - Hairlines under era labels removed; caption collisions at the galaxy merger, the clock and the
   black hole.
+- Sprites held at their minimum on-screen size now scale their opacity as well as their colour,
+  so premultiplied sprites no longer darken what is behind them.
+- CI compiles every Python tool.
 
 ## [0.2.0] - 2026-09-27
 

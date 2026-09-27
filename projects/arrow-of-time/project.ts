@@ -61,6 +61,7 @@ function flashAt(t: number) {
 function exposureAt(t: number) {
   return (
     pulse(t, cues.supernova, 0.6, 2.5) + pulse(t, cues.sunIgnite, 0.7, 2.0) + pulse(t, cues.theia, 0.5, 2.4) +
+    pulse(t, cues.theiaReturn, 0.3, 2.4) +
     pulse(t, cues.asteroidImpact, 1.0, 2.2) + pulse(t, cues.lastFlash, 1.5, 1.2)
   );
 }
@@ -69,6 +70,7 @@ function shakeAt(t: number): [number, number] {
   const hits: [number, number][] = [
     [cues.bang, 14],
     [cues.theia, 7],
+    [cues.theiaReturn, 3],
     [cues.asteroidImpact, 12],
   ];
   let x = 0, y = 0;
@@ -112,7 +114,7 @@ export default defineProject({
     bloom: 0.075,
     bloomRadius: 1.0,
     streak:
-      (t > cues.theia - 0.2 && t < cues.theia + 2.5) ||
+      (t > cues.theia - 0.2 && t < beat('moon').end + 1) ||
       (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2.5) ||
       (t > cues.redGiantSwell - 1 && t < cues.redGiantSwell + 9)
         ? 0

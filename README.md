@@ -19,7 +19,7 @@ A film is source code: diffable, reproducible, forkable, and renderable on any m
 ## The Arrow of Time
 
 The featured film, **[The Arrow of Time](projects/arrow-of-time/)**, tells the history and future
-of everything in 5 minutes 34 seconds: the Big Bang, the first stars, the birth of the Sun and the
+of everything in 5 minutes 38 seconds: the Big Bang, the first stars, the birth of the Sun and the
 Moon, four billion years of life, twelve thousand years of civilization in a single valley, and
 onward to the red giant Sun, the last stars and the heat death of the universe.
 

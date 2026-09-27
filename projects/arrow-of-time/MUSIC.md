@@ -64,34 +64,39 @@ integrated, −1 dBTP**. 48 kHz stereo.
 | **70.0** | `milkyWayReveal` | **MILKY WAY**: synth brass, organ, strings and choir, F major → C, with **theme bars 5–6** in the violins |
 | 80–86 | nebula | soft boom at `supernova` (81). Low piano ostinato in 8ths. |
 | 86–100 | sun, earth | bright C major swell at `sunIgnite` (87); the ostinato continues; a battered, molten Earth |
-| 100–108 | moon | tension, then the impact at `theia` (102); afterwards a wide shimmering pad |
-| 108–116 | oceans | calm; **theme bars 1–2** on a distant piano; rain from `rainStart` |
-| 116–130 | life, oxygen | **life motif**: plucked 16th-note arpeggios over C – G/B – Am – F; brighter with the oxygen |
-| 130–134 | snowball | sudden cold: the low-pass closes, glassy high tones |
-| 134–148 | cambrian, land | the arpeggio returns fuller with bells and marimba; a cello line at `land` |
-| 148–156 | dinosaurs | primal **taiko groove** plus low brass |
-| 156.5–158 | `asteroidStreak` | ominous rising whoosh |
-| **158.0** | `asteroidImpact` | **IMPACT**: a breath of silence, then a huge boom; long rumble tail |
-| 162–168 | mammals | soft dawn chord (C add9) with **theme bars 3–4** in the violins |
-| 168–176 | humans | **solo piano: theme bars 1–2**; soft fire crackle from `fire` |
-| 176–182 | caves | breathy pad and soft taps |
-| 182–207.6 | civilization | the clock accelerates from 60 BPM (`accelStart`) to 140 at the launch, with an accent (taiko, boom, stab) on every age: **pastoral** plucked arpeggios and hand drums (farming, cities, writing), **monumental** organ, taiko and choir (pyramids, philosophy, printing), a **mechanical** string ostinato with anvil clangs (industry, flight), brass stabs and a riser (the atom, space) |
-| **207.6** | `launch` | a breath of silence, then **ignition**: sub boom, rumble, timpani, and **theme bars 1–4** in full (horns, violins, organ) as the rocket climbs |
-| **213.0** | `moonStep` | the theme's third bar lands with the C major chord of the Moon landing |
-| 218–224 | nightearth | peak intensity: brass on every chord change, riser into the cut |
-| **224.0** | `now` | **HARD CUT TO SILENCE** |
-| 225–232 | now | single soft piano notes with long reverb: A4 at `blueDot` (225), E5 at 228 |
-| 232.5 | `resumeTick` | one tick; tick-tock resumes slowly |
-| 236–250 | mars, drift | hopeful A major with a Lydian D sharp, slow arpeggios, and the **theme turned major** |
-| 250–256 | hotearth | tension: warm low drone, creeping dissonance (added b6) |
-| 256–264 | redgiant | **huge, heavy, dark**: low brass and organ pedal, swell from `redGiantSwell` |
-| 264–270 | whitedwarf | delicate crystalline bells and a soft pad |
-| 270–278 | merger | the last grand swell: strings and choir, **theme bars 5–6** in the violins |
-| 278–286 | laststars | thinning; **one fading, descending bell per `starDeaths` time**; ticks slowing (60 → 30 BPM) |
-| 286–294 | blackholes | deep sub drone, eerie low detuned choir |
-| 294–302 | evaporation | faint rising shimmer; **bright bell and choir flash plus soft boom at `lastFlash`** |
-| 302–312 | heatdeath | near silence; ticks at ever-longer intervals; **last tick at `lastTick`** |
-| 312–325 | epilogue | soft organ Am returns, strings enter; **theme bars 1–3** on piano |
-| **325.4** | `picardy` | **A major** blooms (strings, organ, choir): "That moment is now." |
-| 329.4–333 | `finalTitle` | the final chord sustains and fades |
-| 333.2 | `finalTick` | one final, soft tick |
+| 100–102 | moon | tension: D minor strings and brass swell over a timpani roll and a riser, then a breath |
+| **102.0** | `theia` | **IMPACT**: boom, sub drop, debris |
+| 102.4–106.9 | moon | the graze and the tidal bridge: low D minor strings; a plucked figure circles the stereo field like debris in orbit |
+| **106.9** | `theiaReturn` | Theia's remnant falls back: a second, smaller hit, timpani and a brass chord on B flat |
+| 107–110.2 | moon | the arm winds into a disk: B flat to C sus, the figure faster and higher, a shimmer |
+| 110.2 | `moonBorn` | years later, the Moon: C add9 with **theme bars 3–4** in the bells; their held D resolves to the E that opens the oceans' theme |
+| 112–120 | oceans | calm; **theme bars 1–2** on a distant piano; rain from `rainStart` |
+| 120–134 | life, oxygen | **life motif**: plucked 16th-note arpeggios over C – G/B – Am – F; brighter with the oxygen |
+| 134–138 | snowball | sudden cold: the low-pass closes, glassy high tones |
+| 138–152 | cambrian, land | the arpeggio returns fuller with bells and marimba; a cello line at `land` |
+| 152–160 | dinosaurs | primal **taiko groove** plus low brass |
+| 160.5–162 | `asteroidStreak` | ominous rising whoosh |
+| **162.0** | `asteroidImpact` | **IMPACT**: a breath of silence, then a huge boom; long rumble tail |
+| 166–172 | mammals | soft dawn chord (C add9) with **theme bars 3–4** in the violins |
+| 172–180 | humans | **solo piano: theme bars 1–2**; soft fire crackle from `fire` |
+| 180–186 | caves | breathy pad and soft taps |
+| 186–211.6 | civilization | the clock accelerates from 60 BPM (`accelStart`) to 140 at the launch, with an accent (taiko, boom, stab) on every age: **pastoral** plucked arpeggios and hand drums (farming, cities, writing), **monumental** organ, taiko and choir (pyramids, philosophy, printing), a **mechanical** string ostinato with anvil clangs (industry, flight), brass stabs and a riser (the atom, space) |
+| **211.6** | `launch` | a breath of silence, then **ignition**: sub boom, rumble, timpani, and **theme bars 1–4** in full (horns, violins, organ) as the rocket climbs |
+| **217.0** | `moonStep` | the theme's third bar lands with the C major chord of the Moon landing |
+| 222–228 | nightearth | peak intensity: brass on every chord change, riser into the cut |
+| **228.0** | `now` | **HARD CUT TO SILENCE** |
+| 229–236 | now | single soft piano notes with long reverb: A4 at `blueDot` (229), E5 at 232 |
+| 236.5 | `resumeTick` | one tick; tick-tock resumes slowly |
+| 240–254 | mars, drift | hopeful A major with a Lydian D sharp, slow arpeggios, and the **theme turned major** |
+| 254–260 | hotearth | tension: warm low drone, creeping dissonance (added b6) |
+| 260–268 | redgiant | **huge, heavy, dark**: low brass and organ pedal, swell from `redGiantSwell` |
+| 268–274 | whitedwarf | delicate crystalline bells and a soft pad |
+| 274–282 | merger | the last grand swell: strings and choir, **theme bars 5–6** in the violins |
+| 282–290 | laststars | thinning; **one fading, descending bell per `starDeaths` time**; ticks slowing (60 → 30 BPM) |
+| 290–298 | blackholes | deep sub drone, eerie low detuned choir |
+| 298–306 | evaporation | faint rising shimmer; **bright bell and choir flash plus soft boom at `lastFlash`** |
+| 306–316 | heatdeath | near silence; ticks at ever-longer intervals; **last tick at `lastTick`** |
+| 316–329 | epilogue | soft organ Am returns, strings enter; **theme bars 1–3** on piano |
+| **329.4** | `picardy` | **A major** blooms (strings, organ, choir): "That moment is now." |
+| 333.4–337 | `finalTitle` | the final chord sustains and fades |
+| 337.2 | `finalTick` | one final, soft tick |

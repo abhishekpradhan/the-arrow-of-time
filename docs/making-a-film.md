@@ -44,6 +44,11 @@ moves the picture, its caption and the music together. Never hard-code a time th
   `tools/check_sync.py` measures the rendered film against them.
 - Anything else your film needs (a list of star ignitions, montage items) can live here too.
 
+To lengthen or shorten a section later, insert time rather than editing numbers by hand:
+`python3 tools/retime.py projects/<id>/timeline.json --at 108 --by 4 --extend moon` moves every
+beat, cue and listed time from 108 s on by 4 s and lengthens the `moon` beat (`--dry-run` prints
+the result).
+
 ## 2. Shots
 
 A shot is a time span and a `render` function that draws HDR, linear light into `c.target`. Each

@@ -545,8 +545,14 @@ class Score:
             self.put(self.sfx, E.start + dt, ins.debris(2.0, 18.0, 0.5, seed=20 + k), -14, pan=0.4 if k else -0.4)
 
     def moon(self):
-        """100-108: tension, the Theia impact, then a wide shimmering pad."""
+        """100-112: tension and the Theia impact; the graze and the tidal bridge
+        (low D minor, a plucked figure circling the stereo field); Theia's
+        remnant falls back (theiaReturn: a second, smaller hit on B flat); the arm
+        winds into a disk (B flat to C sus, the figure faster and higher); years
+        later the Moon (moonBorn: C add9, theme bars 3-4 in the bells, whose held
+        D resolves to the E that opens the oceans' theme)."""
         M, O, theia = self.B('moon'), self.B('oceans'), self.cue('theia')
+        ret, born = self.cue('theiaReturn'), self.cue('moonBorn')
         if not self.want(M.start, O.start):
             return
         self.sec('moon')
@@ -564,19 +570,49 @@ class Score:
         self.put(self.sfx, theia, ins.impact(1.0, 1.2, 7.0, seed=12), -4)
         self.put(self.boom, theia, ins.sub_boom(7.0, 80.0, 26.0, 0.35, 2.2, 0.8, click=0.5, seed=13), -6)
         self.put(self.sfx, theia + 0.1, ins.debris(4.5, 40.0, 0.9, seed=14), -4)
-        # wide shimmering pad afterwards
-        t = theia + 0.4
-        end = O.start + 1.0
-        self.put(self.strings, t, ins.strings(['F4', 'A4', 'C5', 'E5', 'G5'], M.start + 5 - t, attack=2.5, release=2.5,
-                                              voices=7, bright=5500, vibrato=10, seed=250), -6)
-        self.put(self.strings, M.start + 5, ins.strings(['E4', 'G4', 'C5', 'D5', 'G5'], end - M.start - 5, attack=2.0,
-                                                        release=2.5, voices=7, bright=5000, vibrato=10, seed=251), -6)
-        self.put(self.choir, t + 0.5, ins.choir(['A4', 'C5', 'E5'], end - t - 0.5, 'u', attack=2.5, release=2.5,
-                                                seed=260), -9)
-        self.put(self.glass, t + 1.0, ins.shimmer(end - t, 'E6', 10.0, 2.0, 9, 0.6, seed=3), 0)
+        # the graze and the bridge: low D minor, unsettled; debris circling
+        t = theia + 0.35
+        self.put(self.strings, t, ins.strings(['D2', 'A2', 'D3', 'F3', 'A3'], ret - t + 0.25, attack=1.4, release=0.5,
+                                              voices=7, bright=2600, vibrato=18, seed=250), -6)
+        self.put(self.strings, t + 0.8, ins.strings(['E5', 'F5', 'A5'], ret - t - 0.55, attack=1.8, release=0.5,
+                                                    voices=5, bright=6500, vibrato=30, seed=251), -14)
+        self.orbit(t + 0.5, ret - 0.12, ['D4', 'A4', 'D5', 'E5', 'F5', 'E5', 'D5', 'A4'], 0.22, 0.55, rate=5.0, seed=1)
+        self.roll(ret - 1.3, ret - 0.1, 'Bb1', 0.1, 0.7, gain_db=-4, seed=4)
+        # Theia's remnant falls back: a second, smaller hit, on B flat
+        self.put(self.boom, ret, ins.sub_boom(4.5, 70.0, 28.0, 0.3, 1.5, 0.6, click=0.35, seed=15), -8)
+        self.put(self.sfx, ret, ins.impact(0.6, 0.8, 4.5, seed=16), -11)
+        self.put(self.perc, ret, ins.timpani('Bb1', 0.95, decay=2.0, seed=2), -3)
+        self.put(self.brass, ret, ins.brass(['Bb2', 'F3', 'Bb3', 'D4'], 1.8, attack=0.04, release=1.0, vel=0.85,
+                                            bright=0.7, growl=0.35, seed=6), -7)
+        self.put(self.sfx, ret + 0.1, ins.debris(3.0, 22.0, 0.6, seed=17), -9)
+        # the arm winds into a disk: B flat to C sus, the figure faster and higher
+        mid = ret + 0.55 * (born - ret)
+        self.string_prog([(ret + 0.1, 'Bb2', ['D4', 'F4', 'Bb4', 'C5']), (mid, 'C3', ['C4', 'F4', 'G4', 'C5'])],
+                         born + 0.3, attack=0.9, release=0.6, gain_db=-5, bright=5000, vibrato=12, seed=252)
+        self.orbit(ret + 0.3, mid, ['Bb4', 'D5', 'F5', 'C6', 'F5', 'D5'], 0.3, 0.55, rate=6.0, seed=2)
+        self.orbit(mid, born - 0.05, ['C5', 'F5', 'G5', 'C6', 'G5', 'F5'], 0.45, 0.7, rate=7.0, seed=3)
+        self.put(self.glass, ret + 0.4, ins.shimmer(born - ret + 1.5, 'F6', 10.0, 3.0, 9, 0.5, seed=3), -3)
+        self.put(self.sfx, born - 1.6, ins.reverse_swell(1.6, 1.0, 0.8, seed=6), -13)
+        # years later, the Moon: C add9, theme bars 3-4 in the bells; the held D resolves to the oceans' E
+        end = O.start + 1.2
+        self.put(self.strings, born, ins.strings(['C3', 'G3', 'E4', 'G4', 'D5'], end - born, attack=0.6, release=2.0,
+                                                 voices=7, bright=5000, vibrato=10, seed=253), -6)
+        self.put(self.choir, born + 0.1, ins.choir(['E4', 'G4', 'C5'], end - born, 'u', attack=0.8, release=2.0,
+                                                   seed=260), -9)
+        theme_line(self, self.bells, [3, 4], born, (O.start - born) / 5.0,
+                   lambda n, dur, k: ins.bell(n, 3.5, 0.6, 'glass', seed=270 + k), -1)
+
+    def orbit(self, t0, t1, notes, v0, v1, rate=5.0, seed=0):
+        """A plucked figure circling the stereo field, like debris in orbit: ``notes``
+        repeat at ``rate`` per second, crescendo ``v0`` to ``v1``, one turn per 1.6 s."""
+        r = rng('orbit', t0, seed)
+        for i, t in enumerate(grid(t0, t1, 1.0 / rate)):
+            v = v0 + (v1 - v0) * (t - t0) / max(t1 - t0, 1e-6)
+            x = ins.pluck(notes[i % len(notes)], 1.6, round(v, 2), bright=0.55, seed=i % 4)
+            self.put(self.pluck, t + r.normal(0, 0.004), x, -4, pan=0.7 * math.sin(2 * math.pi * (t - t0) / 1.6))
 
     def oceans(self):
-        """108-116: calm; rain from rainStart; warm pads."""
+        """112-120: calm; rain from rainStart; warm pads."""
         O, L, rain = self.B('oceans'), self.B('life'), self.cue('rainStart')
         if not self.want(O.start, L.start + 4):
             return
@@ -591,7 +627,7 @@ class Score:
                  shape=[(rain, -6), (rain + 2, 0), (L.start, 0), (L.start + 5.0, -30)])
 
     def life(self):
-        """116-130 (+ snowball): the life motif, plucked 16th arpeggios over
+        """120-134 (+ snowball): the life motif, plucked 16th arpeggios over
         C - G/B - Am - F, brighter at oxygen; the lowpass closes at the freeze."""
         L, X, S = self.B('life'), self.B('oxygen'), self.B('snowball')
         fz = self.cue('snowballFreeze')
@@ -638,7 +674,7 @@ class Score:
                                                     voices=6, bright=6000, seed=300), -14)
 
     def snowball(self):
-        """130-134: sudden cold: glassy high tones, sparse."""
+        """134-138: sudden cold: glassy high tones, sparse."""
         S, fz = self.B('snowball'), self.cue('snowballFreeze')
         if not self.want(S.start, S.end):
             return
@@ -653,7 +689,7 @@ class Score:
         self.put(self.amb, S.start, ins.wind(S.dur + 1.5, 0.6, vel=0.5, seed=2), -18)
 
     def cambrian(self):
-        """134-148: the arpeggio returns fuller (bells, marimba); a warm
+        """138-152: the arpeggio returns fuller (bells, marimba); a warm
         cello line enters at 'land'."""
         C, Ld = self.B('cambrian'), self.B('land')
         if not self.want(C.start, Ld.end):
@@ -686,7 +722,7 @@ class Score:
                                                vib_rate=5.0, bright=2600, seed=330), -3)
 
     def dinosaurs(self):
-        """148-156: primal taiko groove plus low brass."""
+        """152-160: primal taiko groove plus low brass."""
         Dn = self.B('dinosaurs')
         if not self.want(Dn.start, Dn.end):
             return
@@ -728,7 +764,7 @@ class Score:
                 air=0.0, seed=7)), -4 if acc else -8)
 
     def impact(self):
-        """156-162: ominous whoosh along asteroidStreak, IMPACT at
+        """160-166: ominous whoosh along asteroidStreak, IMPACT at
         asteroidImpact (music cuts), rumble tail."""
         Dn = self.B('dinosaurs')
         st, imp = self.cue('asteroidStreak'), self.cue('asteroidImpact')
@@ -756,7 +792,7 @@ class Score:
         self.put(self.amb, imp, ins.rumble(Mm.start + 0.5 - imp, lp=140.0, vel=0.9, attack=0.05, release=3.5, seed=4), -2)
 
     def mammals(self):
-        """162-168: a soft dawn chord (C add9)."""
+        """166-172: a soft dawn chord (C add9)."""
         Mm, H = self.B('mammals'), self.B('humans')
         if not self.want(Mm.start, H.start + 2):
             return
@@ -772,7 +808,7 @@ class Score:
                                                seed=365 + k), -9)
 
     def humans(self):
-        """168-182: solo piano (theme bars 1-2), fire from 'fire'; caves:
+        """172-186: solo piano (theme bars 1-2), fire from 'fire'; caves:
         breathy pad and soft taps."""
         H, Cv, fire = self.B('humans'), self.B('caves'), self.cue('fire')
         if not self.want(H.start, Cv.end):
@@ -802,7 +838,7 @@ class Score:
             t += float(r.choice([0.2, 0.25, 0.5, 0.6, 0.75, 1.0]))
 
     def ascent(self):
-        """182-224: civilization, the launch, the Moon landing, night Earth, and the hard cut at
+        """186-228: civilization, the launch, the Moon landing, night Earth, and the hard cut at
         NOW. The clock accelerates from 60 BPM at accelStart to 140 at the launch (150 at NOW),
         and the ages are phrased: pastoral plucks and hand drums (farming to writing),
         monumental organ, taiko and choir (the pyramids to printing), a mechanical string

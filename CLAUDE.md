@@ -12,13 +12,17 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 - `docs/`: guides (getting started, making a film, engine, rendering, Modal, releasing).
 - `projects/<id>/`: one film per folder. `timeline.json` + `project.ts` + `shots/` + `score.py`.
 - `templates/starter/`: copied by `npm run new -- <id>`.
+- `assets/`: data the films load (Earth maps; the giant-impact SPH simulation, whose recipe is in
+  `tools/assets/giant_impact/`). Each folder has a README and a builder in `tools/assets/`.
 - `out/`: all generated media (git-ignored). Finished films are published as GitHub Releases,
   never committed (`docs/releasing.md`).
 
 ## Workflow and conventions
 
 - **Timing lives in `timeline.json`.** Beats (start/end/caption text) and cues (sync points) are
-  read by the shots, the captions and `score.py`. Never hard-code a time that exists there.
+  read by the shots, the captions and `score.py`. Never hard-code a time that exists there. To
+  make room, `tools/retime.py <timeline> --at <s> --by <s> [--extend <beat>]` shifts everything
+  after a point. `spline(t, knots)` remaps time smoothly (slow motion through an event).
 - **Shots are shots.** Each shot owns its whole frame (background included) and renders HDR,
   linear light into `c.target`. Overlap shots with `fadeIn`/`fadeOut` to dissolve. In
   `projects/arrow-of-time`, `span(id, { dIn, dOut })` centres dissolves on beat boundaries and
