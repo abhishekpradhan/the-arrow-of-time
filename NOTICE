@@ -1,0 +1,13 @@
+Movies: a code-driven film studio
+Copyright 2026 Abhishek Pradhan
+https://github.com/abhishekpradhan/movies
+
+This product includes software developed by Abhishek Pradhan.
+
+The code is licensed under the Apache License, Version 2.0 (LICENSE). The films,
+meaning each projects/<id>/ folder and its rendered releases/<id>/ files, are
+licensed under Creative Commons Attribution 4.0 International (LICENSES/CC-BY-4.0.txt),
+as stated in each film's LICENSE.md.
+
+Third-party code, data and fonts are listed with their licenses in
+THIRD_PARTY_NOTICES.md.

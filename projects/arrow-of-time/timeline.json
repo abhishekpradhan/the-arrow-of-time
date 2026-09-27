@@ -69,7 +69,7 @@
   ],
   "titleCards": [
     { "start": 21.2, "end": 29.2, "text": "The Arrow of Time" },
-    { "start": 313.4, "end": 318.0, "text": "The Arrow of Time" }
+    { "start": 313.4, "end": 318.0, "text": "The Arrow of Time", "credit": "A film by Abhishek Pradhan" }
   ],
   "cues": {
     "firstTick": 1.0,

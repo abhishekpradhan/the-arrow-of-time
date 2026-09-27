@@ -277,6 +277,25 @@ function arrowLine(start: number, end: number, y = 0.63): TextItem {
   };
 }
 
+/** The end credit: small tracked capitals under the title's arrow. */
+function credit(start: number, end: number, text: string): TextItem {
+  return {
+    start,
+    end,
+    draw(ctx, t, L) {
+      const life = lifeOf(t, start, end, 1.4, 1.2);
+      drawText(ctx, text, L.w / 2, L.top + 0.7 * (L.bottom - L.top), STYLE.era, L.s, 'center', {
+        inP: life.inP,
+        outP: life.outP,
+        lifeP: life.lifeP,
+        mode: 'blur',
+        blur: 8,
+        trackingDrift: 0.03,
+      });
+    },
+  };
+}
+
 export function buildText(): TextItem[] {
   const items: TextItem[] = [];
   for (const b of T.beats as Beat[]) {
@@ -286,9 +305,10 @@ export function buildText(): TextItem[] {
   }
   for (const l of T.prologueLines) items.push(whisper(l.start, l.end, l.text));
   for (const l of T.epilogueLines) items.push(whisper(l.start, l.end, l.text));
-  for (const c of T.titleCards) {
+  for (const c of T.titleCards as { start: number; end: number; text: string; credit?: string }[]) {
     items.push(mainTitle(c.start, c.end, c.text));
     items.push(arrowLine(c.start + 1.2, c.end));
+    if (c.credit) items.push(credit(c.start + 2.0, c.end, c.credit));
   }
   return items;
 }
