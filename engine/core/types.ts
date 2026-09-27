@@ -33,8 +33,11 @@ export interface Shot<S = any> {
   /** Seconds to fade/dissolve in from black or from the previous shot (overlap them for a dissolve). */
   fadeIn?: number;
   fadeOut?: number;
-  /** Sub-frame samples for motion blur in this shot (overrides the project default). */
-  motionBlur?: number;
+  /**
+   * Sub-frame samples for motion blur in this shot (overrides the project default), or a
+   * function of film time, for shots that need many samples only during fast moves.
+   */
+  motionBlur?: number | ((time: number) => number);
   /** Create GPU resources once. May be async (textures, heavy precomputation). */
   setup?(e: Engine): S | Promise<S>;
   render(c: ShotContext, state: S): void;
@@ -70,6 +73,16 @@ export interface Look {
   /** Whole-frame offset in pixels (camera shake). */
   shake: Vec2;
   textOpacity: number;
+  /**
+   * Light shafts: the bright parts of the frame (above `raysThreshold`) smeared radially
+   * towards `raysCenter` (0..1 across and up the frame), so a low sun streams through the gaps
+   * between silhouettes. `rays` is the amount (0 = off), `raysDecay` the falloff per sample.
+   */
+  rays: number;
+  raysCenter: Vec2;
+  raysThreshold: number;
+  raysDecay: number;
+  raysTint: Vec3;
   /** Darken the picture softly behind captions, 0..1. */
   scrim: number;
   /**
@@ -103,6 +116,11 @@ export const DEFAULT_LOOK: Look = {
   flashColor: [1, 1, 1],
   shake: [0, 0],
   textOpacity: 1,
+  rays: 0,
+  raysCenter: [0.5, 0.5],
+  raysThreshold: 1.0,
+  raysDecay: 0.97,
+  raysTint: [1, 1, 1],
   scrim: 0,
   scrimCenter: [0.5, 1.0],
   scrimRadius: [1.1, 0.42],

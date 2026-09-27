@@ -61,6 +61,9 @@ Outputs go to `out/<id>/` (`audio/`, `stills/`, `renders/`), which git ignores.
 ## Troubleshooting
 
 - **"ffmpeg not found".** Install ffmpeg and make sure it is on your `PATH`.
+- **"Executable doesn't exist ... chromium".** Playwright's Chromium is not installed (its
+  installer can hang while unzipping). Run `npx playwright install chromium` again, or render
+  with the Chrome you have: `MOVIES_BROWSER=chrome npm run still -- <id> --t 10`.
 - **The render is silent.** Run `npm run audio -- <id>` first; the renderer warns when the score
   is missing.
 - **"Framebuffer incomplete" or a black frame on Linux without a GPU.** Install

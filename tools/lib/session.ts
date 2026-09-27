@@ -95,8 +95,12 @@ export async function startSession(gl: GlMode = 'auto'): Promise<Session> {
   await server.listen();
   const url = (server.resolvedUrls?.local[0] ?? 'http://localhost:5173/').replace(/\/?$/, '/');
   const mode = resolveGl(gl);
-  const browser = await chromium.launch({ headless: true, args: chromiumArgs(mode) });
-  console.log(`[session] vite ${url}  gl=${mode}`);
+  // MOVIES_BROWSER picks the browser binary: a Playwright channel ('chrome', 'msedge',
+  // 'chromium') or the path of a Chromium executable. Unset, Playwright's own Chromium is used.
+  const pick = process.env.MOVIES_BROWSER;
+  const launch = pick ? (pick.includes('/') || pick.includes('\\') ? { executablePath: pick } : { channel: pick }) : {};
+  const browser = await chromium.launch({ headless: true, args: chromiumArgs(mode), ...launch });
+  console.log(`[session] vite ${url}  gl=${mode}${pick ? `  browser=${pick}` : ''}`);
 
   return {
     server,

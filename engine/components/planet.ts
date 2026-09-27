@@ -60,15 +60,22 @@ vec3 surface(vec3 q, vec3 n, vec3 sun, float daylight, out float spec, out vec3 
   if (uLava > 0.0) {
     vec3 wq = q * 4.0 + uSeed + 0.35 * vec3(gnoise(q * 3.0), gnoise(q * 3.0 + 5.0), gnoise(q * 3.0 + 9.0));
     vec2 w = worley(wq);
-    float crack = 1.0 - smoothstep(0.0, 0.03 + 0.05 * (1.0 - uCrust), w.y - w.x);
+    // Cracks of uneven width, some choked with cooled crust and some wide open, so the plate
+    // pattern reads as broken rock rather than a wireframe.
+    float vary = fbm(q * 6.0 + uSeed * 0.7, 3);
+    float open = smoothstep(0.25, 0.75, fbm(q * 4.0 + uSeed + 7.0, 3));
+    float width = (0.012 + 0.06 * vary) * (0.6 + 0.9 * (1.0 - uCrust));
+    float crack = (1.0 - smoothstep(0.0, width, w.y - w.x)) * (0.35 + 0.65 * open);
     vec2 w2 = worley(wq * 2.7 + 11.0);
-    float crack2 = 1.0 - smoothstep(0.0, 0.025, w2.y - w2.x);
+    float crack2 = (1.0 - smoothstep(0.0, 0.02 + 0.02 * vary, w2.y - w2.x)) * (0.3 + 0.7 * open);
     float sea = smoothstep(-0.16, -0.34, h + (uCrust - 0.5) * 0.35);
     float flick = 0.45 + 0.8 * fbm(q * 9.0 + uGTime * 0.05, 3);
     float heat = saturate(max(max(crack, crack2 * 0.45), sea) * flick);
+    // Heat bleeds a little way into the plates beside the cracks, warming their edges.
+    float near = (1.0 - smoothstep(0.0, 0.18, w.y - w.x)) * open;
     vec3 crust = mix(vec3(0.03, 0.025, 0.022), vec3(0.1, 0.075, 0.06), fbm(q * 20.0, 3));
     col = mix(col, crust, uLava);
-    emit += fireRamp(0.18 + 0.6 * heat) * heat * heat * 1.25 * uLava;
+    emit += (fireRamp(0.18 + 0.6 * heat) * heat * heat * 1.25 + vec3(0.5, 0.08, 0.02) * near * near * 0.35 * (1.0 - heat)) * uLava;
   }
   // ---------------- real present-day Earth from Natural Earth textures
   float land = 1.0;

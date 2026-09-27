@@ -294,7 +294,14 @@ export class Engine {
     const band = this.band(look);
     const active = this.activeShots(time);
     let samples = this.opts.noMotionBlur ? 1 : this.project.motionBlur ?? 1;
-    for (const a of active) if (a.shot.motionBlur !== undefined && !this.opts.noMotionBlur) samples = Math.max(1, a.shot.motionBlur);
+    if (!this.opts.noMotionBlur) {
+      // The shots on screen decide: the most samples any of them asks for at this moment.
+      const asked = active
+        .map((a) => a.shot.motionBlur)
+        .filter((m) => m !== undefined)
+        .map((m) => Math.max(1, Math.round(typeof m === 'function' ? m(time) : (m as number))));
+      if (asked.length) samples = Math.max(...asked);
+    }
     const shutter = this.project.shutter ?? 0.5;
 
     let input: RenderTarget;

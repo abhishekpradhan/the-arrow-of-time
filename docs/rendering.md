@@ -28,6 +28,9 @@ are also copied to `out/<id>/renders/<id>-final-latest.mp4`.
 
 - **With a GPU** (`--gl gpu`, the default on macOS and Windows, and on Linux when a render node
   exists) frames take milliseconds to a few hundred milliseconds.
+- **Another browser.** `MOVIES_BROWSER=chrome` (or `msedge`, or the path of a Chromium
+  executable) renders with an installed browser instead of Playwright's Chromium, for machines
+  where `npx playwright install chromium` cannot complete.
 - **Without a GPU** on Linux, `--gl auto` uses Chromium's ANGLE on Mesa llvmpipe through EGL
   (`libegl1`, `libgl1-mesa-dri`). It is about 3x faster than SwiftShader. *The Arrow of Time*
   averages about 1 s per 1080p frame on a 4-core CPU, and its heaviest ray-marched shots take

@@ -17,7 +17,8 @@ A project (`defineProject`) declares the frame size, `fps`, `duration`, the soun
 preload, its shots, its text items, timeline markers for the preview, and `look(t)`.
 
 A shot has an `id`, a `start` and `end`, optional `fadeIn`/`fadeOut` (overlap shots to dissolve),
-an optional `motionBlur` sample count, an optional `setup(engine)` that creates GPU resources once,
+an optional `motionBlur` sample count (or a function of film time, so a shot pays for many samples
+only during fast moves), an optional `setup(engine)` that creates GPU resources once,
 and `render(ctx, state)`. The context carries the engine (`c.e`), the GL context, times (`c.t`
 shot-local, `c.time` film time, `c.p` progress), the frame size and the target to draw into, plus
 `c.fullscreen(program, uniforms)`.
@@ -50,13 +51,37 @@ remaps (slow motion around an event) and camera moves. Also `envelope`, `drift`,
 | `march` | a ray marcher for 3D scenes: `march`, `calcNormal`, `softShadow`, `calcAO`, `skyColor`, `applyFog` (see below) |
 | `stars` | procedural star fields for backgrounds |
 | `camera` | `camRay(p)` and `depthOf(worldPos)` matching `engine/core/camera.ts` |
-| `creatures` | animated 2D silhouettes, from trilobites and fish to dinosaurs and people |
+| `creatures` | animated 2D silhouettes, from trilobites and fish to dinosaurs and people; plants (ferns, cycads, conifers, acacias, date palms, cypresses) |
 | `structures` | 2D silhouettes from huts and pyramids to factories, rockets and skylines |
+| `figures` | people and four-legged animals posed from a few joints (see below) |
+| `illustration` | painted light: skies from the sun's elevation, haze, rim light, clouds, mist, smoke |
 
 A film can add its own chunks: put them in `projects/<id>/shaders/*.glsl`, register them with
 `registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default', eager: true }), '<id>/')`
 and `#include <<id>/name>`. Chunks may use `#ifdef` to share code between passes (a terrain chunk
 can bake its height field into a texture and march it from the same source).
+
+## Painted scenes
+
+`<illustration>` and `<figures>` are for scenes painted in light and silhouette, the way *The
+Arrow of Time* shows life and people. `paintSky(p, horizonY, sunPos, elevation)` paints a clear
+sky for any sun elevation in degrees, from deep night (-18) through dusk, a low sun and midday
+(40), with a glow round the sun that widens and reddens as it sinks; `skyTone(e)` gives its
+colours for lighting the rest of the scene, and `sunDisc` and `nightStars` finish it. Draw layers
+back to front with parallax, and ink each with `inkIn(airAt(x, ...), fog, ink)`: the farther the
+layer, the more it takes on the colour of the air at the horizon. `rimLight` edges a backlit shape
+with light (pass the outward gradient of its distance field), `stratus` paints banks of cloud lit
+from the sun's side, `mistBand` and `smokeColumn` the rest.
+
+`<figures>` draws people and animals from their joints. A `Pose` places the head, the base of the
+neck, the hips, the hands and the ankles; `sdFigure(p, pose, dress, bulk)` solves the elbows and
+knees with a two-bone IK (`ik2`) and strokes the limbs, so a gesture is a handful of points.
+`standPose`, `walkPose`, `runPose`, `sitPose`, `pointPose`, `reapPose`, `haulPose`, `carryPose`
+and `oratePose` are starting points; `dress` adds a robe, a tunic, long hair or a hat. `sdBeast`
+walks a four-legged animal from a `Build` (body, legs, neck, head, tail), with species built on it
+(`sdOx`, `sdDonkey`, `sdHorse`, `sdGiraffe`, `sdAntelope`, `sdGoat`, `sdDog`), and `sdBird` flaps.
+The civilization of *The Arrow of Time* (`projects/arrow-of-time/shots/civilization.ts`,
+`shaders/civ-*.glsl`) and its Homo sapiens and Moon landing scenes are worked examples.
 
 ## Ray-marched scenes
 
@@ -68,8 +93,8 @@ their distances). Tune it with defines before the include: `MARCH_STEPS`, `SHADO
 `MARCH_RELAX` (under-step distances that are only bounds, such as height fields) and
 `SHADOW_MIN_STEP` (below the thickness of thin parts, or they cast dotted shadows). A ray that
 runs out of steps counts as a hit: a ray creeping along terrain near the horizon has found it.
-The civilization scenes of *The Arrow of Time* (`projects/arrow-of-time/shaders/age-*.glsl`) and
-its Moon landing (`apollo.glsl`) are worked examples.
+*The Arrow of Time*'s Sputnik (`projects/arrow-of-time/shaders/sputnik.glsl`) marches a small
+object inside its bounding sphere and composites it over a `Planet`.
 
 ## The camera
 
@@ -106,7 +131,8 @@ Promote anything a second film could use into the engine rather than copying it.
 ## Post-processing
 
 The post chain turns the HDR frame into the picture: 13-tap bloom with Karis averaging, anamorphic
-streaks, ACES/AgX/neutral tonemapping, lift/gamma/gain grading, saturation and contrast, grain,
+streaks, light shafts (`rays`: the bright parts of the frame smeared towards `raysCenter`, so a low
+sun streams between silhouettes), ACES/AgX/neutral tonemapping, lift/gamma/gain grading, saturation and contrast, grain,
 vignette, chromatic aberration, a letterbox that animates between 16:9 and 2.39:1, fades, flashes
 and camera shake. Everything is animated through `project.look(t)` (see `Look` in
 `engine/core/types.ts`). NaNs are zeroed so they cannot bloom into black holes, but the pixel is

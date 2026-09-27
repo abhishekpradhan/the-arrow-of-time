@@ -68,11 +68,36 @@ void main() {
   fragColor = vec4(acc / wsum * 6.0, 1.0);
 }`;
 
+// Light shafts: a radial smear towards a light source (after Mitchell, "Volumetric Light
+// Scattering as a Post-Process", GPU Gems 3). Two passes: a long one from the bright parts of
+// the frame, then a short one over its result that fills the gaps between the first pass's taps.
+const RAYS = `
+#include <common>
+in vec2 vUv; out vec4 fragColor;
+uniform sampler2D uSrc; uniform vec2 uCenter; uniform float uThreshold, uSpan, uDecay; uniform int uFirst;
+void main() {
+  vec2 d = (uCenter - vUv) * uSpan / 32.0;
+  vec3 acc = vec3(0.0);
+  float w = 1.0, wsum = 0.0;
+  vec2 uv = vUv;
+  for (int i = 0; i < 32; i++) {
+    vec3 c = texture(uSrc, uv).rgb;
+    if (uFirst == 1) c = (any(isnan(c)) || any(isinf(c))) ? vec3(0.0) : max(min(c, vec3(60.0)) - uThreshold, 0.0);
+    acc += c * w;
+    wsum += w;
+    w *= uDecay;
+    uv += d;
+  }
+  fragColor = vec4(acc / wsum, 1.0);
+}`;
+
 const FINAL = `
 #include <common>
 #include <color>
 in vec2 vUv; out vec4 fragColor;
-uniform sampler2D uScene, uBloom, uStreak, uText;
+uniform sampler2D uScene, uBloom, uStreak, uText, uRays;
+uniform float uRaysAmt;
+uniform vec3 uRaysTint;
 uniform vec2 uRes, uShake;
 uniform float uBloomAmt, uBloomNorm, uStreakAmt, uExposure, uContrast, uSaturation;
 uniform float uVignette, uGrain, uAberration, uLetterbox, uLetterboxAspect, uFade, uFlash, uTextOpacity;
@@ -104,6 +129,7 @@ void main() {
   if (any(isnan(col)) || any(isinf(col))) col = vec3(0.0);
   col += texture(uBloom, suv).rgb * uBloomNorm * uBloomAmt;
   if (uStreakAmt > 0.0) col += texture(uStreak, suv).rgb * uStreakTint * uStreakAmt;
+  if (uRaysAmt > 0.0) col += texture(uRays, suv).rgb * uRaysTint * uRaysAmt;
   col = max(col, 0.0) * exp2(uExposure);
 
   col = tonemap(col, uTonemap);
@@ -167,6 +193,9 @@ export class Post {
   gl: GL;
   mips: RenderTarget[] = [];
   streakRT: RenderTarget;
+  raysA: RenderTarget;
+  raysB: RenderTarget;
+  rays: Program;
   down: Program;
   up: Program;
   streak: Program;
@@ -184,6 +213,9 @@ export class Post {
     }
     const m1 = this.mips[1];
     this.streakRT = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f' });
+    this.raysA = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f' });
+    this.raysB = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f' });
+    this.rays = new Program(gl, FULLSCREEN_VS, RAYS, 'post.rays');
     this.down = new Program(gl, FULLSCREEN_VS, DOWN, 'post.down');
     this.up = new Program(gl, FULLSCREEN_VS, UP, 'post.up');
     this.streak = new Program(gl, FULLSCREEN_VS, STREAK, 'post.streak');
@@ -206,6 +238,16 @@ export class Post {
       this.e.drawFullscreen();
       src = m;
     });
+    // Light shafts from the quarter-resolution level, before the up chain adds bloom into it.
+    if (look.rays > 0) {
+      const src1 = this.mips[1];
+      this.raysA.bind();
+      this.rays.use().set({ uSrc: src1, uCenter: look.raysCenter, uThreshold: look.raysThreshold, uSpan: 1.0, uDecay: look.raysDecay, uFirst: 1 });
+      this.e.drawFullscreen();
+      this.raysB.bind();
+      this.rays.use().set({ uSrc: this.raysA, uCenter: look.raysCenter, uThreshold: 0, uSpan: 1.0 / 32.0, uDecay: 1.0, uFirst: 0 });
+      this.e.drawFullscreen();
+    }
     // Up chain, accumulating into each finer level.
     setBlend(gl, 'add');
     for (let i = this.mips.length - 2; i >= 0; i--) {
@@ -237,6 +279,9 @@ export class Post {
       uScene: input,
       uBloom: this.mips[0],
       uStreak: look.streak > 0 ? this.streakRT : this.blank,
+      uRays: look.rays > 0 ? this.raysB : this.blank,
+      uRaysAmt: look.rays,
+      uRaysTint: look.raysTint,
       uText: text ?? this.blank,
       uHasText: text ? 1 : 0,
       uRes: [this.e.width, this.e.height],

@@ -261,3 +261,35 @@ float sdAcacia(vec2 p, float s) {
   crown += 0.02 * s * sin(p.x * 30.0 / s) * sin(p.x * 7.0 / s);
   return min(d, crown);
 }
+
+// A date palm, base at the origin, s tall: a slender trunk leaning a little, and a crown of
+// arching fronds whose leaflets fray their edges. t and ph sway it in the wind.
+float sdDatePalm(vec2 p, float t, float ph, float s) {
+  if (abs(p.x) > 0.75 * s || p.y > 1.35 * s || p.y < -0.05 * s) return 1.0;
+  float sway = 0.02 * s * sin(t * 0.9 + ph);
+  vec2 top = vec2(0.07 * s + sway, s);
+  float d = sdBezierTaper(p, vec2(0.0), vec2(-0.02 * s, 0.55 * s), top, 0.034 * s, 0.024 * s);
+  for (int i = 0; i < 12; i++) {
+    float fi = float(i);
+    float a = -2.5 + fi * (5.0 / 11.0) + 0.06 * sin(t * 1.3 + fi + ph);
+    vec2 dir = vec2(sin(a), cos(a));
+    float len = (0.36 + 0.1 * fract(fi * 0.618 + ph)) * s;
+    vec2 tip = top + dir * len + vec2(0.0, -len * 0.55 * abs(dir.x) - (dir.y < 0.0 ? 0.1 * s : 0.0));
+    vec2 ctrl = top + dir * len * 0.55 + vec2(0.0, 0.1 * s * (1.0 - abs(dir.x) * 0.3));
+    float f = sdBezierTaper(p, top, ctrl, tip, 0.02 * s, 0.003 * s);
+    // Leaflets: the frond's edge breaks up into fine points.
+    f -= 0.012 * s * smoothstep(0.03 * s, 0.0, f) * (0.5 + 0.5 * sin(dot(p - top, vec2(dir.y, -dir.x)) * 0.0 + length(p - top) / s * 90.0));
+    d = min(d, f);
+  }
+  // Clusters of dates under the crown.
+  d = min(d, sdEllipse(p - top - vec2(0.03 * s, -0.06 * s), vec2(0.03, 0.045) * s));
+  return d;
+}
+
+// An Italian cypress, base at the origin, s tall: a narrow flame of dark foliage.
+float sdCypress(vec2 p, float s) {
+  if (abs(p.x) > 0.15 * s || p.y > 1.05 * s || p.y < -0.02 * s) return 1.0;
+  float d = sdTaper(p, vec2(0.0, 0.34 * s), vec2(0.0, s), 0.075 * s, 0.003 * s);
+  d = smin(d, sdTaper(p, vec2(0.0, 0.02 * s), vec2(0.0, 0.34 * s), 0.045 * s, 0.075 * s), 0.02 * s);
+  return d + 0.006 * s * gnoise(p * 60.0 / s);
+}
