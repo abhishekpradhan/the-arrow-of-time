@@ -105,8 +105,7 @@ export function scrimFor(p: Place): { center: [number, number]; radius: [number,
 
 /**
  * Era label / title / line, staggered in, sharing one exit, placed by the beat's `layout`.
- * Side-aligned cards get a hairline under the era label that draws left to right (the film's
- * arrow motif) and drift a few pixels toward the centre over their life.
+ * Side-aligned cards drift a few pixels toward the centre over their life.
  */
 function chapter(b: Beat): TextItem {
   const start = b.start + 0.5 + (b.captionDelay ?? 0);
@@ -123,7 +122,6 @@ function chapter(b: Beat): TextItem {
   const bottom = baselines[baselines.length - 1] + lines[lines.length - 1].style.size * 0.24;
   const anchorOffset = place.v === 'top' ? top : place.v === 'bottom' ? baselines[baselines.length - 1] : (top + bottom) / 2;
   const side = place.align !== 'center';
-  const ruleAfterEra = side && !!b.era && lines.length > 1;
   return {
     start,
     end,
@@ -145,30 +143,9 @@ function chapter(b: Beat): TextItem {
           blur: l.mode === 'letters' ? 10 : 12,
           trackingDrift: l.style === STYLE.title ? 0.04 : 0.02,
         });
-        if (i === 0 && ruleAfterEra) hairline(ctx, x, y + 20 * L.s, 46 * L.s, place.align, life, L.s);
       });
     },
   };
-}
-
-/** A short rule that draws itself left to right, then fades with its card. */
-function hairline(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  align: 'left' | 'center' | 'right',
-  life: { inP: number; outP: number },
-  s: number,
-) {
-  const grow = ease.inOutCubic(Math.min(1, life.inP * 1.25));
-  const alpha = 0.6 * (1 - ease.inOutSine(life.outP));
-  if (grow <= 0 || alpha <= 0.002) return;
-  const x0 = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#eadfcd';
-  ctx.fillRect(x0, y - 0.6 * s, w * grow, Math.max(1, 1.2 * s));
-  ctx.globalAlpha = 1;
 }
 
 /** Fast date/title flashes for the civilization montage. */
