@@ -3,7 +3,7 @@
 // scene is a ray-marched set (shaders/age-*.glsl) with its own light and camera move.
 import '@fontsource/unifrakturmaguntia/400.css';
 import { Camera, keys, registerChunks, textureFromSource, type CameraOptions, type Engine, type Shot, type ShotContext, type UniformValue, type Vec3 } from '@engine';
-import { beat } from '../lib';
+import { beat, cues } from '../lib';
 
 registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default', eager: true }) as Record<string, string>, 'arrow-of-time/');
 
@@ -154,13 +154,30 @@ const TRINITY: Age = {
   uniforms: (t) => ({ uAge: (t - 0.04) * 5 }),
 };
 
+/** Liftoff 1.6 s after ignition, then an acceleration compressed about threefold. */
+const liftOf = (time: number) => {
+  const s = time - cues.launch - 1.3;
+  return s > 0 ? 38 * s * s : 0;
+};
+const LAUNCH: Age = {
+  id: 'launch',
+  cam: (t) => {
+    const time = t + LAUNCH_START;
+    const lift = liftOf(time);
+    return { pos: [-45 + 2 * t, 4, 270 - 5 * t], target: [0, 62 + lift * 0.95, 0], fov: 36 };
+  },
+  uniforms: (t) => ({ uIgnite: t + LAUNCH_START - cues.launch, uLift: liftOf(t + LAUNCH_START) }),
+};
+let LAUNCH_START = 0;
+
 const SLATE = (id: string): Age => ({ id: 'slate', cam: () => ({ pos: [0, 1, 0], target: [0, 1, -1], fov: 35 }), uniforms: () => ({ uSlate: id.length }), mb: 1 });
 
 export function ages(): Shot[] {
-  const list: Age[] = [FARMING, URUK, CUNEIFORM, GIZA, COLONNADE, PRESS, INDUSTRY, FLIGHT, TRINITY, SLATE('space')];
+  const list: Age[] = [FARMING, URUK, CUNEIFORM, GIZA, COLONNADE, PRESS, INDUSTRY, FLIGHT, TRINITY, LAUNCH];
   const b = beat('civilization');
   return list.map((a, i) => {
     const start = i === 0 ? b.start - 0.4 : cut(CARDS[i].t);
+    if (a === LAUNCH) LAUNCH_START = start;
     const end = i + 1 < list.length ? cut(CARDS[i + 1].t) : b.end + 0.5;
     return scene(a, start, end, i === 0 ? 0.8 : 0, i + 1 < list.length ? 0 : 1.0);
   });

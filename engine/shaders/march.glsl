@@ -12,8 +12,9 @@
 //   calcAO(p, n, scale)              0..1 ambient occlusion over `scale` world units
 //   skyColor(rd, sun, zenith, horizon, sunCol)  a clear sky with a sun disc and its glow
 //   applyFog(col, t, rd, sun, fogCol, sunCol, density)  distance fog, lit towards the sun
-// Define MARCH_STEPS / SHADOW_STEPS before the include to change the loop counts, and
-// MARCH_RELAX (< 1) to under-step bound (not exact) distances. The soft shadow, normal and
+// Define MARCH_STEPS / SHADOW_STEPS before the include to change the loop counts, MARCH_RELAX
+// (< 1) to under-step bound (not exact) distances, and SHADOW_MIN_STEP for scenes with thin
+// parts that a coarse shadow step would skip over (dotted shadows). The soft shadow, normal and
 // AO techniques follow Inigo Quilez's articles (https://iquilezles.org/articles/, MIT License);
 // see THIRD_PARTY_NOTICES.md.
 #include <common>
@@ -28,6 +29,10 @@ float mapD(vec3 p);
 #endif
 #ifndef MARCH_RELAX
 #define MARCH_RELAX 1.0
+#endif
+// Smallest shadow step: thin parts (struts, rails) need it below their thickness.
+#ifndef SHADOW_MIN_STEP
+#define SHADOW_MIN_STEP ((tmax - tmin) / float(SHADOW_STEPS * 4))
 #endif
 
 float march(vec3 ro, vec3 rd, float tmin, float tmax, float pix) {
@@ -54,7 +59,7 @@ float softShadow(vec3 ro, vec3 rd, float tmin, float tmax, float k) {
   for (int i = 0; i < SHADOW_STEPS; i++) {
     float h = mapD(ro + rd * t);
     res = min(res, k * h / t);
-    t += clamp(h, (tmax - tmin) / float(SHADOW_STEPS * 4), (tmax - tmin) / 6.0);
+    t += clamp(h, SHADOW_MIN_STEP, (tmax - tmin) / 6.0);
     if (res < 0.002 || t > tmax) break;
   }
   res = clamp(res, 0.0, 1.0);

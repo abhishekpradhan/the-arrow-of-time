@@ -123,7 +123,8 @@ export default defineProject({
     streak:
       (t > cues.theia - 0.2 && t < beat('moon').end + 1) ||
       (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2.5) ||
-      (t > cues.redGiantSwell - 1 && t < cues.redGiantSwell + 9)
+      (t > cues.redGiantSwell - 1 && t < cues.redGiantSwell + 9) ||
+      (t > cues.launch - 0.1 && t < beat('moonlanding').start)
         ? 0
         : keys(t, [[0, 0.35], [cues.bang - 0.1, 0.35], [cues.bang, 0.06], [cues.bang + 10, 0.06], [cues.bang + 11, 0.09],
             [cues.milkyWayReveal - 2, 0.09], [cues.milkyWayReveal, 0.025], [cues.supernova - 1, 0.025], [cues.supernova + 1, 0.09]]),

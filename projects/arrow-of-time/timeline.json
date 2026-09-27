@@ -41,7 +41,7 @@
         { "t": 203.5, "year": 1830, "era": "1830", "title": "Industry" },
         { "t": 206.3, "year": 1903, "era": "1903", "title": "Flight" },
         { "t": 208.8, "year": 1945, "era": "1945", "title": "The Atom" },
-        { "t": 210.3, "year": 1957, "era": "1957", "title": "Space" }
+        { "t": 210.3, "year": 1957, "era": "1957", "title": "Space", "layout": "upper-left" }
       ] },
     { "id": "moonlanding", "act": "human", "start": 216, "end": 222, "card": "chapter", "layout": "upper-left", "era": "1969", "line": "We set foot on another world." },
     { "id": "nightearth", "act": "human", "start": 222, "end": 228, "card": "chapter", "layout": "upper-left", "era": "Today", "line": "Eight billion of us." },
