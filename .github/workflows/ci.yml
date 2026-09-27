@@ -23,6 +23,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Typecheck the engine, tools and every project
         run: npm run typecheck
+      - name: Compile the Python tools (the Modal pipeline needs no Modal account to check)
+        run: python -m py_compile tools/modal/studio.py tools/release_notes.py tools/check_sync.py
       - name: Scaffold a film from the template and synthesize its score
         run: |
           npm run new -- ci-smoke --title "CI Smoke"

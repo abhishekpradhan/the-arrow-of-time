@@ -50,6 +50,8 @@ export function chromiumArgs(mode: Exclude<GlMode, 'auto'>): string[] {
     '--disable-renderer-backgrounding',
     '--disable-backgrounding-occluded-windows',
     '--enable-webgl',
+    // Containers often have a tiny /dev/shm (the Modal pipeline sets this).
+    ...(process.env.STUDIO_NO_DEV_SHM ? ['--disable-dev-shm-usage'] : []),
   ];
   switch (mode) {
     case 'egl':

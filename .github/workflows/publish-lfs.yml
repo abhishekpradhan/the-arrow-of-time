@@ -1,0 +1,50 @@
+name: Publish committed videos (one-time migration)
+
+# Moves distribution videos that were committed to Git LFS (releases/<project>/ at an older
+# commit) into a GitHub Release. Kept only until the migration is done.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit whose releases/<project>/ folder holds the videos
+        required: true
+      project:
+        description: Project id
+        default: arrow-of-time
+      tag:
+        description: Release tag
+        required: true
+      title:
+        description: Release title
+        required: true
+      notes:
+        description: Release notes (Markdown)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      REF: ${{ inputs.ref }}
+      PROJECT: ${{ inputs.project }}
+      TAG: ${{ inputs.tag }}
+      TITLE: ${{ inputs.title }}
+      NOTES: ${{ inputs.notes }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          lfs: true
+      - name: Create the release
+        run: |
+          dir="releases/$PROJECT"
+          ls -l "$dir"
+          (cd "$dir" && sha256sum *.mp4 poster.jpg > SHA256SUMS && cat SHA256SUMS)
+          printf '%s\n' "$NOTES" > notes.md
+          gh release create "$TAG" "$dir"/*.mp4 "$dir"/poster.jpg "$dir"/SHA256SUMS \
+            --target "$(git rev-parse HEAD)" --title "$TITLE" --notes-file notes.md --prerelease

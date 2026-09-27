@@ -1,8 +1,10 @@
 {
   "title": "The Arrow of Time",
+  "logline": "The history and future of everything, from the first instant to the last.",
   "fps": 24,
   "duration": 318,
   "notes": "Single source of truth for timing. Read by project.ts (visuals, captions) and score.py (music). Times in seconds. Exponents use ^ (e.g. 10^40), minus signs use U+2212.",
+  "syncCues": ["bang", "theia", "asteroidImpact", "now", "lastFlash"],
   "beats": [
     { "id": "prologue", "act": "prologue", "start": 0, "end": 20, "card": "none" },
     { "id": "bigbang", "act": "universe", "start": 20, "end": 30, "card": "title" },

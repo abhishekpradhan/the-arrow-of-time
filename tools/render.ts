@@ -1,6 +1,6 @@
 // Render a project to video.
 //
-//   npm run render -- <project> [--preset final|draft] [--scale 1] [--from 0] [--to 30]
+//   npm run render -- <project> [--preset final|draft] [--scale 1] [--from 0] [--to 30] [--frames a:b]
 //                              [--workers 1] [--crf 17] [--segment 20] [--resume]
 //                              [--gl auto|egl|vulkan|swiftshader|gpu] [--no-audio] [--mb 0|1] [--out path.mp4]
 //
@@ -44,8 +44,10 @@ try {
   const W = even(num(args.width, info.width * scale));
   const H = even(num(args.height, info.height * scale));
   const fps = info.fps;
-  const f0 = Math.max(0, Math.round(num(args.from, 0) * fps));
-  const f1 = Math.min(info.frames, Math.round(num(args.to, info.duration) * fps));
+  // --frames a:b (end exclusive) is exact, for splitting a film across machines.
+  const range = args.frames ? String(args.frames).split(':').map(Number) : null;
+  const f0 = Math.max(0, range ? range[0] : Math.round(num(args.from, 0) * fps));
+  const f1 = Math.min(info.frames, range ? range[1] : Math.round(num(args.to, info.duration) * fps));
   if (f1 <= f0) throw new Error('empty frame range');
 
   const renders = outDir(id, 'renders');
