@@ -16,7 +16,8 @@ Percussion
 Effects and atmospheres
     :func:`sub_boom`, :func:`noise_burst`, :func:`impact`, :func:`riser`,
     :func:`shepard`, :func:`whoosh`, :func:`reverse_swell`, :func:`rumble`,
-    :func:`rain`, :func:`wind`, :func:`fire`, :func:`debris`, :func:`shimmer`
+    :func:`rain`, :func:`wind`, :func:`fire`, :func:`debris`, :func:`shimmer`,
+    :func:`steam_whistle`, :func:`chuff`
 """
 from __future__ import annotations
 
@@ -860,6 +861,44 @@ def whoosh(dur: float, f0: float = 200.0, f1: float = 3000.0, peak: float = 0.75
     out = np.stack([y * (math.sqrt(2) * np.cos(th)).astype(F32), y * (math.sqrt(2) * np.sin(th)).astype(F32)])
     out = fade(out, 0.01, 0.02, sr)
     return (out * F32(vel)).astype(F32)
+
+
+def steam_whistle(dur: float = 1.6, notes=('A4', 'C#5'), vel: float = 0.8, seed: int = 0,
+                  sr: int = SR) -> np.ndarray:
+    """Steam locomotive whistle: each note a breathy band of noise around a pure tone, sliding
+    up to pitch as the valve opens, with a slight waver. Stereo."""
+    r = rng('whistle', seed)
+    n = ns(dur, sr)
+    t = tvec(n, sr)
+    t64 = t.astype(np.float64)
+    out = np.zeros((2, n), F32)
+    for k, note in enumerate(notes):
+        f0 = hz(note)
+        f = f0 * (1.0 - 0.07 * np.exp(-t64 / 0.1)) * (1.0 + 0.004 * np.sin(TWO_PI * 5.3 * t64 + k))
+        tone = osc.sine(f, n, sr, r.random()) + osc.sine(2.0 * f, n, sr, r.random()) * F32(0.12)
+        breath = sweep(osc.pink(n, r), 'bandpass', f, 18.0, block=64, sr=sr) * F32(3.0)
+        y = tone * F32(0.55) + breath
+        g = pan_gains(0.35 * (k - (len(notes) - 1) / 2))
+        out[0] += y * F32(g[0])
+        out[1] += y * F32(g[1])
+    env = adsr(dur - 0.35, 0.07, 0.1, 0.85, 0.35, sr)
+    out *= pad_to(env, n)
+    out = fade(out, 0.01, 0.05, sr)
+    return (out * F32(0.4 * vel / (np.max(np.abs(out)) + 1e-9))).astype(F32)
+
+
+def chuff(vel: float = 0.7, seed: int = 0, sr: int = SR) -> np.ndarray:
+    """One exhaust beat of a steam locomotive: a hiss of steam up the chimney with a soft low
+    thump. Mono."""
+    r = rng('chuff', seed)
+    n = ns(0.32, sr)
+    t = tvec(n, sr)
+    env = (1 - _decay(t, 0.006)) * _decay(t, 0.07)
+    y = apply_sos(osc.white(n, r), butter_sos('bandpass', (500.0, 3200.0), 2, sr)) * env
+    y += apply_sos(osc.white(n, r), butter_sos('highpass', 4000.0, 2, sr)) * _decay(t, 0.12) * F32(0.25)
+    y += osc.sine(55.0 + 25.0 * np.exp(-t.astype(np.float64) / 0.02), n, sr) * _decay(t, 0.05) * F32(0.6)
+    y = fade(y, 0.0005, 0.03, sr)
+    return (y * F32(0.5 * vel / (np.max(np.abs(y)) + 1e-9))).astype(F32)
 
 
 def reverse_swell(dur: float = 2.0, bright: float = 1.0, vel: float = 1.0, seed: int = 0, sr: int = SR) -> np.ndarray:

@@ -161,11 +161,11 @@ class Score:
         self.boom = T('boom', gain_db=0, fx=[flt.HP(20)], sends={'hall': -20}, group='fx')
         self.sfx = T('sfx', gain_db=0, fx=[flt.HP(30)], sends={'hall': -13, 'cathedral': -18}, group='fx')
         self.amb = T('amb', gain_db=0, fx=[flt.HP(40)], sends={'hall': -16}, group='fx')
-        # hard cuts (MUSIC.md): the silent gap before the bang, NOW, and the asteroid impact
+        # hard cuts (MUSIC.md): the silent gap before the bang, NOW, and the asteroid impact. (The
+        # launch has none: the civilization's crescendo runs straight into the ignition.)
         m.cut(self.cue('bang') - GAP)
         m.cut(self.cue('now'))
         m.cut(self.cue('asteroidImpact') - BREATH)   # all music (and every tail) stops, then the hit
-        m.cut(self.cue('launch') - BREATH)           # the same breath before the ignition
         self._cache = {}
         self.offset = 0.0
 
@@ -840,18 +840,21 @@ class Score:
     def ascent(self):
         """186-228: civilization, the launch, the Moon landing, night Earth, and the hard cut at
         NOW. The clock accelerates from 60 BPM at accelStart to 140 at the launch (150 at NOW),
-        and the ages are phrased: pastoral plucks and hand drums (farming to writing),
-        monumental organ, taiko and choir (the pyramids to printing), a mechanical string
-        ostinato with anvil clangs (industry, flight), brass stabs and a riser (the atom, space).
-        At the launch the theme bursts out (bars 1-4 over Am F C G), its third bar landing on
-        moonStep; night Earth is the peak."""
+        and every age is a scene cut on its card, so the music is phrased to match: pastoral
+        plucks and hand drums (farming to writing, with the stylus tapping the clay),
+        monumental organ, taiko and choir (the pyramids to printing, the platen's thunk), a
+        mechanical string ostinato with anvil clangs, a steam whistle and chuffing (industry,
+        flight), then Trinity: a deep thud and a hush, rebuilt by a riser through the countdown.
+        The crescendo runs straight into the ignition (no pause), the theme bursts out (bars 1-4
+        over Am F C G) and its third bar lands on moonStep; the rocket's roar ends as we reach
+        the silent Moon; night Earth is the peak."""
         civ, ml, ne = self.B('civilization'), self.B('moonlanding'), self.B('nightearth')
         a0, step, now, launch = self.cue('accelStart'), self.cue('moonStep'), self.cue('now'), self.cue('launch')
         if not self.want(a0, now):
             return
         self.sec('ascent')
         mont = [float(m['t']) for m in self.tl.montage('civilization')]
-        pyramids, printing, industry, atom = mont[3], mont[5], mont[6], mont[8]
+        writing, pyramids, printing, industry, flight, atom = mont[2], mont[3], mont[5], mont[6], mont[7], mont[8]
         # one chord per age, arriving on the dominant (G) just before the launch resolves to Am
         ages = ['Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'G', 'F', 'G']
         beat = (step - launch) / 8.0          # the theme's quarter note: bars 1-2 fill launch -> moonStep
@@ -863,9 +866,10 @@ class Score:
             return [c for tc, c in plan if tc <= t + 1e-6][-1]
         ticks = self.accel_ticks
         span = now - a0
-        # a long crescendo that holds its breath for a moment before the ignition
-        cres = [(a0, -12), (pyramids, -7), (industry, -4), (mont[-1], -2), (launch - 0.35, -3), (launch - 0.05, -10),
-                (launch + 0.25, 1), (ne.start, 0), (now, 1)]
+        # a long crescendo, hushed for a moment by the Trinity flash, running straight into the
+        # ignition
+        cres = [(a0, -12), (pyramids, -7), (industry, -4), (atom - 0.05, -3), (atom + 0.35, -10), (mont[-1], -6),
+                (launch - 0.1, -1), (launch + 0.6, 1), (ne.start, 0), (now, 1)]
         # organ: soft (farming) -> principal (pyramids on) -> full from the launch
         o_steps = [(t, *CORE[ch]) for t, ch in plan]
         self.organ_prog([st for st in o_steps if st[0] < pyramids], pyramids + 0.2, 'soft', attack=0.4, release=0.6,
@@ -943,6 +947,23 @@ class Score:
                 x = self.cached(('anvil', i % 3), lambda: ins.bell(['E5', 'B4', 'G5'][i % 3], 0.9, 0.55, 'church',
                                                                    fm=0.8, seed=i % 3))
                 self.put(self.mallet, t, x, -9, pan=0.45 if i % 8 == 1 else -0.45)
+        # the scenes' own sounds, on their pictures (times from shots/ages.ts: each scene starts
+        # 0.02 s before its card)
+        s0 = writing - 0.02
+        for k in range(4):                        # the stylus meets the clay every 0.63 s
+            tt = s0 + 0.3142 * (2 * k + 1)
+            self.put(self.perc, tt, ins.tap(0.55, 360.0 + 20.0 * k, seed=k), -9, pan=0.2)
+        self.put(self.perc, printing - 0.02 + 2.417, ins.drum(88.0, 0.8, decay=0.14, drop=0.1, noise=0.6,
+                                                              noise_lp=1800.0, seed=11), -6)      # the platen comes down
+        self.put(self.sfx, industry + 0.05, ins.steam_whistle(1.3, ('C5', 'E5'), 0.9, seed=1), -11, pan=0.3)
+        for i, t in enumerate(ticks):
+            if industry <= t < flight:
+                for off in (0.0, 0.5):
+                    nxt = ticks[i + 1] if i + 1 < len(ticks) else t + 0.5
+                    tc = t + (nxt - t) * off
+                    self.put(self.perc, tc, self.cached(('chuff', i % 3, off), lambda: ins.chuff(0.8 if off == 0 else 0.55,
+                                                                                               seed=i % 3)), -12,
+                             pan=0.25 if off else -0.1)
         # the atom: a deep thud; then a riser and a reverse swell into the launch
         self.put(self.boom, atom, ins.sub_boom(4.0, 60.0, 28.0, 0.3, 1.6, 0.8, click=0.6, seed=70), -3)
         self.put(self.sfx, atom, ins.noise_burst(3.0, 10000.0, 300.0, 0.8, 0.6, 0.6, seed=71), -11)
@@ -952,10 +973,14 @@ class Score:
 
         # the launch: ignition thunder under the theme in full (horns, violins, choir)
         self.put(self.boom, launch, ins.sub_boom(7.0, 55.0, 24.0, 0.6, 2.8, 0.9, click=0.6, harmonics=0.5, seed=74), -3)
-        self.put(self.amb, launch, ins.rumble(step - launch + 1.0, lp=130.0, vel=0.9, attack=0.3, release=2.0, seed=8), -5)
-        self.put(self.sfx, launch, ins.noise_burst(5.0, 9000.0, 180.0, 2.5, 1.6, 0.7, seed=75), -12)
+        # The engines' roar builds over the first second and ends with the dissolve to the Moon,
+        # where there is no air to carry it.
+        moon = ml.start
+        self.put(self.amb, launch, ins.rumble(moon + 0.3 - launch, lp=140.0, vel=0.95, attack=0.8, release=0.8, seed=8),
+                 -4)
+        self.put(self.sfx, launch, ins.noise_burst(moon + 0.3 - launch, 9000.0, 300.0, 2.5, 2.2, 0.7, seed=75), -12,
+                 shape=[(launch, -12), (launch + 1.2, 0), (moon - 0.6, 0), (moon + 0.3, -40)])
         self.put(self.perc, launch, ins.timpani('A2', 1.0, seed=8), -1)
-        self.put(self.sfx, launch, ins.impact(1.0, 1.2, 6.0, seed=76), -5)
         tdyn = [(launch, -2), (launch + 1.0, 0), (step, 1), (ne.start, 0), (ne.start + 0.5, -8)]
         theme_line(self, self.brass, [1, 2, 3, 4], launch, beat,
                    lambda n, d, k: ins.brass([up([n], -1)[0], n], d, attack=0.05, release=0.35, vel=1.0, bright=1.1,
