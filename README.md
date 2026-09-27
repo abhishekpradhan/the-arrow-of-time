@@ -31,6 +31,10 @@ with credit.
 
 - **Everything is code.** No footage, samples or stock assets: shaders, ray marching, sprites and
   a small synthesizer make every pixel and every sound.
+- **Real science where it counts.** The Moon-forming impact is a smoothed-particle
+  hydrodynamics simulation run for the film (SWIFT, 61,139 particles; [recipe](tools/assets/giant_impact/README.md)),
+  played back parcel by parcel at its simulated temperatures. The present-day Earth comes from
+  Natural Earth maps, and the drifting Big Dipper follows Hipparcos proper motions.
 - **One source of timing.** `timeline.json` drives shots, captions and the score. Move a beat and
   the picture, the text and the music move with it.
 - **Cinematic post.** HDR rendering, bloom, anamorphic streaks, ACES tonemapping, grading, grain,
@@ -100,10 +104,11 @@ timeline.json ──► project.ts ──► shots (GLSL, sprites, ray marching)
 ```text
 engine/            WebGL2 film engine (TypeScript): renderer, camera, post, text, components, GLSL library
 audio/studio/      Python synthesizer, effects, music theory, loudness mastering, analysis
-tools/             render, still, audio, release and scaffolding CLIs; Modal pipeline (tools/modal/)
+tools/             render, still, audio, release and scaffolding CLIs; Modal pipeline (tools/modal/);
+                   asset builders and the impact simulation's recipe (tools/assets/)
 projects/<id>/     one folder per film: timeline.json, project.ts, shots/, shaders/, score.py
 templates/starter/ the skeleton copied by `npm run new`
-assets/            generated data (Earth maps from Natural Earth)
+assets/            data the films load: Earth maps (Natural Earth), the giant-impact simulation
 docs/              guides
 out/               renders, stills and audio (git-ignored)
 ```
@@ -125,5 +130,7 @@ issues as described in [SECURITY.md](SECURITY.md). Changes are listed in the
   ([details](projects/arrow-of-time/LICENSE.md)).
 - **Third-party** snippets, data and fonts are listed with their licenses in
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Earth maps derive from
-  [Natural Earth](https://www.naturalearthdata.com/) (public domain); the fonts (Cinzel, Jost,
-  Cormorant Garamond, via [Fontsource](https://fontsource.org/)) are under the SIL Open Font License.
+  [Natural Earth](https://www.naturalearthdata.com/) (public domain); the giant-impact data is our
+  own simulation, made with SWIFT, WoMa and SEAGen, which are credited but not redistributed; the
+  fonts (Cinzel, Jost, Cormorant Garamond, via [Fontsource](https://fontsource.org/)) are under the
+  SIL Open Font License.
