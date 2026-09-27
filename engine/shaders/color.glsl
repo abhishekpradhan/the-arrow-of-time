@@ -8,6 +8,7 @@ vec3 linearToSrgb(vec3 c) {
 }
 
 // Approximate colour of a blackbody at temperature T (Kelvin), linear RGB, max component ~1.
+// Tanner Helland's curve fit (2012) to Mitchell Charity's blackbody colour table.
 vec3 blackbody(float T) {
   float t = clamp(T, 1000.0, 40000.0) / 100.0;
   vec3 c;
@@ -17,7 +18,7 @@ vec3 blackbody(float T) {
   return srgbToLinear(clamp(c / 255.0, 0.0, 1.0));
 }
 
-// Cosine palette (Quilez): a + b*cos(2pi(c*t + d)).
+// Cosine palette, Inigo Quilez (https://iquilezles.org/articles/palettes/, MIT): a + b*cos(2pi(c*t + d)).
 vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) { return a + b * cos(TAU * (c * t + d)); }
 
 vec3 adjustSaturation(vec3 c, float s) { return mix(vec3(luma(c)), c, s); }
@@ -29,7 +30,9 @@ vec3 hueShift(vec3 c, float a) {
 }
 
 // ---------------------------------------------------------------- tonemappers
-// ACES fitted (Stephen Hill). Input linear, output linear [0,1].
+// ACES fitted, Stephen Hill (@self_shadow), as published in MJP's BakingLab
+// (https://github.com/TheRealMJP/BakingLab, MIT License, Copyright (c) 2016 MJP; see
+// THIRD_PARTY_NOTICES.md). Input linear, output linear [0,1].
 vec3 tonemapACES(vec3 c) {
   const mat3 inM = mat3(0.59719, 0.07600, 0.02840, 0.35458, 0.90834, 0.13383, 0.04823, 0.01566, 0.83777);
   const mat3 outM = mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602);
@@ -39,7 +42,9 @@ vec3 tonemapACES(vec3 c) {
   return saturate(outM * (a / b));
 }
 
-// Khronos PBR Neutral: preserves hue/saturation of bright colours.
+// Khronos PBR Neutral tone mapper: preserves hue/saturation of bright colours.
+// Adapted from https://github.com/KhronosGroup/ToneMapping (Apache License 2.0, Copyright
+// The Khronos Group Inc.): renamed and given its constants inline. See THIRD_PARTY_NOTICES.md.
 vec3 tonemapNeutral(vec3 color) {
   const float startCompression = 0.8 - 0.04;
   const float desaturation = 0.15;
@@ -55,7 +60,9 @@ vec3 tonemapNeutral(vec3 color) {
   return mix(color, vec3(newPeak), g);
 }
 
-// AgX (minimal polynomial fit). Output converted back to linear for a uniform pipeline.
+// AgX (Troy Sobotka), using Benjamin Wrensch's "Minimal AgX" matrices and polynomial fit
+// (https://iolite-engine.com/blog_posts/minimal_agx_implementation, MIT License, Copyright (c)
+// 2024 Missing Deadlines; see THIRD_PARTY_NOTICES.md). Output converted back to linear.
 vec3 tonemapAgX(vec3 v) {
   const mat3 agxM = mat3(0.842479062253094, 0.0423282422610123, 0.0423756549057051,
                          0.0784335999999992, 0.878468636469772, 0.0784336,

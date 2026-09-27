@@ -6,6 +6,7 @@ import { clamp, fbm1, lerp, saturate } from './math';
 
 export type Easing = (t: number) => number;
 
+/** Standard easing curves (Robert Penner's equations, BSD/MIT; see THIRD_PARTY_NOTICES.md). */
 export const ease = {
   linear: (t: number) => t,
   inQuad: (t: number) => t * t,

@@ -10,7 +10,10 @@ export function hex(h: string): Vec3 {
   return [srgbToLinear(((n >> 16) & 255) / 255), srgbToLinear(((n >> 8) & 255) / 255), srgbToLinear((n & 255) / 255)];
 }
 
-/** Approximate blackbody colour (linear RGB, max component ~1). Mirrors blackbody() in color.glsl. */
+/**
+ * Approximate blackbody colour (linear RGB, max component ~1). Mirrors blackbody() in color.glsl:
+ * Tanner Helland's curve fit (2012) to Mitchell Charity's blackbody colour table.
+ */
 export function blackbody(T: number): Vec3 {
   const t = Math.min(Math.max(T, 1000), 40000) / 100;
   let r: number, g: number, b: number;

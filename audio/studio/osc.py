@@ -195,6 +195,8 @@ def additive(freq, n: int, amps, ratios=None, sr: int = SR, phase0=None,
 # PolyBLEP oscillators
 # ----------------------------------------------------------------------------
 
+# The two-sample polynomial residual is the standard PolyBLEP (Välimäki et al.; as popularized
+# by Tale's and Martin Finke's implementations).
 def _blep(t: np.ndarray, dt: np.ndarray) -> np.ndarray:
     """Polynomial band-limited step residual for phase ``t`` in [0,1)."""
     r = np.zeros_like(t)

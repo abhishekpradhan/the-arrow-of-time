@@ -29,7 +29,9 @@ mat3 rotAxis(vec3 k, float a) {
     t * k.x * k.z + s * k.y, t * k.y * k.z - s * k.x, t * k.z * k.z + c);
 }
 
-// ---- Hashes ("hash without sine", Dave Hoskins, MIT). Inputs should be modest in magnitude.
+// ---- Hashes: "Hash without Sine" by Dave Hoskins (https://www.shadertoy.com/view/4djSRW),
+// MIT License, Copyright (c) 2014 David Hoskins; see THIRD_PARTY_NOTICES.md.
+// Inputs should be modest in magnitude.
 float hash11(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
 float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float hash13(vec3 p3) { p3 = fract(p3 * 0.1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
@@ -43,6 +45,7 @@ vec4 hash42(vec2 p) { vec4 p4 = fract(vec4(p.xyxy) * vec4(0.1031, 0.1030, 0.0973
 vec4 hash43(vec3 p) { vec4 p4 = fract(vec4(p.xyzx) * vec4(0.1031, 0.1030, 0.0973, 0.1099)); p4 += dot(p4, p4.wzxy + 33.33); return fract((p4.xxyz + p4.yzzw) * p4.zywx); }
 
 // Integer hash (PCG 3D) for large coordinates where the float hashes lose precision.
+// From Jarzynski & Olano, "Hash Functions for GPU Rendering", JCGT 9(3), 2020.
 uvec3 pcg3d(uvec3 v) {
   v = v * 1664525u + 1013904223u;
   v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;

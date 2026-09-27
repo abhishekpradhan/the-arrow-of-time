@@ -1,4 +1,6 @@
 // Procedural noise: value, gradient, fbm, ridged, Worley/Voronoi, domain warping.
+// The fbm octave rotations, Voronoi border distance and domain warp follow Inigo Quilez
+// (https://iquilezles.org/articles/, MIT License); see THIRD_PARTY_NOTICES.md.
 #include <common>
 
 // ---------------------------------------------------------------- value noise
@@ -122,6 +124,7 @@ vec2 worley(vec3 p) {
   return sqrt(vec2(F1, F2));
 }
 // Distance to the nearest Voronoi cell border (x) and a per-cell random id (y).
+// Inigo Quilez, "Voronoi - distances" (https://www.shadertoy.com/view/ldl3W8, MIT).
 vec2 voronoiEdge(vec2 x) {
   vec2 n = floor(x), f = fract(x);
   vec2 mg = vec2(0), mr = vec2(0);

@@ -114,6 +114,7 @@ export const m4 = {
       }
     return o;
   },
+  /** General 4x4 inverse, following gl-matrix's mat4.invert (MIT; see THIRD_PARTY_NOTICES.md). */
   invert(m: Mat4): Mat4 {
     const a = m, o = new Float32Array(16);
     const b00 = a[0] * a[5] - a[1] * a[4], b01 = a[0] * a[6] - a[2] * a[4];

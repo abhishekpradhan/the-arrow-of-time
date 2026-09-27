@@ -15,21 +15,27 @@ vec3 s(vec2 o) {
   return (any(isnan(c)) || any(isinf(c))) ? vec3(0.0) : min(c, vec3(6.0e4));
 }
 float kw(vec3 c) { return 1.0 / (1.0 + luma(c)); }
+// Jimenez, "Next Generation Post Processing in Call of Duty: Advanced Warfare" (SIGGRAPH 2014):
+// 13 bilinear taps forming five overlapping 2x2 boxes, the inner box weighted 1/2 and the four
+// corner boxes 1/8 each. On the first downsample each box is weighted by 1 / (1 + luma)
+// (Karis average), which keeps single hot pixels from blooming into flickering blobs.
 void main() {
-  vec3 a = s(vec2(-2, 2)), b = s(vec2(0, 2)), c = s(vec2(2, 2));
-  vec3 d = s(vec2(-2, 0)), e = s(vec2(0, 0)), f = s(vec2(2, 0));
-  vec3 g = s(vec2(-2, -2)), h = s(vec2(0, -2)), i = s(vec2(2, -2));
-  vec3 j = s(vec2(-1, 1)), k = s(vec2(1, 1)), l = s(vec2(-1, -1)), m = s(vec2(1, -1));
-  vec3 col;
-  if (uKaris == 1) {
-    vec3 g0 = (a + b + d + e) * 0.25, g1 = (b + c + e + f) * 0.25, g2 = (d + e + g + h) * 0.25;
-    vec3 g3 = (e + f + h + i) * 0.25, g4 = (j + k + l + m) * 0.25;
-    float w0 = kw(g0) * 0.125, w1 = kw(g1) * 0.125, w2 = kw(g2) * 0.125, w3 = kw(g3) * 0.125, w4 = kw(g4) * 0.5;
-    col = (g0 * w0 + g1 * w1 + g2 * w2 + g3 * w3 + g4 * w4) / (w0 + w1 + w2 + w3 + w4);
-  } else {
-    col = e * 0.125 + (a + c + g + i) * 0.03125 + (b + d + f + h) * 0.0625 + (j + k + l + m) * 0.125;
-  }
-  fragColor = vec4(max(col, 0.0), 1.0);
+  vec3 grid[9]; // 3x3 taps two texels apart, row by row from (-2, -2)
+  for (int y = 0; y < 3; y++)
+    for (int x = 0; x < 3; x++) grid[y * 3 + x] = s(vec2(float(x - 1), float(y - 1)) * 2.0);
+  vec3 inner = 0.25 * (s(vec2(-1.0, -1.0)) + s(vec2(1.0, -1.0)) + s(vec2(-1.0, 1.0)) + s(vec2(1.0, 1.0)));
+  float w = 0.5 * (uKaris == 1 ? kw(inner) : 1.0);
+  vec3 sum = inner * w;
+  float wsum = w;
+  for (int y = 0; y < 2; y++)
+    for (int x = 0; x < 2; x++) {
+      int o = y * 3 + x;
+      vec3 box = 0.25 * (grid[o] + grid[o + 1] + grid[o + 3] + grid[o + 4]);
+      float wb = 0.125 * (uKaris == 1 ? kw(box) : 1.0);
+      sum += box * wb;
+      wsum += wb;
+    }
+  fragColor = vec4(max(sum / wsum, 0.0), 1.0);
 }`;
 
 const UP = `

@@ -103,7 +103,8 @@ and Windows) everything is much faster. Tips:
 
 ## Credits and licenses
 
-- Code: this repository.
+- Code and films: original work of this repository, except the third-party snippets, data and
+  fonts listed with their licenses in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - Earth maps: derived from [Natural Earth](https://www.naturalearthdata.com/) (public domain).
 - Fonts: Cinzel, Jost and Cormorant Garamond via [Fontsource](https://fontsource.org/) (SIL Open Font License).
 - Everything else, meaning all imagery and all music, is generated procedurally by this code.

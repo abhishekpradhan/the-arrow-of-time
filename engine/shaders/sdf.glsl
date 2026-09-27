@@ -1,4 +1,6 @@
 // 2D signed distance functions and anti-aliased shape helpers.
+// sdBox, sdSegment, sdEllipse (bound), sdTriangle and the polynomial smin follow Inigo Quilez
+// (https://iquilezles.org/articles/distfunctions2d/, MIT License); see THIRD_PARTY_NOTICES.md.
 #include <common>
 
 float sdCircle(vec2 p, float r) { return length(p) - r; }

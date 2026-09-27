@@ -30,6 +30,9 @@ from .fx import compress
 
 def k_weighting_sos(sr: int = SR) -> np.ndarray:
     """The two BS.1770 K-weighting biquads as SOS, derived for ``sr``.
+
+    The analog-prototype derivation follows libebur128's ``ebur128_init_filter``
+    (MIT License, Copyright (c) 2011 Jan Kokemüller; see THIRD_PARTY_NOTICES.md).
     At 48 kHz this reproduces the coefficients tabulated in the standard."""
     # stage 1: high-shelf (head acoustics)
     f0, G, Q = 1681.974450955533, 3.999843853973347, 0.7071752369554196

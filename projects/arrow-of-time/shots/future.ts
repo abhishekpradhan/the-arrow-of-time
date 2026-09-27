@@ -92,6 +92,7 @@ function mars(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
 
 // ------------------------------------------------------------------ the constellations dissolve
 // Big Dipper stars: position (deg, RA-offset x cos dec, dec offset) and proper motion (mas/yr).
+// Positions, proper motions and magnitudes from the Hipparcos catalogue (ESA).
 const DIPPER: { x: number; y: number; pmx: number; pmy: number; m: number }[] = [
   { x: -11.36, y: 6.25, pmx: -134, pmy: -35, m: 1.8 },
   { x: -11.63, y: 0.88, pmx: 82, pmy: 34, m: 2.4 },
@@ -627,7 +628,8 @@ void main() {
   float rs = max(uRs, 1e-4);
   vec3 h3 = cross(pos, vel);
   float h2 = dot(h3, h3);
-  // Integrate the photon path: a'' = -1.5 rs h^2 r / |r|^5 (Schwarzschild null geodesic).
+  // Integrate the photon path: a'' = -1.5 rs h^2 r / |r|^5 (Schwarzschild null geodesic), the
+  // force-law form popularized by Riccardo Antonelli's "Starless" write-up.
   // Per-pixel jitter of the step length turns integration banding into fine noise.
   float jit = 0.75 + 0.5 * hash12(gl_FragCoord.xy);
   for (int i = 0; i < 260; i++) {

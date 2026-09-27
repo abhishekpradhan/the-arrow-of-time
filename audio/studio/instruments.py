@@ -400,7 +400,8 @@ def bell(note, dur: float = 6.0, vel: float = 0.8, kind: str = 'glass', glide: f
 # Choir
 # ============================================================================
 
-#: (section, vowel) -> (formant Hz, gains dB, bandwidths Hz)
+#: (section, vowel) -> (formant Hz, gains dB, bandwidths Hz). Values from the formant
+#: table in the Csound manual (Appendix: formant values), themselves measured data.
 FORMANTS = {
     ('soprano', 'a'): ([800, 1150, 2900, 3900, 4950], [0, -6, -32, -20, -50], [80, 90, 120, 130, 140]),
     ('alto', 'a'): ([800, 1150, 2800, 3500, 4950], [0, -4, -20, -36, -60], [80, 90, 120, 130, 140]),
