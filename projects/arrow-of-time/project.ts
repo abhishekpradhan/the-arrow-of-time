@@ -60,10 +60,14 @@ function flashAt(t: number) {
   return pulse(t, cues.bang, 1.1, 3.2) + pulse(t, cues.lastFlash, 0.2, 2.0);
 }
 
+/** The Trinity flash: the montage card for the atom. */
+const TRINITY = (beat('civilization') as { montage?: { t: number; title: string }[] }).montage!.find((m) => m.title === 'The Atom')!.t;
+
 /** Exposure kicks (EV) for impacts and ignitions. */
 function exposureAt(t: number) {
   return (
     pulse(t, cues.supernova, 0.6, 2.5) + pulse(t, cues.sunIgnite, 0.7, 2.0) + pulse(t, cues.theia, 0.5, 2.4) +
+    pulse(t, TRINITY, 1.2, 5.0) +
     pulse(t, cues.theiaReturn, 0.3, 2.4) +
     pulse(t, cues.asteroidImpact, 1.0, 2.2) + pulse(t, cues.lastFlash, 1.5, 1.2)
   );
