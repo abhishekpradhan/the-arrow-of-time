@@ -359,7 +359,8 @@ def main(
     busy, done, failed = 0.0, 0, []
     args = [(project, preset, scale, a, b, rel, step / fps / WORKERS, force) for a, b, rel in todo]
     # A failed slice does not stop the others: they finish and stay cached, so a re-run resumes.
-    for spent in render_slice.starmap(args, order_outputs=False, return_exceptions=True):
+    # (Never map over an empty list: with every slice cached, that call waits forever.)
+    for spent in render_slice.starmap(args, order_outputs=False, return_exceptions=True) if args else []:
         if isinstance(spent, BaseException):
             failed.append(spent)
             continue
@@ -368,11 +369,13 @@ def main(
         print(f"[modal] slices {done}/{len(todo)}  ({time.time() - t0:.0f} s)", flush=True)
     if failed:
         raise SystemExit(f"{len(failed)} slice(s) failed (the rest are cached; run again to retry): {failed[0]}")
+    print("[modal] waiting for the soundtrack …", flush=True)
     audio_s = audio_call.get()
     cost = busy * (CPU * USD_PER_CORE_S + MEMORY_GIB * USD_PER_GIB_S) + audio_s * (2 * USD_PER_CORE_S + 8 * USD_PER_GIB_S)
 
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     master = f"{base}/renders/{project}-{preset}-{stamp}.mp4"
+    print(f"[modal] joining {len(plan)} slices and adding the soundtrack …", flush=True)
     cost += assemble.remote(project, [rel for _, _, rel in plan], audio_rel, frames, fps, master) * (4 * USD_PER_CORE_S + 8 * USD_PER_GIB_S)
     _write(f"{base}/latest.json", json.dumps({
         "slice_frames": step, "slices": plan, "video": vkey, "audio": audio_rel, "master": master, "commit": _git_commit(),
@@ -382,6 +385,7 @@ def main(
     if release:
         rel_dir = f"{base}/release/{stamp}"
         wanted = [v.strip() for v in variants.split(",") if v.strip()]
+        print(f"[modal] encoding {', '.join(wanted)} in parallel …", flush=True)
         for spent in release_variant.starmap([(project, master, v, poster, rel_dir) for v in wanted], order_outputs=False):
             cost += spent * (16 * USD_PER_CORE_S + 16 * USD_PER_GIB_S)
         names = finalize_release.remote(project, rel_dir, duration, _git_commit())
