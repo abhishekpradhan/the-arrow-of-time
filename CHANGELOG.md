@@ -7,6 +7,8 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-27
+
 ### Added
 
 - **Modal render pipeline** (`tools/modal/studio.py`, [docs/modal.md](docs/modal.md)): CPU
@@ -77,5 +79,6 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 - `npm run new` and the starter template.
 - *The Arrow of Time*, first cut.
 
-[Unreleased]: https://github.com/abhishekpradhan/movies/compare/arrow-of-time-v0.2...HEAD
+[Unreleased]: https://github.com/abhishekpradhan/movies/compare/arrow-of-time-v0.3...HEAD
+[0.3.0]: https://github.com/abhishekpradhan/movies/releases/tag/arrow-of-time-v0.3
 [0.2.0]: https://github.com/abhishekpradhan/movies/releases/tag/arrow-of-time-v0.2

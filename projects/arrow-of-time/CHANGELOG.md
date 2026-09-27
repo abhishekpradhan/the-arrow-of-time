@@ -3,7 +3,7 @@
 The newest section is used for the release notes. Cuts are published on the
 [Releases page](https://github.com/abhishekpradhan/movies/releases).
 
-## Unreleased
+## v0.3 (27 September 2026)
 
 - **The Moon** now comes from a real simulation. An SPH run (SWIFT, 61,139 particles) of Theia
   striking the proto-Earth plays back particle by particle: the graze, the remnant's return and
