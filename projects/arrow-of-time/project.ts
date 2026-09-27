@@ -5,7 +5,7 @@ import '@fontsource/cormorant-garamond/400-italic.css';
 import '@fontsource/cormorant-garamond/500-italic.css';
 import { defineProject, keys, shake, type Look, type Vec3 } from '@engine';
 import T from './timeline.json';
-import { cues } from './lib';
+import { beat, cues } from './lib';
 import { buildText, placeOf, scrimFor, type LayoutSpec } from './text';
 import { universeShots } from './shots/universe';
 import { dawnShots } from './shots/dawn';
@@ -19,11 +19,11 @@ const shots = [...universeShots(), ...dawnShots(), ...sunShots(), ...lifeShots()
 /** Open the 2.39:1 letterbox to full frame for the biggest moments. */
 const IMAX: [number, number, number, number][] = [
   // [open start, open end, close start, close end]
-  [cues.bang - 0.02, cues.bang + 0.5, 30.0, 32.5],
-  [69.2, 71.0, 79.2, 81.2],
-  [cues.asteroidImpact - 0.1, cues.asteroidImpact + 0.4, 161.0, 163.0],
-  [239.5, 241.5, 247.2, 249.2],
-  [269.5, 271.5, 285.6, 287.6],
+  [cues.bang - 0.02, cues.bang + 0.5, beat('bigbang').end, beat('bigbang').end + 2.5],
+  [cues.milkyWayReveal - 0.8, cues.milkyWayReveal + 1.0, cues.supernova - 1.8, cues.supernova + 0.2],
+  [cues.asteroidImpact - 0.1, cues.asteroidImpact + 0.4, cues.asteroidImpact + 3.0, cues.asteroidImpact + 5.0],
+  [cues.redGiantSwell - 0.5, cues.redGiantSwell + 1.5, cues.redGiantSwell + 7.2, cues.redGiantSwell + 9.2],
+  [beat('blackholes').start - 0.5, beat('blackholes').start + 1.5, cues.lastFlash + 2.1, cues.lastFlash + 4.1],
 ];
 
 function letterbox(t: number) {
@@ -83,8 +83,8 @@ function shakeAt(t: number): [number, number] {
 function grade(t: number): Partial<Look> {
   const warm: Vec3 = [1.03, 1.0, 0.95];
   const cool: Vec3 = [0.96, 1.0, 1.05];
-  const gain = t < 80 ? cool : t < 216 ? warm : cool;
-  const sat = keys(t, [[0, 1.0], [260, 1.0], [296, 0.55], [305, 0.9]]);
+  const gain = t < 80 ? cool : t < cues.resumeTick - 0.5 ? warm : cool;
+  const sat = keys(t, [[0, 1.0], [beat('laststars').start - 2, 1.0], [beat('epilogue').start, 0.55], [beat('epilogue').start + 9, 0.9]]);
   return { gain, lift: [0.0, 0.0005, 0.0015], saturation: sat, contrast: 1.04 };
 }
 
@@ -112,10 +112,15 @@ export default defineProject({
     bloom: 0.075,
     bloomRadius: 1.0,
     streak:
-      (t > 101.8 && t < 104.5) || (t > 157.9 && t < 160.5) || (t > 239 && t < 249)
+      (t > cues.theia - 0.2 && t < cues.theia + 2.5) ||
+      (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2.5) ||
+      (t > cues.redGiantSwell - 1 && t < cues.redGiantSwell + 9)
         ? 0
-        : keys(t, [[0, 0.35], [19.9, 0.35], [20.0, 0.06], [30, 0.06], [31, 0.09], [68, 0.09], [70, 0.025], [80, 0.025], [82, 0.09]]),
-    streakThreshold: (t > 19.9 && t < 31) || (t > 101.8 && t < 104) || (t > 157.9 && t < 160) ? 6 : 2.5,
+        : keys(t, [[0, 0.35], [cues.bang - 0.1, 0.35], [cues.bang, 0.06], [cues.bang + 10, 0.06], [cues.bang + 11, 0.09],
+            [cues.milkyWayReveal - 2, 0.09], [cues.milkyWayReveal, 0.025], [cues.supernova - 1, 0.025], [cues.supernova + 1, 0.09]]),
+    streakThreshold:
+      (t > cues.bang - 0.1 && t < cues.bang + 11) || (t > cues.theia - 0.2 && t < cues.theia + 2) ||
+      (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2) ? 6 : 2.5,
     vignette: 0.32,
     grain: 0.034,
     aberration: 0.6,

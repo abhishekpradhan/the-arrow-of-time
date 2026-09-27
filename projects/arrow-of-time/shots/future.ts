@@ -56,7 +56,7 @@ void main() {
 function turn(): Shot {
   const b = beat('turn');
   // The hand jumps on each tick of the resumed clock.
-  const tickTimes = [cues.resumeTick, 218, 219, 220, 221, 222];
+  const tickTimes = [0, 1.5, 2.5, 3.5, 4.5, 5.5].map((d) => cues.resumeTick + d);
   return {
     ...span('turn', { dIn: 0.6, dOut: 1.6 }),
     render(c) {
@@ -743,10 +743,11 @@ function epilogue(): Shot<{ cam: Camera; sky: Sprites; dot: Sprites }> {
     },
     render(c, s) {
       s.cam.set({ pos: [0, 0, 0], target: [0, 0, -1] });
-      const stars = prog(c.time, 300, 309, 'inOutSine') * (1 - prog(c.time, 315.5, 318, 'inOutSine'));
+      const e = beat('epilogue');
+      const stars = prog(c.time, e.start + 4, e.start + 13, 'inOutSine') * (1 - prog(c.time, e.end - 2.5, e.end, 'inOutSine'));
       s.sky.draw(s.cam, c.time, {}, { sky: true, brightness: stars });
       const warm = prog(c.time, cues.picardy, cues.picardy + 3, 'inOutSine');
-      const dot = prog(c.time, 302, 306, 'inOutSine') * (1 - prog(c.time, 315, 317.5, 'inOutSine'));
+      const dot = prog(c.time, e.start + 6, e.start + 10, 'inOutSine') * (1 - prog(c.time, e.end - 3, e.end - 0.5, 'inOutSine'));
       c.gl.enable(c.gl.BLEND);
       c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
       c.fullscreen(c.e.program(`

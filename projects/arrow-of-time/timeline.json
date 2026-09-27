@@ -2,7 +2,7 @@
   "title": "The Arrow of Time",
   "logline": "The history and future of everything, from the first instant to the last.",
   "fps": 24,
-  "duration": 318,
+  "duration": 334,
   "notes": "Single source of truth for timing. Read by project.ts (visuals, captions) and score.py (music). Times in seconds. Exponents use ^ (e.g. 10^40), minus signs use U+2212.",
   "syncCues": ["bang", "theia", "asteroidImpact", "now", "lastFlash"],
   "beats": [
@@ -30,7 +30,7 @@
     { "id": "mammals", "act": "human", "start": 162, "end": 168, "card": "chapter", "layout": "upper-right", "title": "The Age of Mammals", "line": "The small survive, and inherit the Earth." },
     { "id": "humans", "act": "human", "start": 168, "end": 176, "card": "chapter", "layout": "lower-left", "era": "300,000 years ago", "title": "Homo Sapiens", "line": "A new kind of animal looks up, and wonders." },
     { "id": "caves", "act": "human", "start": 176, "end": 182, "card": "chapter", "era": "40,000 years ago", "line": "We begin to leave our mark." },
-    { "id": "civilization", "act": "human", "start": 182, "end": 196, "card": "montage",
+    { "id": "civilization", "act": "human", "start": 182, "end": 212, "card": "montage",
       "montage": [
         { "t": 182.0, "era": "10,000 BCE", "title": "Farming" },
         { "t": 184.0, "era": "4000 BCE", "title": "Cities" },
@@ -43,21 +43,21 @@
         { "t": 193.5, "era": "1945", "title": "The Atom" },
         { "t": 194.4, "era": "1957", "title": "Space" }
       ] },
-    { "id": "moonlanding", "act": "human", "start": 196, "end": 202, "card": "chapter", "layout": "upper-left", "era": "1969", "line": "We set foot on another world." },
-    { "id": "nightearth", "act": "human", "start": 202, "end": 208, "card": "chapter", "layout": "upper-left", "era": "Today", "line": "Eight billion of us." },
-    { "id": "now", "act": "now", "start": 208, "end": 216, "card": "chapter", "era": "Now", "line": "Everything you have ever known." },
-    { "id": "turn", "act": "future", "start": 216, "end": 220, "card": "whisper", "line": "But the clock keeps ticking." },
-    { "id": "mars", "act": "future", "start": 220, "end": 228, "card": "chapter", "layout": "right", "era": "+1,000 years", "title": "New Worlds", "line": "Perhaps we learn to make other worlds our home." },
-    { "id": "drift", "act": "future", "start": 228, "end": 234, "card": "chapter", "era": "+100,000 years", "line": "The stars drift. The constellations dissolve." },
-    { "id": "hotearth", "act": "future", "start": 234, "end": 240, "card": "chapter", "layout": "upper-left", "era": "+1 billion years", "line": "The Sun brightens. Earth's oceans boil away." },
-    { "id": "redgiant", "act": "future", "start": 240, "end": 248, "card": "chapter", "layout": "upper-left", "era": "+5 billion years", "title": "Red Giant", "line": "The Sun swells, swallowing Mercury and Venus." },
-    { "id": "whitedwarf", "act": "future", "start": 248, "end": 254, "card": "chapter", "layout": "lower-left", "era": "+8 billion years", "line": "It sheds its outer layers. A cooling ember remains." },
-    { "id": "merger", "act": "future", "start": 254, "end": 262, "card": "chapter", "layout": "upper-left", "era": "+10 billion years", "line": "The Milky Way and Andromeda may merge into one." },
-    { "id": "laststars", "act": "end", "start": 262, "end": 270, "card": "chapter", "layout": "center", "era": "+100 trillion years", "title": "The Last Stars", "line": "One by one, the lights go out." },
-    { "id": "blackholes", "act": "end", "start": 270, "end": 278, "card": "chapter", "era": "+10^40 years", "title": "The Black Hole Era", "line": "Only black holes remain." },
-    { "id": "evaporation", "act": "end", "start": 278, "end": 286, "card": "chapter", "era": "+10^100 years", "line": "Even they evaporate, in a final flash of light." },
-    { "id": "heatdeath", "act": "end", "start": 286, "end": 296, "card": "chapter", "layout": "center", "title": "The End of Time", "line": "No light. No change. No time." },
-    { "id": "epilogue", "act": "epilogue", "start": 296, "end": 318, "card": "epilogue" }
+    { "id": "moonlanding", "act": "human", "start": 212, "end": 218, "card": "chapter", "layout": "upper-left", "era": "1969", "line": "We set foot on another world." },
+    { "id": "nightearth", "act": "human", "start": 218, "end": 224, "card": "chapter", "layout": "upper-left", "era": "Today", "line": "Eight billion of us." },
+    { "id": "now", "act": "now", "start": 224, "end": 232, "card": "chapter", "era": "Now", "line": "Everything you have ever known." },
+    { "id": "turn", "act": "future", "start": 232, "end": 236, "card": "whisper", "line": "But the clock keeps ticking." },
+    { "id": "mars", "act": "future", "start": 236, "end": 244, "card": "chapter", "layout": "right", "era": "+1,000 years", "title": "New Worlds", "line": "Perhaps we learn to make other worlds our home." },
+    { "id": "drift", "act": "future", "start": 244, "end": 250, "card": "chapter", "era": "+100,000 years", "line": "The stars drift. The constellations dissolve." },
+    { "id": "hotearth", "act": "future", "start": 250, "end": 256, "card": "chapter", "layout": "upper-left", "era": "+1 billion years", "line": "The Sun brightens. Earth's oceans boil away." },
+    { "id": "redgiant", "act": "future", "start": 256, "end": 264, "card": "chapter", "layout": "upper-left", "era": "+5 billion years", "title": "Red Giant", "line": "The Sun swells, swallowing Mercury and Venus." },
+    { "id": "whitedwarf", "act": "future", "start": 264, "end": 270, "card": "chapter", "layout": "lower-left", "era": "+8 billion years", "line": "It sheds its outer layers. A cooling ember remains." },
+    { "id": "merger", "act": "future", "start": 270, "end": 278, "card": "chapter", "layout": "upper-left", "era": "+10 billion years", "line": "The Milky Way and Andromeda may merge into one." },
+    { "id": "laststars", "act": "end", "start": 278, "end": 286, "card": "chapter", "layout": "center", "era": "+100 trillion years", "title": "The Last Stars", "line": "One by one, the lights go out." },
+    { "id": "blackholes", "act": "end", "start": 286, "end": 294, "card": "chapter", "era": "+10^40 years", "title": "The Black Hole Era", "line": "Only black holes remain." },
+    { "id": "evaporation", "act": "end", "start": 294, "end": 302, "card": "chapter", "era": "+10^100 years", "line": "Even they evaporate, in a final flash of light." },
+    { "id": "heatdeath", "act": "end", "start": 302, "end": 312, "card": "chapter", "layout": "center", "title": "The End of Time", "line": "No light. No change. No time." },
+    { "id": "epilogue", "act": "epilogue", "start": 312, "end": 334, "card": "epilogue" }
   ],
   "prologueLines": [
     { "start": 2.0, "end": 6.6, "text": "Everything that has ever happened," },
@@ -65,13 +65,13 @@
     { "start": 12.0, "end": 16.8, "text": "begins with a single point." }
   ],
   "epilogueLines": [
-    { "start": 297.5, "end": 303.0, "text": "Between the first light and the last," },
-    { "start": 303.4, "end": 309.0, "text": "there is a brief moment when the universe can look at itself." },
-    { "start": 309.4, "end": 313.2, "text": "That moment is now." }
+    { "start": 313.5, "end": 319.0, "text": "Between the first light and the last," },
+    { "start": 319.4, "end": 325.0, "text": "there is a brief moment when the universe can look at itself." },
+    { "start": 325.4, "end": 329.2, "text": "That moment is now." }
   ],
   "titleCards": [
     { "start": 21.2, "end": 29.2, "text": "The Arrow of Time" },
-    { "start": 313.4, "end": 318.0, "text": "The Arrow of Time", "credit": "A film by Abhishek Pradhan" }
+    { "start": 329.4, "end": 334.0, "text": "The Arrow of Time", "credit": "A film by Abhishek Pradhan" }
   ],
   "cues": {
     "firstTick": 1.0,
@@ -88,17 +88,17 @@
     "asteroidImpact": 158.0,
     "fire": 168.5,
     "accelStart": 182.0,
-    "moonStep": 197.0,
-    "now": 208.0,
-    "blueDot": 209.0,
-    "resumeTick": 216.5,
-    "redGiantSwell": 240.0,
-    "lastFlash": 283.5,
-    "lastTick": 294.0,
-    "picardy": 309.4,
-    "finalTitle": 313.4,
-    "finalTick": 317.2
+    "moonStep": 213.0,
+    "now": 224.0,
+    "blueDot": 225.0,
+    "resumeTick": 232.5,
+    "redGiantSwell": 256.0,
+    "lastFlash": 299.5,
+    "lastTick": 310.0,
+    "picardy": 325.4,
+    "finalTitle": 329.4,
+    "finalTick": 333.2
   },
   "starIgnitions": [56.6, 57.3, 57.9, 58.4, 59.2, 59.6, 60.3, 60.9, 61.4, 61.8, 62.4, 62.9],
-  "starDeaths": [262.8, 263.9, 264.8, 265.9, 266.7, 267.8, 268.6, 269.4]
+  "starDeaths": [278.8, 279.9, 280.8, 281.9, 282.7, 283.8, 284.6, 285.4]
 }
