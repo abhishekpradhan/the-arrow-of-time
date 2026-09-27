@@ -128,13 +128,13 @@ function frame(cam: Camera, time: number) {
   const { theia, theiaReturn: ret, moonBorn: born } = cues;
   const az = spline(time, [[theia - 2.5, 1.12], [ret, 1.3], [born + 2, 1.55]]);
   const el = spline(time, [[theia - 2.5, 0.5], [theia + 1, 0.6], [ret + 1.5, 0.85], [born, 0.9], [born + 1.8, 0.42]]);
-  const dist = spline(time, [[theia - 2.5, 12], [theia + 0.2, 9.5], [theia + 3, 13], [ret, 15.5], [ret + 1.8, 24], [born, 25], [born + 1.8, 7.2]]);
+  const dist = spline(time, [[theia - 2.5, 12], [theia + 0.2, 9.5], [theia + 3, 13], [ret, 15.5], [ret + 1.8, 24], [born - 1.2, 24], [born + 1.4, 10]]);
   const panX = spline(time, [[theia - 2.5, -0.13], [born, -0.13], [born + 1.8, -0.2]]);
   const panY = spline(time, [[theia - 2.5, 0.02], [ret, 0.08], [ret + 1.8, 0.16], [born, 0.16], [born + 1.8, 0.03]]);
   cam.set({ pos: [Math.sin(az) * dist * Math.cos(el), dist * Math.sin(el), Math.cos(az) * dist * Math.cos(el)], target: [0, 0, 0], fov: 36 });
   cam.pan(panX * dist, panY * dist);
   // Then down to the young Earth, arriving at the oceans shot's view as that shot dissolves in.
-  const k = prog(time, born - 0.9, beat('oceans').start - 0.6, 'inOutCubic');
+  const k = prog(time, born - 1.0, beat('oceans').start - 0.2, 'inOutSine');
   if (k > 0) {
     const v = youngEarthView(time);
     cam.set({ pos: v3.lerp(cam.pos, v.pos, k), target: v3.lerp(cam.target, v.target, k), fov: 36 + (v.fov - 36) * k });
