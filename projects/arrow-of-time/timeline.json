@@ -17,7 +17,7 @@
     { "id": "milkyway", "act": "dawn", "start": 70, "end": 80, "card": "chapter", "layout": "upper-right", "era": "Our Galaxy", "title": "The Milky Way", "line": "Hundreds of billions of stars. One of them will be ours." },
     { "id": "nebula", "act": "sun", "start": 80, "end": 86, "card": "chapter", "layout": "right", "era": "4.6 billion years ago", "line": "A cloud of gas and dust begins to collapse." },
     { "id": "sun", "act": "sun", "start": 86, "end": 94, "card": "chapter", "title": "The Sun Is Born", "line": "Around it, a disk of dust gathers into worlds." },
-    { "id": "earth", "act": "sun", "start": 94, "end": 100, "card": "chapter", "layout": "right", "era": "4.54 billion years ago", "title": "Earth", "line": "A molten world, battered by debris." },
+    { "id": "earth", "act": "sun", "start": 94, "end": 100, "card": "chapter", "layout": "left", "era": "4.54 billion years ago", "title": "Earth", "line": "A molten world, battered by debris." },
     { "id": "moon", "act": "sun", "start": 100, "end": 112, "card": "chapter", "layout": "lower-left", "captionDelay": 3.0, "era": "4.5 billion years ago", "title": "The Moon", "line": "A Mars-sized world strikes Earth. From the debris, the Moon." },
     { "id": "oceans", "act": "sun", "start": 112, "end": 120, "card": "chapter", "layout": "left", "era": "4.4 billion years ago", "title": "Oceans", "line": "Steam condenses. Rain fills the first seas." },
     { "id": "life", "act": "life", "start": 120, "end": 128, "card": "chapter", "layout": "lower-right", "era": "3.8 billion years ago", "title": "Life", "line": "In the deep sea, chemistry becomes biology." },

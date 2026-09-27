@@ -210,51 +210,7 @@ function sunBorn(): Shot<{ cam: Camera; sky: Sprites; bits: Sprites; half: Rende
   };
 }
 
-// ------------------------------------------------------------------ molten Earth
-function impactsAt(time: number, seed: number, from: number, rate: number): [number, number, number, number][] {
-  const r = rng(seed);
-  const list: [number, number, number, number][] = [];
-  for (let k = 0; k < 40; k++) {
-    const t0 = from + k / rate + r.range(-0.3, 0.3);
-    const dir = r.onSphere();
-    // Prefer the visible hemisphere (+z faces the camera in local coordinates at yaw 0).
-    const d: Vec3 = [dir[0], dir[1] * 0.8, Math.abs(dir[2]) * 0.8 + 0.3];
-    const age = time - t0;
-    if (age >= 0 && age < 5) list.push([d[0], d[1], d[2], age]);
-  }
-  return list.slice(-8);
-}
-
-function moltenEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
-  return {
-    ...span('earth', { dIn: 1.0, dOut: 0.6 }),
-    setup: (e) => ({ planet: new Planet(e), cam: new Camera({ fov: 32 }), sky: new Sprites(e, starSphere(rng(94), { count: 8000, brightness: 0.35 })) }),
-    render(c, s) {
-      const t = c.time - beat('earth').start;
-      s.cam.set({ pos: [0.0, 0.25, keys(t, [[-1, 4.4], [7, 3.8, 'inOutSine']])], target: [0.55, 0.05, 0] });
-      s.sky.draw(s.cam, c.time, {}, { sky: true });
-      s.planet.draw(c, s.cam, {
-        center: [0, 0, 0],
-        radius: 1,
-        spin: c.time * 0.05,
-        tilt: 0.3,
-        sunDir: [-0.8, 0.25, 0.55],
-        sunColor: [1.3, 1.2, 1.05],
-        seed: 3,
-        lava: 1,
-        crust: keys(t, [[-1, 0.25], [7, 0.55]]),
-        atmo: 0.45,
-        atmoColor: [0.9, 0.45, 0.2],
-        haze: 0.05,
-        hazeColor: [0.6, 0.3, 0.15],
-        nightGlow: 1,
-        impacts: impactsAt(c.time, 11, 93, 1.6),
-      });
-    },
-  };
-}
-
-// ------------------------------------------------------------------ the Moon-forming impact: shots/moon.ts
+// ------------------------------------------------------------------ the molten Earth and the Moon-forming impact: shots/moon.ts
 
 // ------------------------------------------------------------------ oceans
 function oceans(): Shot<{ planet: Planet; moon: Planet; cam: Camera; sky: Sprites }> {
@@ -293,5 +249,5 @@ function oceans(): Shot<{ planet: Planet; moon: Planet; cam: Camera; sky: Sprite
 }
 
 export function sunShots(): Shot[] {
-  return [nebula(), sunBorn(), moltenEarth(), giantImpact(), youngMoon(), oceans()];
+  return [nebula(), sunBorn(), giantImpact(), youngMoon(), oceans()];
 }

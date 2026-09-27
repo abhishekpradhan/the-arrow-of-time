@@ -28,6 +28,7 @@ uniform float uBloom;            // cyanobacteria blooms in shallow seas
 uniform sampler2D uAlbedo, uMasks, uClimate, uRelief;
 uniform float uHasEarth;
 uniform float uDepthWrite;
+uniform float uOpacity;
 
 // Seam-free equirectangular sampling (Tarini): pick derivatives from the continuous longitude.
 vec4 sampleEq(sampler2D tex, vec3 q) {
@@ -235,7 +236,7 @@ void main() {
     col = mix(col, uHazeColor * (0.2 + 0.8 * smoothstep(-0.3, 0.5, ndl)) * uSunColor, uHaze * (0.35 + 0.65 * rim));
     alpha = cover;
     col *= cover;
-    if (uDepthWrite > 0.5) gl_FragDepth = cover > 0.5 ? depthOf(pos) : 1.0;
+    if (uDepthWrite > 0.5) gl_FragDepth = cover * uOpacity > 0.5 ? depthOf(pos) : 1.0;
   } else if (uDepthWrite > 0.5) {
     gl_FragDepth = 1.0;
   }
@@ -248,7 +249,7 @@ void main() {
     vec3 halo = (uAtmoColor * lit * 1.4 + vec3(1.0, 0.5, 0.25) * twilight * 0.5) * exp(-max(hgt, 0.0) * 1.3) * uAtmo;
     col += halo * (1.0 - alpha);
   }
-  fragColor = vec4(col, alpha);
+  fragColor = vec4(col, alpha) * uOpacity;
 }`;
 
 export interface PlanetParams {
@@ -295,6 +296,8 @@ export interface PlanetParams {
   dustR?: number;
   dust?: number;
   bloom?: number;
+  /** Fades the whole planet (0..1), e.g. to hand it over to a particle simulation. */
+  opacity?: number;
   /** Write depth unconditionally (sprites drawn later can depth-test against the planet). */
   depthWrite?: boolean;
   /**
@@ -402,6 +405,7 @@ export class Planet {
       uClimate: this.maps?.climate ?? this.e.blankTexture,
       uRelief: this.maps?.relief ?? this.e.blankTexture,
       uDepthWrite: depth ? 1 : 0,
+      uOpacity: p.opacity ?? 1,
     });
     gl.disable(gl.BLEND);
     if (depth) {
