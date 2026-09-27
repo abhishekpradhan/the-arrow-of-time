@@ -131,8 +131,13 @@ vec3 surface(vec3 q, vec3 n, vec3 sun, float daylight, out float spec, out vec3 
   if (uIce > 0.0) {
     float lat = abs(q.y);
     float edge = 1.0 - uIce * 1.12;
-    float ice = smoothstep(edge - 0.04, edge + 0.04, lat + 0.08 * (fbm(q * 6.0, 4) - 0.5));
-    col = mix(col, vec3(0.82, 0.88, 0.95), ice);
+    // Near the end the last open water breaks into leads and polynyas instead of closing
+    // along one clean line, and fresh ice at the front is thin and grey.
+    float breakup = smoothstep(0.3, 0.0, edge);
+    float n = 0.08 * (fbm(q * 6.0, 4) - 0.5) + breakup * 0.14 * (fbm(q * 15.0 + 3.0, 3) - 0.5);
+    float ice = smoothstep(edge - 0.04, edge + 0.04, lat + n);
+    vec3 iceC = mix(vec3(0.46, 0.55, 0.62), vec3(0.82, 0.88, 0.95), smoothstep(0.0, 0.12, lat + n - edge));
+    col = mix(col, iceC, ice);
     spec *= 1.0 - ice;
   }
   // ---------------- impacts (molten Earth bombardment)
