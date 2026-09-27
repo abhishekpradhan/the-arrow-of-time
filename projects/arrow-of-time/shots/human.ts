@@ -1,8 +1,9 @@
 // Act V: mammals, the first people, cave art, civilization, the Moon landing, Earth at night, NOW.
 import { Camera, Sprites, allocSprites, keys, m4, prog, rng, starSphere, type Mat4, type Shot, type Vec3 } from '@engine';
 import { beat, cues, span, timeline } from '../lib';
-import { ages } from './ages';
+import { civilization } from './civilization';
 import { moonLanding } from './apollo';
+import { sputnik } from './sputnik';
 import { Planet, loadEarth, type EarthMaps } from '@engine';
 
 const latLon = (lat: number, lon: number): Vec3 => {
@@ -70,98 +71,19 @@ function mammals(): Shot {
   };
 }
 
-// ------------------------------------------------------------------ Homo sapiens: fire under the Milky Way
-const CAMPFIRE = `
-#include <noise>
-#include <color>
-#include <stars>
-#include <creatures>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uT;
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  float px = 1.5 / uRes.y;
-  float t = uGTime;
-  // Night sky with the Milky Way arching across.
-  vec3 col = mix(vec3(0.004, 0.006, 0.014), vec3(0.01, 0.018, 0.04), smoothstep(-0.2, 0.5, p.y));
-  vec2 bd = normalize(vec2(1.0, 0.55));
-  float across = dot(p - vec2(-0.2, 0.05), vec2(-bd.y, bd.x));
-  float along = dot(p, bd);
-  float band = exp(-pow(across / 0.13, 2.0));
-  float core = exp(-pow((along + 0.55) / 0.5, 2.0));
-  float n = fbm(vec2(along * 6.0, across * 14.0), 6);
-  float rift = smoothstep(0.45, 0.7, fbm(vec2(along * 9.0 + 3.0, across * 30.0), 5)) * exp(-pow(across / 0.05, 2.0));
-  vec3 glow = mix(vec3(0.5, 0.55, 0.75), vec3(1.0, 0.8, 0.6), core) * band * (0.25 + 0.6 * n) * (0.45 + 0.8 * core);
-  col += glow * (1.0 - rift * 0.85) * 0.55;
-  col += starField(p, 1.0 / uRes.y, t, 5.0, 1.0 + 1.5 * band);
-  // A meteor streaks across the sky while the one standing apart looks up.
-  float mt = (uT - 3.6) / 0.75;
-  if (mt > 0.0 && mt < 1.0) {
-    vec2 ma = vec2(0.02, 0.34), mb = vec2(0.56, 0.1);
-    vec2 head = mix(ma, mb, mt);
-    vec2 md = normalize(mb - ma);
-    vec2 rel = p - head;
-    float behind = dot(rel, -md);
-    float off = abs(dot(rel, vec2(-md.y, md.x)));
-    float trail = step(0.0, behind) * exp(-behind / 0.14) * exp(-off * off / (px * px * 1.5));
-    col += vec3(0.85, 0.9, 1.0) * (trail * 1.1 + 3.0 * exp(-dot(rel, rel) / (px * px * 5.0))) * sin(3.1416 * mt);
-  }
-  // Ground and an acacia.
-  float ground = -0.2 + 0.015 * gnoise(vec2(p.x * 3.0, 1.0));
-  vec3 silc = vec3(0.006, 0.005, 0.006);
-  col = mix(col, silc, 1.0 - smoothstep(-px, px, p.y - ground));
-  vec2 aq = (p - vec2(0.62, ground)) / 0.3;
-  col = mix(col, silc, 1.0 - smoothstep(-px, px, sdAcacia(aq, 1.0) * 0.3));
-  // The fire.
-  vec2 fp = vec2(-0.2, ground + 0.005);
-  float flick = 0.8 + 0.2 * sin(t * 13.0) * sin(t * 7.7) + 0.1 * vnoise(vec2(t * 6.0, 1.0));
-  // Warm light on the ground around the fire.
-  float lg = exp(-length((p - fp) * vec2(1.0, 3.5)) * 5.0) * step(p.y, ground + 0.002);
-  col += vec3(1.0, 0.45, 0.15) * lg * 0.35 * flick;
-  // People around the fire (rim-lit on the fire side).
-  for (int i = 0; i < 3; i++) {
-    float fi = float(i);
-    float dir = i == 1 ? -1.0 : 1.0;
-    vec2 base = fp + vec2(i == 0 ? -0.2 : i == 1 ? 0.17 : -0.32, 0.0);
-    float s = i == 2 ? 0.11 : 0.13;
-    vec2 q = (p - base) / s;
-    q.x *= dir;
-    float d = sdSitter(q, t, fi) * s;
-    float inside = 1.0 - smoothstep(-px, px, d);
-    float rim = exp(-abs(d) / 0.003) * step(0.0, -((p.x - fp.x) * dir)) * 0.0;
-    col = mix(col, silc + vec3(0.25, 0.08, 0.02) * flick * 0.15, inside);
-    col += vec3(1.0, 0.5, 0.2) * rim;
-  }
-  // One stands a little apart, looking up.
-  {
-    float s = 0.2;
-    vec2 q = (p - vec2(0.2, ground)) / s;
-    float d = sdPerson(q, 1.0, t) * s;
-    col = mix(col, silc, 1.0 - smoothstep(-px, px, d));
-  }
-  // Flames.
-  vec2 fq = (p - fp) / 0.06;
-  float fn = fbm(vec2(fq.x * 3.0, fq.y * 2.0 - t * 4.0), 4);
-  float shape = smoothstep(0.9, 0.2, length(vec2(fq.x * (1.4 + fq.y * 0.8), fq.y * 0.55 - 0.35))) * step(0.0, fq.y);
-  float fl = saturate(shape * (fn * 1.6 - 0.2) * flick);
-  col += fireRamp(0.3 + 0.7 * fl) * fl * 3.0;
-  col += vec3(1.0, 0.5, 0.18) * exp(-length(p - fp - vec2(0.0, 0.02)) / 0.05) * 0.35 * flick;
-  // Rising embers.
-  for (int i = 0; i < 14; i++) {
-    float fi = float(i);
-    vec3 h = hash31(fi * 13.1);
-    float life = fract(t * (0.25 + 0.2 * h.x) + h.y);
-    vec2 ep = fp + vec2((h.z - 0.5) * 0.06 + 0.04 * sin(life * 6.0 + fi), life * 0.35);
-    col += vec3(1.0, 0.55, 0.2) * exp(-length(p - ep) / 0.0025) * (1.0 - life) * 1.5;
-  }
-  fragColor = vec4(col, 1.0);
-}`;
-
+// ------------------------------------------------------------------ Homo sapiens: dusk on the savanna
+// shaders/humans.glsl: a glowing dusk over the rift, giraffes and acacias, a band round a fire on a
+// granite kopje, and a meteor that one of them stands up to watch.
 function humans(): Shot {
   return {
     ...span('humans', { dIn: 1.0, dOut: 1.0 }),
     render(c) {
-      c.fullscreen(c.e.program(CAMPFIRE, 'campfire'), { uT: c.time - beat('humans').start });
+      const t = c.time - beat('humans').start;
+      c.fullscreen(c.e.program('#include <arrow-of-time/humans>', 'humans'), {
+        uT: t,
+        uPan: keys(t, [[-1, -0.03], [9, 0.05, 'inOutSine']]),
+        uElev: keys(t, [[-1, -2.2], [9, -5.5, 'inOutSine']]),
+      });
     },
   };
 }
@@ -370,5 +292,5 @@ function now(): Shot<{ planet: Planet; cam: Camera; sky: Sprites; dot: Sprites }
 }
 
 export function humanShots(): Shot[] {
-  return [mammals(), humans(), caves(), ...ages(), moonLanding(), nightEarth(), now()];
+  return [mammals(), humans(), caves(), civilization(), sputnik(), moonLanding(), nightEarth(), now()];
 }

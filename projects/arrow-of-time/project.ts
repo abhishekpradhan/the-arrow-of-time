@@ -13,6 +13,7 @@ import { sunShots } from './shots/sun';
 import { lifeShots } from './shots/life';
 import { humanShots } from './shots/human';
 import { futureShots } from './shots/future';
+import { civilizationLook } from './shots/civilization';
 
 const shots = [...universeShots(), ...dawnShots(), ...sunShots(), ...lifeShots(), ...humanShots(), ...futureShots()];
 
@@ -124,7 +125,7 @@ export default defineProject({
       (t > cues.theia - 0.2 && t < beat('moon').end + 1) ||
       (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2.5) ||
       (t > cues.redGiantSwell - 1 && t < cues.redGiantSwell + 9) ||
-      (t > cues.launch - 0.1 && t < beat('moonlanding').start)
+      (t > cues.launch - 0.1 && t < cues.sputnik)
         ? 0
         : keys(t, [[0, 0.35], [cues.bang - 0.1, 0.35], [cues.bang, 0.06], [cues.bang + 10, 0.06], [cues.bang + 11, 0.09],
             [cues.milkyWayReveal - 2, 0.09], [cues.milkyWayReveal, 0.025], [cues.supernova - 1, 0.025], [cues.supernova + 1, 0.09]]),
@@ -136,5 +137,6 @@ export default defineProject({
     // Thousands of tiny city lights fringe red and blue under aberration: keep it low there.
     aberration: t > beat('civilization').start && t < beat('nightearth').end ? 0.12 : 0.35,
     tonemap: 'aces',
+    ...civilizationLook(t),
   }),
 });

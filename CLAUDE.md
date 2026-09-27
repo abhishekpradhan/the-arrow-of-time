@@ -31,9 +31,14 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   are `uRes` (the bound target's size), `uTime` (shot-local), `uDur`, `uProg`, `uGTime`
   (global), `uAspect` and `uScale`. Use `centered(vUv, uAspect)`: y spans [-0.5, 0.5]. With the
   2.39:1 letterbox only |y| < 0.372 is visible, so keep subjects inside it.
-- **GLSL includes**: `#include <common|noise|color|sdf|sdf3|march|stars|camera|creatures|structures>`
+- **GLSL includes**: `#include <common|noise|color|sdf|sdf3|march|stars|camera|creatures|structures|figures|illustration>`
   (`engine/shaders/*.glsl`, registered by file name). `creatures` and `structures` are 2D
-  silhouette SDF libraries, from trilobites to people and from huts to rockets. For
+  silhouette SDF libraries, from trilobites to people and from huts to rockets. `figures` poses
+  people and four-legged animals from a few joints (`Pose`, `sdFigure`, two-bone `ik2`,
+  `walkPose`/`runPose`/`sitPose`/`haulPose`..., `sdBeast` and species such as `sdHorse`);
+  `illustration` paints the light: `paintSky`/`skyTone` from the sun's elevation (night to
+  midday), `airAt` and `inkIn` for silhouettes that fade into the haze, `rimLight`, `stratus`
+  clouds, `mistBand`, `smokeColumn`. For
   film-specific chunks, call `registerChunks(import.meta.glob('./shaders/*.glsl', { query: '?raw',
   import: 'default', eager: true }), '<id>/')` in a module the shots import, then
   `#include <<id>/name>`. Big shaders read better as `.glsl` files (no backtick hazard); a chunk
@@ -43,14 +48,24 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   it once into a texture in its first `render` call (`new RenderTarget(e.gl, w, h, { format:
   'rgba16f' })`, bind, `c.fullscreen`, then `c.target.bind()`): one fetch per march step instead
   of several noise octaves. Store the slope too, for smooth normals.
+- **Painted (illustrated) scenes** are the film's language for life and people: a sky from
+  `paintSky` with one clear light source, then layers back to front, each moved by parallax and
+  inked with `inkIn(airAt(...), fog, INK)` so distant layers take on the air's colour. Backlit
+  figures get `rimLight` from a finite-difference gradient; daylit buildings get two tones (a lit
+  face and a shadow face) rather than shading. In `projects/arrow-of-time`, the civilization is
+  one shot (`shots/civilization.ts`) through ten such tableaux (`shaders/civ-<id>.glsl`, sharing
+  `civ-common.glsl`: `L(p, k)` for parallax, `uSun`/`uElev` for the day's light): a `Tableau`
+  entry gives its sun, drift, wipe object and uniforms. Between tableaux an object sweeps past
+  the lens (`civ-wipe.glsl`) and the two are drawn clipped at its centre line, so the seam is
+  never seen; `motionBlur` is a function of time so only the whips pay for 6 samples.
 - **Ray-marched 3D scenes**: `#include <sdf3>` (primitives, `repLim`) and `<march>`, then define
   `float mapD(vec3 p)` and call `march`, `calcNormal`, `softShadow`, `calcAO`, `skyColor` and
   `applyFog`. Tune with `MARCH_STEPS`, `SHADOW_STEPS`, `MARCH_RELAX` and `SHADOW_MIN_STEP`
   defined before the include. `motionBlur: N` also anti-aliases: each sample shifts `camRay` by
-  a sub-pixel jitter (`uJitter`), so 2 samples clean up crisp silhouettes. In
-  `projects/arrow-of-time`, each civilization scene is an `Age` in `shots/ages.ts` (a camera
-  function plus `shaders/age-<id>.glsl`), a template for adding one; the Moon landing
-  (`shots/apollo.ts`) composites a ray-marched shader over a `Planet` with premultiplied alpha.
+  a sub-pixel jitter (`uJitter`), so 2 samples clean up crisp silhouettes. Crude primitives read
+  as crude CGI next to painted scenes: prefer the painted language for people and buildings.
+  Sputnik (`shots/sputnik.ts`) marches a small object in its bounding sphere over a `Planet`;
+  the Moon landing (`shots/apollo.ts`) paints over a `Planet` with premultiplied alpha.
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
   documented on `PlanetParams`; `opacity` fades one out). Colliding or overlapping planets need `depthTest: true`;
@@ -84,6 +99,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 
 - Shaders live in JS template strings: **never put a backtick in GLSL, even in a comment**,
   and remember `${...}` interpolates.
+- WebGL rejects the ternary operator on structs (`Pose f = i == 0 ? a : b;`): use if/else. A
+  local variable named like a function (`vec3 L` beside `L(p, k)`) hides the function.
 - `pow(x, y)` with `x < 0` is NaN, and so is `exp()` of a huge positive number times 0.
   Guard with `max(x, 0.0)`. Post zeroes NaNs so they cannot bloom into black holes, but
   the pixel is still wrong.
@@ -103,7 +120,7 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 - A display-space `flash` over a dark frame reads as a grey veil. Prefer an exposure kick plus
   light that comes from the scene itself.
 - GLSL ES 3.00 reserves words you might use as names: `flat`, `smooth`, `sample`, `input`,
-  `output`, `filter`, `active`, `common`, `partition`. The compile error is cryptic. Built-in
+  `output`, `filter`, `active`, `common`, `partition`, `half`. The compile error is cryptic. Built-in
   function names (`sign`, `step`, `length`, ...) cannot be redefined or overloaded either.
 - Ray-marching heightfields: the vertical height difference overshoots on steep or convex ground,
   so rays tunnel through ridges (the sea shows through hills) or stop inside cliffs. Use the
@@ -189,6 +206,8 @@ over the image, letterbox framing, and transitions between shots.
   re-mux the audio with ffmpeg (`-map 0:v -map 1:a -c:v copy -c:a aac -b:a 320k`).
 - Container note: there is no GPU; `--gl auto` picks Mesa llvmpipe via EGL (needs `libegl1`
   and `mesa-vulkan-drivers`/`libgl1-mesa-dri`). Install ffmpeg with apt if it is missing.
-- The ray-marched civilization scenes and the Moon landing are the most expensive shots: 1.3
-  to 11 s per 1080p frame on a 4-core CPU with their two motion-blur samples (the wheat field,
-  the launch and the Moon landing cost the most). Render them on Modal or budget for it.
+- The painted civilization and Moon landing cost about 10 to 20 ms per 1080p frame on a GPU (the
+  ray-marched v0.4 scenes cost ten times as much); the civilization's wipes render 6 motion-blur
+  samples. The heaviest shots are now the cosmic web, the Moon-forming impact and the future.
+- `MOVIES_BROWSER=chrome` renders with the installed Chrome when Playwright's Chromium is missing
+  (its installer has hung on macOS).

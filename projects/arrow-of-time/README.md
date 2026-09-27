@@ -33,7 +33,7 @@ at itself. See `MUSIC.md` for the score design.
 | 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
 | 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
 | 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
-| 3:06 | Civilization | twelve thousand years in ten scenes: the first harvest, Uruk, a scribe writing cuneiform, Giza, a Greek temple, Gutenberg's press, a steam train, the Wright Flyer, Trinity, a Moon rocket; the first steps on the Moon; Earth at night |
+| 3:06 | Civilization | twelve thousand years as one day, dawn to night: the first harvest, Uruk, a scribe writing cuneiform, Giza, the Acropolis, Gutenberg's press, a mill town and its railway, the Wright Flyer, Trinity, the R-7 launching Sputnik; Sputnik in orbit; the first step on the Moon; Earth at night |
 | 3:48 | Now | the pale blue dot, and silence |
 | 3:56 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
 | 4:42 | The End | the last stars, the black hole era, evaporation, the end of time |
@@ -68,20 +68,30 @@ at itself. See `MUSIC.md` for the score design.
 - **Life and humanity**: binary fission of a rod-shaped microbe (textures in material
   coordinates that each daughter carries away); animated signed-distance silhouettes
   (Anomalocaris, trilobites, jellyfish, Tiktaalik, sauropods, T. rex, pterosaurs, mammals,
-  people) over painted-light skies; underwater god rays and caustics; a bump-mapped cave wall lit
-  by a moving torch.
-- **Civilization** (`shots/ages.ts`, `shaders/age-*.glsl`): ten ray-marched scenes, one per
-  montage card, each a single moving camera: a reaper in a wheat field at golden hour (layered
-  planes of stalks), the White Temple of Uruk above a mud-brick city, a stylus pressing wedges
-  into a clay tablet (an exact height-field intersection), Giza in its white casing on a summer
-  afternoon, a Doric colonnade above the Aegean at sunset, pages of Genesis in blackletter drying
-  above a Gutenberg press (canvas text as a texture), a steam train crossing a viaduct under mill
-  chimneys, the Wright Flyer over Kill Devil Hills, the Trinity fireball, and a Saturn V lifting
-  off. Motion blur samples double as anti-aliasing: each one jitters the camera rays by a
-  sub-pixel offset.
-- **The Moon landing** (`shots/apollo.ts`, `shaders/apollo.glsl`): the lunar module, an astronaut
-  stepping off the ladder, bootprints, rocks and the flag in hard, airless sunlight, with the
-  Earth over the horizon.
+  people) over painted-light skies; underwater god rays and caustics; the first people at dusk
+  on the savanna (`shaders/humans.glsl`), a band round a fire on a granite kopje while giraffes
+  cross under the acacias and a meteor, drawn as the streak it covers in each exposure so it
+  never strobes, crosses the first stars; a bump-mapped cave wall lit by a moving torch.
+- **Civilization** (`shots/civilization.ts`, `shaders/civ-*.glsl`): twelve thousand years
+  painted as a single day in the film's silhouette style, one tracking shot through ten
+  tableaux, each with its own parallax layers and figures posed from joints (the engine's
+  `figures` chunk): wild wheat at sunrise, backlit, a woman reaping with a flint sickle; Uruk in
+  the morning, the White Temple on its terrace above a canal where reed boats are poled along;
+  over a scribe's shoulder as he presses wedges into a clay tablet in raking light; Giza at noon
+  in its white casing while a gang hauls a block on a sledge; the Acropolis in the afternoon sun
+  above the Aegean, philosophers talking on a terrace; Mainz at sunset, pages streaming from
+  Gutenberg's window over the town; a mill town at dusk, a train crossing the viaduct while a
+  horse still tows a narrowboat below; the Wright Flyer against the last of the light (a small
+  3D model projected obliquely so its span and bracing read in silhouette); Trinity, cut in on
+  its flash; and the R-7 lifting off from its "tulip" at Baikonur as the camera tilts up after
+  it. The camera drifts right through each tableau and sweeps on to the next behind something
+  passing close to the lens (a palm, a city wall, a column, a chimney, a telegraph pole...),
+  with more motion-blur samples during the sweep. Then Sputnik tumbles over the daylit Earth
+  (`shots/sputnik.ts`: the polished sphere mirrors the Planet below it).
+- **The Moon landing** (`shots/apollo.ts`, `shaders/moonstep.glsl`): painted like the
+  civilization: the lunar module in hard, low sunlight, its gold foil a mosaic of facets; the
+  astronaut backing down the ladder and setting his boot on the regolith on the beat, dust flying
+  on ballistic arcs; the real Earth (the Planet component) in the black sky.
 - **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
   nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
   friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.

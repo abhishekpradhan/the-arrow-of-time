@@ -3,6 +3,32 @@
 The newest section is used for the release notes. Cuts are published on the
 [Releases page](https://github.com/abhishekpradhan/movies/releases).
 
+## v0.5 (27 September 2026)
+
+- **Civilization** is rebuilt from the ground up in the painted, silhouette style of the life
+  scenes: twelve thousand years as one day and one continuous tracking shot. Dawn over wild
+  wheat, a woman reaping with a flint sickle; morning in Uruk, reed boats on the canal below the
+  White Temple; a scribe pressing cuneiform into a clay tablet, seen over his shoulder; Giza at
+  noon in its white casing, a gang hauling a block; the Acropolis in the afternoon sun above the
+  Aegean; Mainz at sunset, pages streaming from Gutenberg's window over the town; dusk over a
+  mill town, a train crossing the viaduct; the Wright Flyer against the last of the light;
+  Trinity at night, cut in on its flash; and the launch. Each age is wiped in by something passing
+  close to the lens: a palm, a city wall, quarried blocks, a column, a cathedral pier, a chimney,
+  a telegraph pole, a floodlight mast.
+- **1957 is Sputnik's year**: the Saturn V is gone. The R-7 that carried Sputnik stands in its
+  "tulip" at Baikonur, the arms swing open as it lifts off, and the film cuts to Sputnik itself
+  over the daylit Earth before the Moon (new cue `sputnik`). The score cuts the engines' roar at
+  the jump to orbit and plays Sputnik's beeps until the Moon.
+- **The Moon landing** is painted too: the lunar module in hard, low sunlight, the astronaut
+  backing down the ladder to set his boot on the regolith on the beat, the Earth in the black sky.
+- **Homo sapiens** now happens at dusk on the savanna in the manner of the life scenes: giraffes
+  and acacias against the afterglow, a band round a fire on a granite outcrop, one standing and
+  a child pointing as a meteor crosses the open sky. The meteor no longer strobes: its head is
+  drawn as the streak it covers in each exposure and it leaves a fading train.
+- **The Moon** forms closer to the camera: the ejecta are embers of every size, streaked by
+  motion blur, and the molten crusts crack unevenly.
+- **Score**: a whoosh with every wipe; the stylus taps and the press's thud follow the picture.
+
 ## v0.4 (27 September 2026)
 
 - **Civilization** is rebuilt as ten scenes, one per card, each a ray-marched set with its own

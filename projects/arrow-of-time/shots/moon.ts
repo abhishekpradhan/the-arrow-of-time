@@ -234,7 +234,7 @@ function frame(cam: Camera, time: number) {
   const t0 = beat('earth').start - 1, hold = theia - 3.2;
   const az = spline(time, [[t0, 0.144], [hold, 0.144], [theia, 0.02], [ret, 0.25], [born + 2, 0.5]]);
   const el = spline(time, [[t0, 0.052], [hold, 0.056], [theia, 0.3], [theia + 2, 0.5], [ret + 1.5, 0.85], [born, 0.9], [born + 1.8, 0.42]]);
-  const dist = spline(time, [[t0, 4.37], [hold, 3.88], [theia - 1.4, 5.6], [theia, 8.5], [theia + 3, 13], [ret, 15], [ret + 1.8, 19], [born - 1.2, 19.5], [born + 1.4, 10]]);
+  const dist = spline(time, [[t0, 4.37], [hold, 3.88], [theia - 1.4, 5.3], [theia, 7.0], [theia + 3, 10.5], [ret, 12], [ret + 1.8, 15], [born - 1.2, 15.5], [born + 1.4, 9.5]]);
   const panX = spline(time, [[t0, -0.145], [hold, -0.145], [theia, -0.06], [ret, -0.15], [born, -0.2], [born + 1.8, -0.2]]);
   const panY = spline(time, [[t0, 0.014], [hold, 0.014], [theia, 0.02], [ret, 0.06], [ret + 1.8, 0.1], [born, 0.1], [born + 1.8, 0.03]]);
   const fov = spline(time, [[t0, 32], [hold, 32], [theia, 36]]);
@@ -261,7 +261,7 @@ export function youngEarthView(time: number): { pos: Vec3; target: Vec3; fov: nu
  */
 export function moonAt(recede: number): Vec3 {
   const eye: Vec3 = [0.3, 0.35, 5.2];
-  const dir = v3.norm([-0.5, 0.1, -1]);
+  const dir = v3.norm([-0.5, 0.03, -1]);
   return v3.add(eye, v3.scale(dir, 8.5 + 7.5 * recede));
 }
 
@@ -357,6 +357,8 @@ export function giantImpact(): Shot<SimState> {
     ...span('earth', { dIn: 1.0 }),
     end: cues.moonBorn + 0.6,
     fadeOut: 1.4,
+    // The spray moves fast: two samples streak the sparks instead of strobing them.
+    motionBlur: 2,
     async setup(e) {
       const data = await loadImpact();
       const n = data.n;
@@ -511,13 +513,16 @@ function drawSim(c: ShotContext, s: SimState, hours: number) {
     const envelope = (1 - prog(rr, 1.15, 1.7)) * prog(hours, 0.8, 2.5);
     // Theia's cool melt keeps its crust: dark plates between bright cracks.
     const crust = (D.kind[i] & 1) === 1 ? 1 - Math.min(1, Math.max(0, (tcode - CRUST_LO) / (CRUST_HI - CRUST_LO))) : 0;
-    const glow = limb * (spark ? 0.6 - 0.25 * veil : 1) * (1 + crust * (4 * s.crack[i] - 0.85));
+    const glow = limb * (spark ? 0.9 - 0.4 * veil : 1) * (1 + crust * (4 * s.crack[i] - 0.85));
     O.color[r * 3] = GLOW[ti] * glow + rock * 0.6;
     O.color[r * 3 + 1] = GLOW[ti + 1] * glow + rock * 0.45;
     O.color[r * 3 + 2] = GLOW[ti + 2] * glow + rock * 0.32;
-    const sig = spark ? 0.028 + 0.1 * veil : Math.max(0.01, 0.55 * hh * grow);
+    // Isolated droplets vary in size (a hash per parcel), so the spray is embers of every size
+    // rather than confetti; the fluid's parcels are drawn wider and thinner so they merge.
+    const jit = hash1(i * 7 + 3);
+    const sig = spark ? 0.012 + 0.024 * jit * jit + 0.1 * veil : Math.max(0.012, 0.72 * hh * grow);
     O.size[r] = sig;
-    O.extra[r * 4] = (spark ? 0.7 - 0.6 * veil : Math.min(2.5, 1.3 * grow ** 3 * (sigRef / sig) ** 2)) * (1 - 0.88 * envelope);
+    O.extra[r * 4] = (spark ? (0.45 + 0.45 * jit) * (1 - 0.7 * veil) : Math.min(2.5, 1.3 * grow ** 3 * (sigRef / sig) ** 2)) * (1 - 0.88 * envelope);
     O.extra[r * 4 + 1] = s.vis[i];
   }
   s.sph.update(O);

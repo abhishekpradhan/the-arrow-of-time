@@ -101,6 +101,18 @@ def up(notes, octaves=1):
     return [name(midi(n) + 12 * octaves) for n in notes]
 
 
+def beep(dur: float = 0.3, f: float = 1010.0) -> np.ndarray:
+    """Sputnik's beep as it came out of a 1957 receiver: a plain tone with a slight warble,
+    band-limited and a touch noisy, with quick fades."""
+    from studio.core import fade, tvec
+    t = tvec(ns(dur))
+    warble = 1.0 + 0.004 * np.sin(2 * np.pi * 7.0 * t)
+    x = np.sin(2 * np.pi * f * warble * t) + 0.12 * np.sin(2 * np.pi * 2 * f * t)
+    x += 0.03 * rng('beep').standard_normal(x.shape[0])
+    x = fade(x.astype(F32) * 0.5, 0.006, 0.03)
+    return flt.HP(400)(flt.LP(3200)(x, 0.0), 0.0)
+
+
 def theme_line(score, track, bars, start, beat, synth, gain_db=0.0, shape=None, legato=0.15):
     """Play theme bars with ``synth(note, dur, k)`` (k = index), notes overlapping slightly."""
     for k, (t, note, d) in enumerate(theme_events(bars, start, beat)):
@@ -947,14 +959,29 @@ class Score:
                 x = self.cached(('anvil', i % 3), lambda: ins.bell(['E5', 'B4', 'G5'][i % 3], 0.9, 0.55, 'church',
                                                                    fm=0.8, seed=i % 3))
                 self.put(self.mallet, t, x, -9, pan=0.45 if i % 8 == 1 else -0.45)
-        # the scenes' own sounds, on their pictures (times from shots/ages.ts: each scene starts
-        # 0.02 s before its card)
-        s0 = writing - 0.02
-        for k in range(4):                        # the stylus meets the clay every 0.63 s
-            tt = s0 + 0.3142 * (2 * k + 1)
-            self.put(self.perc, tt, ins.tap(0.55, 360.0 + 20.0 * k, seed=k), -9, pan=0.2)
-        self.put(self.perc, printing - 0.02 + 2.417, ins.drum(88.0, 0.8, decay=0.14, drop=0.1, noise=0.6,
-                                                              noise_lp=1800.0, seed=11), -6)      # the platen comes down
+        # the scenes' own sounds, on their pictures. The civilization is one tracking shot through
+        # ten painted tableaux (shots/civilization.ts); the animation in shaders/civ-*.glsl runs on
+        # film time, so these follow its formulas.
+        # The reed presses into the clay when cos(13 t) = -1 (civ-writing.glsl), every 0.48 s.
+        n0 = math.ceil((writing - 0.2) * 13.0 / math.pi / 2.0 - 0.5)
+        for k in range(6):
+            tt = (2 * (n0 + k) + 1) * math.pi / 13.0
+            if writing - 0.15 <= tt <= pyramids - 0.35:
+                self.put(self.perc, tt, ins.tap(0.55, 360.0 + 20.0 * (k % 3), seed=k), -9, pan=0.1)
+        # The platen of the press comes down when cos(2.2 t) = -1 (civ-mainz.glsl).
+        pt = (2 * math.ceil((printing - 0.1) * 2.2 / math.pi / 2.0 - 0.5) + 1) * math.pi / 2.2
+        if pt < industry - 0.3:
+            self.put(self.perc, pt, ins.drum(88.0, 0.8, decay=0.14, drop=0.1, noise=0.6, noise_lp=1800.0, seed=11), -8,
+                     pan=0.45)
+        # Each age is wiped in by something passing close to the lens, right to left, just before its
+        # card (the atom arrives on its flash instead).
+        for k, t in enumerate(mont):
+            if k == 0 or k == 8:
+                continue
+            w = 0.8 - (k - 1) * (0.25 / 8.0)
+            seam = t - 0.15
+            self.put(self.sfx, seam - w * 0.55, ins.whoosh(w * 0.9, 180.0, 2600.0 + 200.0 * k, 0.55, 0.7, -0.7, vel=0.9,
+                                                          seed=90 + k), -12.5 + 0.5 * k)
         self.put(self.sfx, industry + 0.05, ins.steam_whistle(1.3, ('C5', 'E5'), 0.9, seed=1), -11, pan=0.3)
         for i, t in enumerate(ticks):
             if industry <= t < flight:
@@ -973,13 +1000,21 @@ class Score:
 
         # the launch: ignition thunder under the theme in full (horns, violins, choir)
         self.put(self.boom, launch, ins.sub_boom(7.0, 55.0, 24.0, 0.6, 2.8, 0.9, click=0.6, harmonics=0.5, seed=74), -3)
-        # The engines' roar builds over the first second and ends with the dissolve to the Moon,
-        # where there is no air to carry it.
-        moon = ml.start
-        self.put(self.amb, launch, ins.rumble(moon + 0.3 - launch, lp=140.0, vel=0.95, attack=0.8, release=0.8, seed=8),
+        # The engines' roar builds over the first second and stops dead at the cut to orbit
+        # (cue sputnik): no air up there to carry it. Then Sputnik's own voice, the beeps the
+        # world tuned in to: a 0.3 s tone every 0.6 s, thin as a shortwave signal, until the
+        # dissolve to the Moon.
+        sput = self.cue('sputnik')
+        self.put(self.amb, launch, ins.rumble(sput + 0.1 - launch, lp=140.0, vel=0.95, attack=0.8, release=0.1, seed=8),
                  -4)
-        self.put(self.sfx, launch, ins.noise_burst(moon + 0.3 - launch, 9000.0, 300.0, 2.5, 2.2, 0.7, seed=75), -12,
-                 shape=[(launch, -12), (launch + 1.2, 0), (moon - 0.6, 0), (moon + 0.3, -40)])
+        self.put(self.sfx, launch, ins.noise_burst(sput + 0.1 - launch, 9000.0, 300.0, 2.5, 2.2, 0.7, seed=75), -12,
+                 shape=[(launch, -12), (launch + 1.2, 0), (sput - 0.03, 0), (sput + 0.08, -50)])
+        moon = ml.start
+        k = 0
+        while sput + 0.3 + 0.6 * k < moon + 0.4:
+            self.put(self.sfx, sput + 0.3 + 0.6 * k, self.cached(('beep',), lambda: beep()), -17,
+                     shape=[(moon - 0.2, 0), (moon + 0.5, -30)])
+            k += 1
         self.put(self.perc, launch, ins.timpani('A2', 1.0, seed=8), -1)
         tdyn = [(launch, -2), (launch + 1.0, 0), (step, 1), (ne.start, 0), (ne.start + 0.5, -8)]
         theme_line(self, self.brass, [1, 2, 3, 4], launch, beat,

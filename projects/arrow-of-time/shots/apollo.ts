@@ -1,39 +1,41 @@
-// The Moon, 1969: an astronaut steps off the lander onto the Sea of Tranquility (cue moonStep)
-// and the camera cranes back to the lander, the flag and the Earth in the black sky
-// (shaders/apollo.glsl; the Earth is the Planet component with the real maps).
+// The Moon, 1969: the first step on the Sea of Tranquility (cue moonStep), painted like the
+// civilization tableaux (shaders/moonstep.glsl): the lunar module in hard, low sunlight, the
+// astronaut coming down the ladder and setting his boot on the regolith, a spray of dust. The
+// Earth is the Planet component with the real maps, drawn first in the black sky; the painted
+// scene goes over it with premultiplied alpha. (From the real landing site the Earth stood much
+// higher in the sky; the film brings it into the frame.)
 import { Camera, Planet, keys, loadEarth, v3, type Shot, type Vec3 } from '@engine';
 import { cues, span } from '../lib';
-import './ages';
+import './civilization';
 
-/** The Sun, low behind the camera's left shoulder: long shadows run away from us. */
-const SUN: Vec3 = v3.norm([-0.5, 0.22, 0.84]);
-/**
- * Where the Earth hangs: above and right of the lander as the final camera sees it. (From the
- * real landing sites it stands higher in the sky; the film brings it into the frame.)
- */
-const EARTH_DIR: Vec3 = [-0.0515, 0.1822, -0.9819];
+/** Where the Earth hangs in the picture (centred units), and its radius there. */
+const EARTH_AT: [number, number] = [0.02, 0.27];
+const EARTH_R = 0.036;
 
 export function moonLanding(): Shot<{ planet: Planet; cam: Camera }> {
   return {
     ...span('moonlanding', { dIn: 1.0, dOut: 1.0 }),
-    motionBlur: 2,
     async setup(e) {
-      return { planet: new Planet(e, await loadEarth(e)), cam: new Camera({ fov: 38, near: 0.02, far: 30000 }) };
+      return { planet: new Planet(e, await loadEarth(e)), cam: new Camera({ fov: 40, near: 0.1, far: 1e6 }) };
     },
     render(c, s) {
       const t = c.time - cues.moonStep;
-      // Low by the footpad for the step, then up and back to reveal the whole scene.
-      const pos = keys(t, [[-1.2, [3.9, 1.05, 8.2]], [0.2, [3.7, 1.0, 8.0]], [4.8, [4.6, 2.3, 14.8], 'inOutSine']]) as Vec3;
-      const target = keys(t, [[-1.2, [0.35, 1.15, 5.0]], [0.2, [0.35, 1.05, 5.1]], [4.8, [-0.2, 2.2, 1.0], 'inOutSine']]) as Vec3;
-      s.cam.set({ pos, target, fov: keys(t, [[0.2, 36], [4.8, 42, 'inOutSine']]) });
-      const end: Vec3 = [4.6, 2.3, 14.8];
+      // A slow push in, drifting a little to the right.
+      const zoom = keys(t, [[-1.6, 1.0], [5.6, 1.1, 'inOutSine']]);
+      const camX = keys(t, [[-1.6, -0.03], [5.6, 0.05, 'inOutSine']]);
+      s.cam.set({ pos: [0, 0, 0], target: [0, 0, -1], fov: 40 });
+      const k = 2 * Math.tan((20 * Math.PI) / 180);
+      const D = 1000;
+      const ex = (EARTH_AT[0] * zoom - camX * 0.0) * k, ey = EARTH_AT[1] * zoom * k;
+      const dir = v3.norm([ex, ey, -1]);
+      const sunDir: Vec3 = v3.norm([-0.85, 0.3, 0.45]);
       s.planet.draw(c, s.cam, {
-        center: v3.add(end, v3.scale(EARTH_DIR, 9000)), radius: 9000 * Math.tan((1.0 * Math.PI) / 180), yaw: -0.5, spin: 0, tilt: 0.3,
-        sunDir: SUN, earth: 1, clouds: 0.5, cloudT: 0.8, atmo: 1.0, atmoColor: [0.3, 0.55, 1.0], glint: 0.8,
+        center: v3.scale(dir, D), radius: D * EARTH_R * zoom * k, yaw: -0.5, spin: 0, tilt: 0.3,
+        sunDir, earth: 1, clouds: 0.5, cloudT: 0.8, atmo: 1.0, atmoColor: [0.3, 0.55, 1.0], glint: 0.8,
       });
       c.gl.enable(c.gl.BLEND);
       c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
-      c.fullscreen(c.e.program('#include <arrow-of-time/apollo>', 'apollo'), { ...s.cam.uniforms(), uStep: t, uSun: SUN, uT: c.time });
+      c.fullscreen(c.e.program('#include <arrow-of-time/moonstep>', 'moonstep'), { uStep: t, uCam: [camX, 0], uZoom: zoom });
       c.gl.disable(c.gl.BLEND);
     },
   };

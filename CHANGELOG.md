@@ -7,6 +7,35 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 
 ## [Unreleased]
 
+### Added
+
+- `figures` shader chunk: people and four-legged animals posed from a few joints (two-bone IK),
+  with walk, run, sit, point, reap, haul, carry and speaking poses, dress, and animal species
+  ([docs/engine.md](docs/engine.md#painted-scenes)).
+- `illustration` shader chunk: painted skies from the sun's elevation (night to midday), haze for
+  distant silhouettes, rim light, clouds, mist and smoke.
+- `sdDatePalm` and `sdCypress` in `creatures`.
+- Light shafts in the post chain (`Look.rays`, `raysCenter`, `raysThreshold`, `raysDecay`,
+  `raysTint`).
+- `Shot.motionBlur` may be a function of film time; the frame takes the most samples any shot on
+  screen asks for.
+- `MOVIES_BROWSER`: render with an installed browser (a Playwright channel such as `chrome`, or
+  an executable path) when Playwright's own Chromium is not available
+  ([docs/rendering.md](docs/rendering.md#gpu-or-cpu)).
+- The Arrow of Time v0.5: the civilization and the Moon landing painted in the style of the life
+  scenes, the R-7 and Sputnik under the 1957 card, Homo sapiens at dusk with a meteor that no
+  longer strobes (see its [changelog](projects/arrow-of-time/CHANGELOG.md)).
+
+### Changed
+
+- `Planet`'s molten mode: cracks of uneven width, some choked with cooled crust, with heat
+  bleeding into the plates beside them.
+
+### Removed
+
+- The Arrow of Time's ray-marched civilization scenes (`age-*.glsl`, `shots/ages.ts`) and 3D Moon
+  landing (`apollo.glsl`), replaced by the painted ones.
+
 ## [0.4.0] - 2026-09-27
 
 ### Added
