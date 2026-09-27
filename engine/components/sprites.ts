@@ -54,6 +54,7 @@ uniform float uTime, uMinPx, uMaxPx, uSizeScale, uBrightness, uExtent, uNear, uS
 out vec2 vQ;
 out vec3 vColor;
 out vec4 vExtra;
+out float vEnergy;
 ${animate}
 void main() {
   vec3 col = iColor;
@@ -69,8 +70,10 @@ void main() {
   vec2 off = aCorner * uExtent * r / (uRes * 0.5);
   gl_Position = cp + vec4(off * cp.w, 0.0, 0.0);
   vQ = aCorner * uExtent;
-  vColor = col * energy * uBrightness;
+  vColor = col * uBrightness;
   vExtra = iExtra;
+  // A sprite held at the minimum size covers only part of its footprint: scale colour and alpha.
+  vEnergy = energy;
 }`;
 
 const FS = (shade: string) => `
@@ -78,10 +81,11 @@ const FS = (shade: string) => `
 in vec2 vQ;
 in vec3 vColor;
 in vec4 vExtra;
+in float vEnergy;
 out vec4 fragColor;
 uniform float uTime;
 ${shade}
-void main() { fragColor = shade(vQ, vColor, vExtra); }`;
+void main() { fragColor = shade(vQ, vColor, vExtra) * vEnergy; }`;
 
 export class Sprites {
   gl: GL;

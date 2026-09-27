@@ -26,6 +26,12 @@ Uniforms are typed by reflection (`Program.set`): pass numbers, arrays (flat), `
 textures or render targets. Unknown names are ignored silently, so a misspelt uniform just does
 nothing.
 
+Animation helpers (`engine/core/anim.ts`): `prog(t, a, b, ease)` for 0..1 progress, `keys(t, [[t,
+v, ease], ...])` for eased keyframes, and `spline(t, [[t, v], ...])` for a monotone cubic through
+several marks. The speed never jumps at a mark and the curve never overshoots, which suits time
+remaps (slow motion around an event) and camera moves. Also `envelope`, `drift`, `shake` and
+`stagger`.
+
 ## Full-screen shaders and the GLSL library
 
 `c.fullscreen(c.e.program(SOURCE, 'name'), uniforms)` draws a full-screen pass. Standard uniforms:

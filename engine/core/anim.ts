@@ -90,6 +90,36 @@ export function keys(t: number, k: Key<number | number[]>[]): number | number[] 
   return (v0 as number[]).map((a, j) => lerp(a, (v1 as number[])[j], u));
 }
 
+/**
+ * Smooth curve through `[time, value]` knots (sorted by time): a monotone cubic (PCHIP), so the
+ * rate of change never jumps at a knot and the curve never overshoots between knots. Use it to
+ * remap time (slow motion that eases in and out of an event) or for moves through several marks.
+ *
+ *   const hours = spline(t, [[0, 0], [2, 1], [3, 6], [5, 24]]);
+ */
+export function spline(t: number, k: [number, number][]): number {
+  const n = k.length;
+  if (n === 0) return 0;
+  if (n === 1 || t <= k[0][0]) return k[0][1];
+  if (t >= k[n - 1][0]) return k[n - 1][1];
+  let i = 0;
+  while (i < n - 2 && k[i + 1][0] < t) i++;
+  const secant = (j: number) => (k[j + 1][1] - k[j][1]) / (k[j + 1][0] - k[j][0]);
+  const tangent = (j: number) => {
+    if (j === 0) return secant(0);
+    if (j === n - 1) return secant(n - 2);
+    const a = secant(j - 1), b = secant(j);
+    if (a * b <= 0) return 0;
+    // Weighted harmonic mean of the neighbouring secants (Fritsch-Butland), as in PCHIP.
+    const h0 = k[j][0] - k[j - 1][0], h1 = k[j + 1][0] - k[j][0];
+    const w1 = 2 * h1 + h0, w2 = h1 + 2 * h0;
+    return (w1 + w2) / (w1 / a + w2 / b);
+  };
+  const [t0, v0] = k[i], [t1, v1] = k[i + 1];
+  const h = t1 - t0, u = (t - t0) / h, u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * v0 + (u3 - 2 * u2 + u) * tangent(i) * h + (3 * u2 - 2 * u3) * v1 + (u3 - u2) * tangent(i + 1) * h;
+}
+
 /** Organic hand-held drift, amplitude `amp`, speed `freq` (Hz-ish). */
 export function drift(t: number, amp = 1, freq = 0.2, seed = 0): number {
   return fbm1(t * freq, seed) * amp;
