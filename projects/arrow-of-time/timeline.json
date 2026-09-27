@@ -28,7 +28,7 @@
     { "id": "dinosaurs", "act": "life", "start": 152, "end": 160, "card": "chapter", "layout": "upper-left", "era": "230 million years ago", "title": "The Dinosaurs", "line": "They will rule for 165 million years." },
     { "id": "impact", "act": "life", "start": 160, "end": 166, "card": "chapter", "layout": "lower-left", "era": "66 million years ago", "line": "Then, one bad day." },
     { "id": "mammals", "act": "human", "start": 166, "end": 172, "card": "chapter", "layout": "upper-right", "title": "The Age of Mammals", "line": "The small survive, and inherit the Earth." },
-    { "id": "humans", "act": "human", "start": 172, "end": 180, "card": "chapter", "layout": "lower-left", "era": "300,000 years ago", "title": "Homo Sapiens", "line": "A new kind of animal looks up, and wonders." },
+    { "id": "humans", "act": "human", "start": 172, "end": 180, "card": "chapter", "layout": "upper-left", "era": "300,000 years ago", "title": "Homo Sapiens", "line": "A new kind of animal looks up, and wonders." },
     { "id": "caves", "act": "human", "start": 180, "end": 186, "card": "chapter", "era": "40,000 years ago", "line": "We begin to leave our mark." },
     { "id": "civilization", "act": "human", "start": 186, "end": 216, "card": "montage", "layout": "upper",
       "montage": [
