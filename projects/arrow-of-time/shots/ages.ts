@@ -124,7 +124,7 @@ async function bibleLeaf(e: Engine) {
 
 const PRESS: Age = {
   id: 'press',
-  cam: move([1.5, 1.45, 2.1], [1.05, 1.4, 1.35], [-0.35, 1.55, -1.6], [-0.4, 1.5, -1.6], 46),
+  cam: move([1.7, 1.5, 2.3], [1.25, 1.45, 1.55], [-0.75, 1.5, -1.5], [-0.8, 1.45, -1.5], 50),
   setup: bibleLeaf,
 };
 
@@ -140,9 +140,10 @@ const INDUSTRY: Age = {
 const flyerAt = (t: number): Vec3 => [-10 + 7 * t, 4.0 + 0.35 * Math.sin(t * 2.2), 0];
 const FLIGHT: Age = {
   id: 'flight',
+  // A pass-by: the camera stands by the flight path and pans as the Flyer goes past.
   cam: (t) => {
     const f = flyerAt(t);
-    return { pos: [f[0] + 4 - 1.2 * t, 2.7, 21], target: [f[0] - 1.5, f[1] - 0.3, 0], fov: 38 };
+    return { pos: [-3 + 1.2 * t, 2.0, 17], target: [f[0] + 1.0, f[1] + 2.4, 0], fov: 42 };
   },
   uniforms: (t) => ({ uFlyer: flyerAt(t), uPitch: 0.05 * Math.sin(t * 2.2 + 0.8) }),
 };

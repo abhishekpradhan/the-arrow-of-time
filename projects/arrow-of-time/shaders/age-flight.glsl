@@ -14,8 +14,8 @@ uniform vec2 uRes; uniform float uAspect, uT;
 uniform vec3 uFlyer;      // centre of the lower wing
 uniform float uPitch;
 
-const vec3 SUN = vec3(-0.3417, 0.4556, -0.8222);   // mid-morning, behind the camera's left shoulder
-const vec3 SUN_COL = vec3(1.0, 0.95, 0.86) * 2.6;
+const vec3 SUN = vec3(-0.5028, 0.4224, 0.7542);   // mid-morning, behind the camera's left shoulder
+const vec3 SUN_COL = vec3(1.0, 0.94, 0.84) * 2.4;
 
 // ---------------------------------------------------------------- the Flyer (local frame)
 // x forward, y up, z along the span; returns distance and a material (0 fabric, 1 wood, 2 dark).
@@ -111,7 +111,7 @@ float mapD(vec3 p) {
 
 vec3 sky(vec3 rd) {
   float e = max(rd.y, 0.0);
-  vec3 col = mix(vec3(0.62, 0.72, 0.84), vec3(0.14, 0.3, 0.62), pow(e, 0.45));
+  vec3 col = mix(vec3(0.55, 0.66, 0.8), vec3(0.08, 0.22, 0.55), pow(e, 0.4));
   col += SUN_COL * 0.3 * pow(max(dot(rd, SUN), 0.0), 16.0);
   // Fair-weather cumulus.
   if (rd.y > 0.0) {
@@ -141,13 +141,13 @@ void main() {
       alb = mF == 0.0 ? vec3(0.86, 0.82, 0.72) : mF == 1.0 ? vec3(0.6, 0.48, 0.3) : vec3(0.12, 0.1, 0.09);
       trans = mF == 0.0 ? 0.35 : 0.0;   // thin muslin lets the sun through
     } else if (m == dP) {
-      alb = vec3(0.12, 0.11, 0.1);
+      alb = vec3(0.05, 0.045, 0.04);
     } else if (m == dR) {
       alb = vec3(0.35, 0.26, 0.16);
     } else {
       // Sand, with wind ripples and tufts of beach grass; wet and dark at the shore.
       float ripple = sin(dot(pos.xz, vec2(1.8, 0.6)) + 2.0 * fbm(pos.xz * 0.2, 2));
-      alb = vec3(0.8, 0.68, 0.5) * (0.92 + 0.08 * ripple) * (0.85 + 0.2 * fbm(pos.xz * 0.05, 3));
+      alb = vec3(0.6, 0.48, 0.33) * (0.9 + 0.1 * ripple) * (0.75 + 0.35 * fbm(pos.xz * 0.05, 3));
       float grass = smoothstep(0.62, 0.72, fbm(pos.xz * 0.6, 3)) * smoothstep(-30.0, 10.0, pos.z);
       alb = mix(alb, vec3(0.42, 0.4, 0.28), grass);
       if (pos.y < -3.5) {

@@ -124,7 +124,7 @@ vec3 skyDusk(vec3 rd) {
   float w = max(dot(normalize(vec3(rd.x, 0.0, rd.z)), WEST), 0.0);
   // The afterglow: a band of orange low in the west under a deepening blue.
   vec3 glow = mix(vec3(0.5, 0.2, 0.1), vec3(1.0, 0.48, 0.16), pow(w, 6.0)) * pow(w, 2.0);
-  vec3 col = vec3(0.035, 0.05, 0.13) + glow * exp(-e / 0.05);
+  vec3 col = vec3(0.025, 0.04, 0.11) + glow * exp(-e / 0.035);
   col = mix(col, vec3(0.09, 0.08, 0.18), smoothstep(0.02, 0.16, e) * 0.6);
   col = mix(col, vec3(0.015, 0.03, 0.09), smoothstep(0.12, 0.6, e));
   // The first stars.
@@ -236,7 +236,7 @@ void main() {
     tm = t;
     vec3 c = shade(ro + rd * t, rd, t);
     // Evening haze, the colour of the sky just above the horizon.
-    float f = 1.0 - exp(-t * 0.0022);
+    float f = 1.0 - exp(-t * 0.0012);
     col = mix(c, skyDusk(normalize(vec3(rd.x, 0.015, rd.z))), f);
   }
   float sm = smoke(ro, rd, tm);

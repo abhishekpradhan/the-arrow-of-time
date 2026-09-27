@@ -173,8 +173,9 @@ void main() {
     float r2 = dot(dc, dc);
     float flick = 0.9 + 0.1 * sin(uT * 17.0) * sin(uT * 7.3);
     c += alb * vec3(1.0, 0.55, 0.22) * 0.22 * flick * max(dot(n, normalize(dc)), 0.0) / (r2 + 0.02);
+    // Bounce from the sunlit floor and walls fills the room with a warm half-light.
     float ao = calcAO(pos, n, 0.4);
-    c += alb * (vec3(0.05, 0.05, 0.06) + vec3(0.05, 0.035, 0.02)) * ao;
+    c += alb * (vec3(0.07, 0.07, 0.08) + vec3(0.16, 0.11, 0.06) * (0.6 + 0.4 * max(n.y, 0.0))) * ao;
     c += spec * WIN_COL * pow(max(dot(reflect(rd, n), L), 0.0), 30.0) * win;
     col = c + emit;
   }
@@ -190,6 +191,6 @@ void main() {
     shaft += windowLight(ro + rd * ti);
   }
   shaft *= min(tEnd, 8.0) / 32.0;
-  col += WIN_COL * shaft * 0.05 * (0.4 + 2.5 * pow(max(dot(rd, L), 0.0), 8.0));
+  col += WIN_COL * shaft * 0.07 * (0.4 + 2.5 * pow(max(dot(rd, L), 0.0), 8.0));
   fragColor = vec4(col, 1.0);
 }

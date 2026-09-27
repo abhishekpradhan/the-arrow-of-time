@@ -149,9 +149,9 @@ void main() {
     float dif = max(dot(n, SUN), 0.0);
     float ao = calcAO(pos, n, 1.2);
     // Warm sky from the sea side, cool from above, warm bounce from the sunlit floor.
-    vec3 amb = vec3(0.12, 0.1, 0.14) * (0.6 + 0.4 * n.y) + vec3(0.3, 0.14, 0.06) * max(n.z, 0.0) * 0.5 + vec3(0.22, 0.12, 0.06) * max(-n.y, 0.0);
+    vec3 amb = vec3(0.08, 0.07, 0.1) * (0.6 + 0.4 * n.y) + vec3(0.3, 0.14, 0.06) * max(n.z, 0.0) * 0.4 + vec3(0.2, 0.1, 0.05) * max(-n.y, 0.0);
     col = alb * (SUN_COL * dif * sh + amb * ao);
-    col = mix(col, sky(normalize(vec3(rd.x, 0.02, rd.z))) * 0.6, 1.0 - exp(-t * 0.004));
+    col = mix(col, sky(normalize(vec3(rd.x, 0.02, rd.z))) * 0.5, 1.0 - exp(-t * 0.0025));
   }
   // Light shafts: sunlight scattered by dust in the air, where the columns let it through.
   float shafts = 0.0;
@@ -164,7 +164,7 @@ void main() {
   }
   shafts *= span / 24.0;
   // Dust scatters a little in every direction and much more towards the sun.
-  float phase = 0.6 + 3.0 * pow(max(dot(rd, SUN), 0.0), 5.0);
-  col += SUN_COL * 0.007 * shafts * phase;
+  float phase = 0.3 + 3.0 * pow(max(dot(rd, SUN), 0.0), 5.0);
+  col += SUN_COL * 0.006 * shafts * phase;
   fragColor = vec4(col, 1.0);
 }
