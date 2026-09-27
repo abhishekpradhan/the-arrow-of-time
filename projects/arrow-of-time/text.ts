@@ -282,7 +282,7 @@ export function buildText(): TextItem[] {
   for (const b of T.beats as Beat[]) {
     if (b.card === 'chapter') items.push(chapter(b));
     else if (b.card === 'montage') items.push(...montage(b));
-    else if (b.card === 'whisper' && b.line) items.push(whisper(b.start + 0.6, b.end - 0.2, b.line));
+    else if (b.card === 'whisper' && b.line) items.push(whisper(b.start + 0.6, b.end - 0.2, b.line, b.layout ? placeOf(b.layout).y : undefined));
   }
   for (const l of T.prologueLines) items.push(whisper(l.start, l.end, l.text));
   for (const l of T.epilogueLines) items.push(whisper(l.start, l.end, l.text));

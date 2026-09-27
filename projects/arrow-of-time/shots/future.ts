@@ -35,19 +35,22 @@ void main() {
   vec2 p = centered(vUv, uAspect);
   float px = 1.0 / uRes.y;
   vec3 col = starField(p, px, uGTime, 21.0, 0.35);
+  p.y -= 0.05;                            // the dial sits a little high: its line goes underneath
   float r = length(p);
   float a = atan(p.x, p.y);               // 0 at 12 o'clock, clockwise
-  float R = 0.3;
-  float ring = exp(-pow((r - R) / (px * 1.2), 2.0)) * 0.35;
+  float R = 0.24;
+  float dr = (r - R) / (px * 1.2);
+  float ring = exp(-dr * dr) * 0.35;
   float tickA = mod(a + PI / 60.0, TAU / 60.0) - PI / 60.0;
-  float ticks = exp(-pow(tickA * R / (px * 1.0), 2.0)) * band(r, R - 0.018, R - 0.008, px * 1.5);
+  float ta = tickA * R / px;
+  float ticks = exp(-ta * ta) * band(r, R - 0.016, R - 0.007, px * 1.5);
   float big = step(abs(mod(a + PI / 12.0, TAU / 12.0) - PI / 12.0), 0.01);
   ticks *= 0.25 + 0.75 * big;
   // Second hand.
   vec2 hd = vec2(sin(uHand), cos(uHand));
   float along = dot(p, hd);
   float perp = abs(dot(p, vec2(hd.y, -hd.x)));
-  float hand = exp(-pow(perp / (px * 1.0), 2.0)) * step(-0.04, along) * step(along, R - 0.03);
+  float hand = exp(-(perp * perp) / (px * px)) * step(-0.035, along) * step(along, R - 0.025);
   col += vec3(0.85, 0.8, 0.72) * (ring + ticks * 0.6 + hand * 0.9) * uVis;
   col += vec3(1.0, 0.9, 0.75) * exp(-r / (px * 2.5)) * 0.6 * uVis;
   fragColor = vec4(col, 1.0);
@@ -686,7 +689,8 @@ function blackHoles(): Shot<{ half: RenderTarget; cam: Camera }> {
       const az = -0.35 + t * 0.03;
       const el = keys(t, [[-1, 0.1], [16, 0.22]]);
       const dist = keys(t, [[-1, 34], [8, 28], [13, 18, 'inOutSine'], [16, 16]]);
-      s.cam.set({ pos: [Math.sin(az) * dist * Math.cos(el), dist * Math.sin(el), Math.cos(az) * dist * Math.cos(el)], target: [0, 0, 0] });
+      // Lowered a little so the hole sits above its caption.
+      s.cam.set({ pos: [Math.sin(az) * dist * Math.cos(el), dist * Math.sin(el), Math.cos(az) * dist * Math.cos(el)], target: [0, 0, 0] }).pan(0, -0.045 * dist);
       const rs = keys(c.time, [[b0.start, 1.0], [b1.start, 1.0], [cues.lastFlash - 0.05, 0.02, 'inQuad']]);
       const gone = c.time > cues.lastFlash;
       s.half.bind();

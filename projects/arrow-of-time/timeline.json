@@ -46,7 +46,7 @@
     { "id": "moonlanding", "act": "human", "start": 212, "end": 218, "card": "chapter", "layout": "upper-left", "era": "1969", "line": "We set foot on another world." },
     { "id": "nightearth", "act": "human", "start": 218, "end": 224, "card": "chapter", "layout": "upper-left", "era": "Today", "line": "Eight billion of us." },
     { "id": "now", "act": "now", "start": 224, "end": 232, "card": "chapter", "era": "Now", "line": "Everything you have ever known." },
-    { "id": "turn", "act": "future", "start": 232, "end": 236, "card": "whisper", "line": "But the clock keeps ticking." },
+    { "id": "turn", "act": "future", "start": 232, "end": 236, "card": "whisper", "layout": "lower", "line": "But the clock keeps ticking." },
     { "id": "mars", "act": "future", "start": 236, "end": 244, "card": "chapter", "layout": "right", "era": "+1,000 years", "title": "New Worlds", "line": "Perhaps we learn to make other worlds our home." },
     { "id": "drift", "act": "future", "start": 244, "end": 250, "card": "chapter", "era": "+100,000 years", "line": "The stars drift. The constellations dissolve." },
     { "id": "hotearth", "act": "future", "start": 250, "end": 256, "card": "chapter", "layout": "upper-left", "era": "+1 billion years", "line": "The Sun brightens. Earth's oceans boil away." },
