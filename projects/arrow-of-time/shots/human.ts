@@ -94,6 +94,18 @@ void main() {
   vec3 glow = mix(vec3(0.5, 0.55, 0.75), vec3(1.0, 0.8, 0.6), core) * band * (0.25 + 0.6 * n) * (0.45 + 0.8 * core);
   col += glow * (1.0 - rift * 0.85) * 0.55;
   col += starField(p, 1.0 / uRes.y, t, 5.0, 1.0 + 1.5 * band);
+  // A meteor streaks across the sky while the one standing apart looks up.
+  float mt = (uT - 3.6) / 0.75;
+  if (mt > 0.0 && mt < 1.0) {
+    vec2 ma = vec2(0.02, 0.34), mb = vec2(0.56, 0.1);
+    vec2 head = mix(ma, mb, mt);
+    vec2 md = normalize(mb - ma);
+    vec2 rel = p - head;
+    float behind = dot(rel, -md);
+    float off = abs(dot(rel, vec2(-md.y, md.x)));
+    float trail = step(0.0, behind) * exp(-behind / 0.14) * exp(-off * off / (px * px * 1.5));
+    col += vec3(0.85, 0.9, 1.0) * (trail * 1.1 + 3.0 * exp(-dot(rel, rel) / (px * px * 5.0))) * sin(3.1416 * mt);
+  }
   // Ground and an acacia.
   float ground = -0.2 + 0.015 * gnoise(vec2(p.x * 3.0, 1.0));
   vec3 silc = vec3(0.006, 0.005, 0.006);

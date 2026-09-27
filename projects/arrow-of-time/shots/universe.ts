@@ -8,7 +8,7 @@ const PROLOGUE = `
 #include <color>
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime;
-uniform float uPoint, uGather, uFoam;
+uniform float uPoint, uGather, uFoam, uMotes;
 void main() {
   vec2 p = centered(vUv, uAspect);
   float r = length(p);
@@ -17,6 +17,18 @@ void main() {
   // Faint quantum foam: barely-there shimmering texture in the void.
   float foam = fbm(vec3(p * 5.0, uGTime * 0.12), 4);
   col += vec3(0.30, 0.26, 0.45) * pow(foam, 4.0) * uFoam;
+  // Motes of light drifting in along slow spirals towards the centre, where the point will be:
+  // more of them, and faster, as the clock runs on.
+  for (int i = 0; i < 70; i++) {
+    vec3 h = hash31(float(i) * 3.71 + 0.5);
+    float phase = fract(h.x + uGTime * (0.015 + 0.03 * h.z) * (0.6 + 1.8 * uMotes));
+    float rr = mix(0.9, 0.015, phase * phase);
+    float ang = h.y * TAU + phase * (2.0 + 2.0 * h.z);
+    vec2 mp = vec2(cos(ang), sin(ang)) * rr * vec2(0.5 * uAspect, 0.5);
+    vec2 dm = p - mp;
+    float on = smoothstep(0.0, 0.25, phase) * smoothstep(1.0, 0.8, phase) * step(h.z, 0.25 + 0.75 * uMotes);
+    col += vec3(0.7, 0.8, 1.0) * on * uMotes * 2.2e-6 / (dot(dm, dm) + 3.0e-6);
+  }
   // Spiralling streaks of energy flowing inward.
   if (uGather > 0.0) {
     float a = atan(p.y, p.x);
@@ -51,6 +63,7 @@ function prologue(): Shot {
         uPoint: point,
         uGather: prog(t, riser + 2.0, 19.5, 'inCubic') * (t > 19.62 ? 0 : 1),
         uFoam: 0.06 + 0.1 * prog(t, 2, b.end, 'linear'),
+        uMotes: prog(t, 1.0, 15.0, 'inQuad') * (t > 19.62 ? 0 : 1),
       });
     },
   };
