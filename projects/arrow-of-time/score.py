@@ -77,7 +77,7 @@ LEVEL = {
 
 #: extra clock level (dB) and click brightness per section, so the heartbeat
 #: stays audible over the loudest music without being annoying in quiet parts
-TICK_BOOST = {'prologue': (0.0, 0.0), 'civilization': (9.0, 1.0), 'moonlanding': (11.0, 1.0), 'nightearth': (12.0, 1.0),
+TICK_BOOST = {'prologue': (0.0, 0.0), 'civilization': (7.0, 1.0), 'moonlanding': (11.0, 1.0), 'nightearth': (12.0, 1.0),
               'mars': (5.0, 0.5), 'drift': (5.0, 0.5), 'hotearth': (3.0, 0.3), 'redgiant': (10.0, 1.0),
               'whitedwarf': (2.0, 0.3), 'merger': (12.0, 1.0), 'laststars': (8.0, 0.8)}
 
@@ -99,6 +99,12 @@ LIFE = ['C', 'G/B', 'Am', 'F']
 
 def up(notes, octaves=1):
     return [name(midi(n) + 12 * octaves) for n in notes]
+
+
+def theme_line(score, track, bars, start, beat, synth, gain_db=0.0, shape=None, legato=0.15):
+    """Play theme bars with ``synth(note, dur, k)`` (k = index), notes overlapping slightly."""
+    for k, (t, note, d) in enumerate(theme_events(bars, start, beat)):
+        score.put(track, t, synth(note, d + legato, k), gain_db, shape=shape)
 
 
 def theme_events(bars, start, beat=1.0):
@@ -159,6 +165,7 @@ class Score:
         m.cut(self.cue('bang') - GAP)
         m.cut(self.cue('now'))
         m.cut(self.cue('asteroidImpact') - BREATH)   # all music (and every tail) stops, then the hit
+        m.cut(self.cue('launch') - BREATH)           # the same breath before the ignition
         self._cache = {}
         self.offset = 0.0
 
@@ -249,13 +256,13 @@ class Score:
                     [(t, 0.55 + 0.5 * ((t - rs) / (stop - rs)) ** 1.5, False) for t in acc])
         D = B('darkages')
         runs.append([(t, 0.32, True) for t in grid(D.start, D.end, 2.0)])
-        a0, civ, now = c('accelStart'), B('civilization'), c('now')
+        a0, top, now = c('accelStart'), c('launch'), c('now')
         r1, r2 = 140 / 60, 150 / 60
         def rate(t):
             t = np.asarray(t, dtype=np.float64)
-            u1 = np.clip((t - a0) / (civ.end - a0), 0, 1)
-            u2 = np.clip((t - civ.end) / (now - civ.end), 0, 1)
-            return np.where(t <= civ.end, r1 ** u1, r1 * (r2 / r1) ** u2)
+            u1 = np.clip((t - a0) / (top - a0), 0, 1)
+            u2 = np.clip((t - top) / (now - top), 0, 1)
+            return np.where(t <= top, r1 ** u1, r1 * (r2 / r1) ** u2)
         self.accel_ticks = [t for t in pulses(a0, now, rate) if t < now - 0.03]
         runs.append([(t, 0.5 + 0.4 * (t - a0) / (now - a0), False) for t in self.accel_ticks])
         res, Ls, last = c('resumeTick'), B('laststars'), c('lastTick')
@@ -341,6 +348,14 @@ class Score:
                    (t + 4, 'C3', ['G3', 'E4', 'G4', 'C5', 'E5']), (t + 6, 'G2', ['G3', 'D4', 'G4', 'B4', 'E5'])]
         self.string_prog(s_steps, BB.end + 0.3, attack=0.9, release=1.6, gain_db=0, shape=swell, bright=5200, seed=20)
         self.roll(BB.end - 2.0, BB.end, 'E2', 0.15, 0.7, gain_db=-6, seed=1)
+        # the main title: theme bars 1-4 (one bar per chord), horns with violins an octave up
+        tswell = [(t, -9), (t + 2.0, -2), (BB.end - 1.0, 0), (BB.end + 0.8, -6)]
+        theme_line(self, self.brass, [1, 2, 3, 4], t, 0.5,
+                   lambda n, d, k: ins.brass([up([n], -1)[0]], d, attack=0.08, release=0.5, vel=0.85, bright=0.9,
+                                             seed=300 + k), -3, shape=tswell)
+        theme_line(self, self.lead, [1, 2, 3, 4], t, 0.5,
+                   lambda n, d, k: ins.strings([n], d, attack=0.12, release=0.6, voices=6, vibrato=14, bright=5200,
+                                               seed=310 + k), -6, shape=tswell)
 
     def universe(self):
         """30-50: organ progression, bell arpeggios over the first elements,
@@ -361,6 +376,18 @@ class Score:
                    (E.start + 2, 'D3', ['F4', 'A4', 'D5', 'E5']), (CM.start, 'G2', ['G4', 'B4', 'D5', 'E5']),
                    (cmb, 'C3', ['G4', 'C5', 'E5', 'G5']), (CM.end - 2, 'F2', ['F4', 'A4', 'C5', 'E5'])]
         self.string_prog(s_steps, CM.end + 0.2, attack=1.2, release=2.0, shape=dyn, gain_db=-2, bright=4800, seed=40)
+        # a flute-stop organ arpeggio in 8ths keeps the young universe moving
+        figs = {'A2': ['A3', 'E4', 'A4', 'C5'], 'F2': ['F3', 'C4', 'A4', 'C5'], 'D2': ['D4', 'A4', 'D5', 'F5'],
+                'G2': ['G3', 'D4', 'B4', 'D5'], 'C3': ['C4', 'G4', 'C5', 'E5']}
+        bnds = [st[0] for st in steps] + [CM.end]
+        for (t0, b, _), t1 in zip(steps, bnds[1:]):
+            fig = figs[b]
+            for j, tt in enumerate(grid(t0, t1 - 0.05, 0.5)):
+                note = fig[[0, 1, 2, 3, 2, 1][j % 6]]
+                vel = 0.8 if j % 2 == 0 else 0.62
+                x = self.cached(('uarp', note, vel), lambda: ins.organ([note], 0.55, 'soft', attack=0.02, release=0.35,
+                                                                      chiff=0.5, level=vel, seed=7))
+                self.put(self.organ, tt, x, -13, pan=-0.3 if j % 2 else 0.3, shape=dyn)
         # glittering bell arpeggios over the first elements
         tones = {E.start: ['A5', 'C6', 'E6', 'F6', 'A6', 'C7'], E.start + 2: ['A5', 'C6', 'D6', 'E6', 'F6', 'A6']}
         r = rng('glitter')
@@ -462,6 +489,10 @@ class Score:
                                            seed=180), 0, shape=dyn)
         self.put(self.choir, t2, ins.choir(['E3', 'G3', 'C4', 'E4', 'G4', 'C5'], end - t2 - 1.0, 'a', attack=0.5,
                                            release=2.5, seed=181), 0, shape=dyn)
+        # theme bars 5-6, one bar per chord, horns doubled by violins
+        theme_line(self, self.lead, [5, 6], mw + 0.2, (t2 - mw) / 4.0,
+                   lambda n, d, k: ins.strings([n, up([n], -1)[0]], d, attack=0.3, release=1.0, voices=6, vibrato=15,
+                                               bright=5200, seed=320 + k), -4, shape=dyn)
 
     def solar(self):
         """80-100: supernova boom, low piano ostinato (8ths), bright C major
@@ -554,6 +585,8 @@ class Score:
                         O.end + 0.5, 'soft', attack=2.5, release=2.5, gain_db=-5, seed=270)
         self.string_prog([(O.start, None, ['E4', 'A4', 'B4', 'C5']), (O.start + 4, None, ['F4', 'A4', 'C5', 'E5'])],
                          O.end + 0.5, attack=2.5, release=2.5, gain_db=-9, bright=3500, seed=280)
+        theme_line(self, self.piano_far, [1, 2], O.start, O.dur / 8.0,
+                   lambda n, d, k: ins.piano(n, dur=d + 0.8, vel=0.34, tone=0.5), -3)
         self.put(self.amb, rain, ins.rain(L.start + 5.0 - rain, 1.0, 0.6, seed=1), -8,
                  shape=[(rain, -6), (rain + 2, 0), (L.start, 0), (L.start + 5.0, -30)])
 
@@ -734,6 +767,9 @@ class Score:
                                                        release=2.5, seed=361), -9)
         self.put(self.strings, Mm.start + 2.0, ins.strings(['E5'], Mm.dur - 1.5, attack=2.0, release=2.0, voices=5,
                                                            bright=4500, vibrato=10, seed=362), -15)
+        theme_line(self, self.lead, [3, 4], Mm.start + 0.5, (Mm.dur - 0.5) / 8.0,
+                   lambda n, d, k: ins.strings([n], d, attack=0.4, release=1.2, voices=4, vibrato=12, bright=4000,
+                                               seed=365 + k), -9)
 
     def humans(self):
         """168-182: solo piano (theme bars 1-2), fire from 'fire'; caves:
@@ -766,98 +802,141 @@ class Score:
             t += float(r.choice([0.2, 0.25, 0.5, 0.6, 0.75, 1.0]))
 
     def ascent(self):
-        """182-208: civilization (accelerating ticks, accents with chord
-        changes on every montage time), moon landing (brass at moonStep),
-        night Earth (peak), hard cut at NOW."""
+        """182-224: civilization, the launch, the Moon landing, night Earth, and the hard cut at
+        NOW. The clock accelerates from 60 BPM at accelStart to 140 at the launch (150 at NOW),
+        and the ages are phrased: pastoral plucks and hand drums (farming to writing),
+        monumental organ, taiko and choir (the pyramids to printing), a mechanical string
+        ostinato with anvil clangs (industry, flight), brass stabs and a riser (the atom, space).
+        At the launch the theme bursts out (bars 1-4 over Am F C G), its third bar landing on
+        moonStep; night Earth is the peak."""
         civ, ml, ne = self.B('civilization'), self.B('moonlanding'), self.B('nightearth')
-        a0, step, now = self.cue('accelStart'), self.cue('moonStep'), self.cue('now')
+        a0, step, now, launch = self.cue('accelStart'), self.cue('moonStep'), self.cue('now'), self.cue('launch')
         if not self.want(a0, now):
             return
         self.sec('ascent')
         mont = [float(m['t']) for m in self.tl.montage('civilization')]
-        # chord plan: one core chord per montage accent, then the landing and the peak
-        plan = [(t, CYCLE[k % 4]) for k, t in enumerate(mont)]
-        plan += [(ml.start, 'G'), (step, 'C'), (step + 2.5, 'G')]
+        pyramids, printing, industry, atom = mont[3], mont[5], mont[6], mont[8]
+        # one chord per age, arriving on the dominant (G) just before the launch resolves to Am
+        ages = ['Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'G', 'F', 'G']
+        beat = (step - launch) / 8.0          # the theme's quarter note: bars 1-2 fill launch -> moonStep
+        plan = [(t, ages[k % len(ages)]) for k, t in enumerate(mont)]
+        plan += [(launch, 'Am'), (launch + 4 * beat, 'F'), (step, 'C'), (step + 4 * beat, 'G')]
         plan += [(ne.start + 1.5 * k, CYCLE[k % 4]) for k in range(4)]
+
         def chord_at(t):
             return [c for tc, c in plan if tc <= t + 1e-6][-1]
         ticks = self.accel_ticks
         span = now - a0
-        # sustained organ (principal -> full) with a long crescendo
-        cres = [(a0, -9), (mont[4], -5), (civ.end, -3), (ne.start, -1), (now, 1)]
-        o_steps = []
-        for i, (t, ch) in enumerate(plan):
-            b, u = CORE[ch]
-            if t >= mont[4]:
-                u = u + up(u[-1:])
-            o_steps.append((t, b, u))
-        self.organ_prog([s for s in o_steps if s[0] < mont[4]], mont[4], 'principal', attack=0.05, release=0.4,
+        # a long crescendo that holds its breath for a moment before the ignition
+        cres = [(a0, -12), (pyramids, -7), (industry, -4), (mont[-1], -2), (launch - 0.35, -3), (launch - 0.05, -10),
+                (launch + 0.25, 1), (ne.start, 0), (now, 1)]
+        # organ: soft (farming) -> principal (pyramids on) -> full from the launch
+        o_steps = [(t, *CORE[ch]) for t, ch in plan]
+        self.organ_prog([st for st in o_steps if st[0] < pyramids], pyramids + 0.2, 'soft', attack=0.4, release=0.6,
                         shape=cres, seed=400)
-        self.organ_prog([s for s in o_steps if mont[4] <= s[0] < ne.start], ne.start, 'principal', attack=0.05,
-                        release=0.4, shape=cres, pedal='pedal', seed=410)
-        self.organ_prog([s for s in o_steps if s[0] >= ne.start], now + 0.5, 'full', attack=0.05, release=0.4,
-                        shape=cres, pedal='pedal', seed=415)
-        # sustained strings (high, E pedal on top), entering at Philosophy
-        s_steps = [(t, None, up(CORE[ch][1])) for t, ch in plan if t >= mont[4]]
-        self.string_prog(s_steps, now + 0.5, attack=0.3, release=0.5, shape=cres, gain_db=-5, bright=4200, seed=420)
-        # accents: hit + stab on every montage time
+        self.organ_prog([(t, b, u + up(u[-1:])) for t, b, u in o_steps if pyramids <= t < launch], launch, 'principal',
+                        attack=0.08, release=0.3, shape=cres, pedal='pedal', seed=410)
+        self.organ_prog([(t, b, u + up(u[-1:])) for t, b, u in o_steps if t >= launch], now + 0.5, 'full', attack=0.05,
+                        release=0.4, shape=cres, pedal='pedal', seed=415)
+        # sustained strings and choir from Philosophy
+        self.string_prog([(t, None, up(CORE[ch][1])) for t, ch in plan if t >= mont[4]], now + 0.5, attack=0.3,
+                         release=0.5, shape=cres, gain_db=-5, bright=4200, seed=420)
+        c_steps = [(t, up(CORE[ch][1])) for t, ch in plan if t >= mont[4]]
+        for (t, notes), nxt in zip(c_steps, [st[0] for st in c_steps[1:]] + [now + 0.3]):
+            self.put(self.choir, t, ins.choir(notes + [CORE[chord_at(t)][0]], nxt - t, 'a', attack=0.15, release=0.4,
+                                              voices=4, seed=int(t * 10)), -4, shape=cres)
+
+        # farming to writing: pastoral plucked arpeggios (16ths) and hand drums on the clock
+        arp_of = {'Am': 'Am', 'F': 'F', 'C': 'C', 'G': 'G/B'}
+        for j, t in enumerate(grid(a0 + 0.5, pyramids, 0.25)):
+            ch = arp_of[chord_at(t)]
+            note = ARP[ch][j % 8]
+            u = (t - a0) / (pyramids - a0)
+            vel = round((0.42 + 0.2 * u) * (1.0 if j % 4 == 0 else 0.72), 2)
+            x = self.cached(('carp', note, vel), lambda: ins.pluck(note, 1.2, vel, bright=0.6, seed=j % 3))
+            self.put(self.pluck, t, x, -4, pan=-0.3 if j % 2 else 0.3)
+        # ticks: hand drums early, taiko toms later, a heavier pulse from the landing
+        for i, t in enumerate(ticks):
+            u = (t - a0) / span
+            vt = round(min(0.95, 0.3 + 0.6 * u), 2)
+            if t < pyramids:
+                f = 150.0 if i % 2 else 190.0
+                x = self.cached(('hand', f, vt), lambda: ins.drum(f, vt, decay=0.18, drop=0.2, noise=0.3,
+                                                                   noise_lp=2500.0, seed=4))
+                self.put(self.perc, t, x, -13 + 3 * u, pan=-0.3 if i % 2 else 0.3)
+            else:
+                f = 95.0 if i % 2 else 120.0
+                x = self.cached(('ctom', f, vt), lambda: ins.drum(f, vt, decay=0.3, drop=0.35, noise=0.15,
+                                                                   noise_lp=1500.0, seed=2))
+                self.put(self.perc, t, x, -10 + 4 * u, pan=-0.25 if i % 2 else 0.25)
+            if t >= ml.start and i % 2 == 0:
+                self.put(self.perc, t, self.cached(('ctaiko', vt), lambda: ins.taiko(vt, 1.0, seed=5)), -6)
+
+        # an accent on every age: taiko (+ low taiko once monumental), boom, brass and string stabs
         for k, t in enumerate(mont):
-            ch = CYCLE[k % 4]
-            v = 0.8 + 0.2 * k / (len(mont) - 1)
-            self.put(self.perc, t, ins.taiko(v, 1.15, seed=10 + k), -1)
-            if k >= 4:
+            ch = ages[k % len(ages)]
+            v = 0.7 + 0.3 * k / (len(mont) - 1)
+            self.put(self.perc, t, ins.taiko(v, 1.15, seed=10 + k), -2 if t >= pyramids else -6)
+            if t >= pyramids:
                 self.put(self.perc, t, ins.taiko(v, 1.6, seed=20 + k), -4)
-            self.put(self.boom, t, ins.sub_boom(2.0, 80.0, 42.0, 0.12, 0.45, 0.45 + 0.04 * k, click=0.5, seed=40 + k),
-                     -4 if k in (0, len(mont) - 1) else -9)
-            self.put(self.brass, t, ins.brass(TRIAD[ch], 0.4, attack=0.015, release=0.5, vel=0.9, bright=1.3,
-                                              seed=50 + k), -4 + 0.4 * k)
+                self.put(self.brass, t, ins.brass(TRIAD[ch], 0.45, attack=0.015, release=0.5, vel=0.9, bright=1.2,
+                                                  seed=50 + k), -5 + 0.4 * k)
+            self.put(self.boom, t, ins.sub_boom(2.0, 80.0, 42.0, 0.12, 0.45, 0.4 + 0.04 * k, click=0.5, seed=40 + k),
+                     -5 if k in (0, 3) else -10)
             self.put(self.strings, t, ins.strings(TRIAD[ch] + up([TRIAD[ch][0]]), 0.28, attack=0.008, release=0.35,
-                                                  voices=5, vibrato=0, bright=7500, air=0.0, seed=60 + k), -5 + 0.3 * k)
-        atom = next((float(m['t']) for m in self.tl.montage('civilization') if 'atom' in m.get('title', '').lower()),
-                    mont[-1])
-        self.put(self.boom, atom, ins.sub_boom(4.0, 60.0, 28.0, 0.3, 1.6, 0.8, click=0.6, seed=70), -2)
-        self.put(self.sfx, atom, ins.noise_burst(3.0, 10000.0, 300.0, 0.8, 0.6, 0.6, seed=71), -10)
-        self.put(self.sfx, mont[-1], ins.riser(ml.start + 1.0 - mont[-1], 150.0, 6000.0, q=1.5, vel=0.8, seed=72), -12)
-        # string ostinato interlocking with the accelerating clock, plus drums on the ticks
+                                                  voices=5, vibrato=0, bright=7500, air=0.0, seed=60 + k), -7 + 0.3 * k)
+        # printing onwards: the machine age, a string ostinato interlocking with the clock
         for i in range(len(ticks)):
             t = ticks[i]
+            if t < printing:
+                continue
             nxt = ticks[i + 1] if i + 1 < len(ticks) else now
             u = (t - a0) / span
-            # strings interlock with the clock: offbeat 8ths (+ a 16th pickup once it is fast)
             offs = [0.5, 0.75] if nxt - t > 0.52 else [0.5]
             for h, frac in enumerate(offs):
                 tt = t + (nxt - t) * frac
                 if tt >= now - 0.02:
                     continue
-                ch = chord_at(tt)
-                note = FIGURE[ch][(2 * i + h + 1) % 4]
+                note = FIGURE[chord_at(tt)][(2 * i + h + 1) % 4]
                 x = self.cached(('ost', note, h), lambda: ins.strings([note], 0.2, attack=0.006, release=0.14, voices=4,
                                                                       vibrato=0, bright=5500, air=0.0, seed=h))
-                self.put(self.strings, tt, x, -10 + 7 * u - 3.0 * h)
-            vt = round(min(0.95, 0.35 + 0.55 * u), 2)
-            f = 95.0 if i % 2 else 120.0
-            self.put(self.perc, t, self.cached(('ctom', f, vt), lambda: ins.drum(f, vt, decay=0.3, drop=0.35, noise=0.15,
-                                                                                noise_lp=1500.0, seed=2)),
-                     -9 + 4 * u, pan=-0.25 if i % 2 else 0.25)
-            if t >= ml.start and i % 2 == 0:
-                self.put(self.perc, t, self.cached(('ctaiko', vt), lambda: ins.taiko(vt, 1.0, seed=5)), -6)
-        # choir from Philosophy, swelling
-        c_steps = [(t, up(CORE[ch][1])) for t, ch in plan if t >= mont[4]]
-        for (t, notes), nxt in zip(c_steps, [s[0] for s in c_steps[1:]] + [now + 0.3]):
-            self.put(self.choir, t, ins.choir(notes + [CORE[chord_at(t)][0]], nxt - t, 'a', attack=0.15, release=0.4,
-                                              voices=4, seed=int(t * 10)), -3, shape=cres)
-        # moon landing: triumphant brass at moonStep
+                self.put(self.strings, tt, x, -11 + 7 * u - 3.0 * h)
+        # industry and flight: anvil clangs on the off-beats of every other tick
+        for i, t in enumerate(ticks):
+            if industry <= t < atom and i % 4 == 1:
+                x = self.cached(('anvil', i % 3), lambda: ins.bell(['E5', 'B4', 'G5'][i % 3], 0.9, 0.55, 'church',
+                                                                   fm=0.8, seed=i % 3))
+                self.put(self.mallet, t, x, -9, pan=0.45 if i % 8 == 1 else -0.45)
+        # the atom: a deep thud; then a riser and a reverse swell into the launch
+        self.put(self.boom, atom, ins.sub_boom(4.0, 60.0, 28.0, 0.3, 1.6, 0.8, click=0.6, seed=70), -3)
+        self.put(self.sfx, atom, ins.noise_burst(3.0, 10000.0, 300.0, 0.8, 0.6, 0.6, seed=71), -11)
+        self.put(self.sfx, atom + 0.5, ins.riser(launch - atom - 0.5, 150.0, 6000.0, q=1.5, vel=0.8, seed=72), -11)
+        self.put(self.sfx, launch - 1.5, ins.reverse_swell(1.5, 1.2, 0.9, seed=73), -10)
+        self.roll(launch - 2.0, launch - 0.08, 'A2', 0.15, 0.9, gain_db=-4, seed=7)
+
+        # the launch: ignition thunder under the theme in full (horns, violins, choir)
+        self.put(self.boom, launch, ins.sub_boom(7.0, 55.0, 24.0, 0.6, 2.8, 0.9, click=0.6, harmonics=0.5, seed=74), -3)
+        self.put(self.amb, launch, ins.rumble(step - launch + 1.0, lp=130.0, vel=0.9, attack=0.3, release=2.0, seed=8), -5)
+        self.put(self.sfx, launch, ins.noise_burst(5.0, 9000.0, 180.0, 2.5, 1.6, 0.7, seed=75), -12)
+        self.put(self.perc, launch, ins.timpani('A2', 1.0, seed=8), -1)
+        self.put(self.sfx, launch, ins.impact(1.0, 1.2, 6.0, seed=76), -5)
+        tdyn = [(launch, -2), (launch + 1.0, 0), (step, 1), (ne.start, 0), (ne.start + 0.5, -8)]
+        theme_line(self, self.brass, [1, 2, 3, 4], launch, beat,
+                   lambda n, d, k: ins.brass([up([n], -1)[0], n], d, attack=0.05, release=0.35, vel=1.0, bright=1.1,
+                                             seed=330 + k), -1, shape=tdyn)
+        theme_line(self, self.lead, [1, 2, 3, 4], launch, beat,
+                   lambda n, d, k: ins.strings([n, up([n])[0]], d, attack=0.08, release=0.5, voices=7, vibrato=16,
+                                               bright=6000, seed=340 + k), -3, shape=tdyn)
+        # the Moon landing: bar 3 of the theme lands with the C major chord on moonStep
         self.put(self.sfx, step - 1.0, ins.reverse_swell(1.0, 1.2, 0.9, seed=5), -10)
-        self.put(self.brass, ml.start, ins.brass(['G2', 'D3', 'G3', 'C4', 'D4'], step - ml.start, attack=0.5,
-                                                 release=0.2, vel=0.7, bright=0.7, seed=8), -4)
-        self.put(self.brass, step, ins.brass(['C3', 'G3', 'C4', 'E4', 'G4', 'C5'], 2.5, attack=0.12, release=0.6,
-                                             vel=1.0, bright=1.1, seed=9), 2)
-        self.put(self.brass, step + 2.5, ins.brass(['B2', 'D3', 'G3', 'B3', 'D4', 'G4'], ne.start - step - 2.5,
-                                                   attack=0.2, release=0.5, vel=0.95, bright=1.0, seed=10), 1)
+        self.put(self.brass, step, ins.brass(['C3', 'G3', 'C4', 'E4', 'G4'], 4 * beat, attack=0.12, release=0.6,
+                                             vel=1.0, bright=1.0, seed=9), -1)
+        self.put(self.brass, step + 4 * beat, ins.brass(['B2', 'D3', 'G3', 'B3', 'D4'], ne.start - step - 4 * beat,
+                                                        attack=0.2, release=0.5, vel=0.95, bright=1.0, seed=10), -2)
         self.put(self.perc, step, ins.timpani('C3', 1.0, seed=3), -1)
         self.put(self.boom, step, ins.sub_boom(4.0, 70.0, 33.0, 0.3, 1.2, 0.6, click=0.3, seed=80), -4)
         self.put(self.sfx, step, ins.noise_burst(3.5, 16000.0, 3000.0, 1.2, 0.8, 0.35, seed=81), -13)
-        # night Earth: brass on every change, riser into the cut
+        # night Earth: brass on every change, a riser into the cut
         for k in range(4):
             t = ne.start + 1.5 * k
             ch = CYCLE[k % 4]
@@ -868,8 +947,8 @@ class Score:
         self.put(self.sfx, ne.start + 2.0, ins.shepard(now - ne.start - 2.0, 0.4, 1.6, vel=1.0, seed=2), -9)
 
     def now(self):
-        """208-216: silence after the hard cut; single piano notes with long
-        reverb at blueDot (A4) and 3 s later (E5)."""
+        """NOW: silence after the hard cut; single piano notes with long reverb at
+        blueDot (A4) and 3 s later (E5)."""
         bd, T = self.cue('blueDot'), self.B('turn')
         if not self.want(bd, T.start):
             return
@@ -878,8 +957,8 @@ class Score:
         self.put(self.piano_far, bd + 3.0, ins.piano('E5', dur=6.0, vel=0.38, tone=0.6), -1)
 
     def future(self):
-        """220-240: hopeful Lydian A major, slow arpeggios; hot Earth: warm
-        drone with a creeping b6."""
+        """Mars and drift: hopeful Lydian A major, slow arpeggios and the theme turned
+        major; hot Earth: warm drone with a creeping b6."""
         Ma, Dr, He, R = self.B('mars'), self.B('drift'), self.B('hotearth'), self.B('redgiant')
         if not self.want(Ma.start, R.start):
             return
@@ -901,6 +980,11 @@ class Score:
                                                   seed=j), -3, pan=0.3 * math.sin(j * 1.3))
             self.put(self.bells, bounds[k], ins.bell(up([arps[k][4]])[0], 5.0, 0.35, 'glass', seed=520 + k), -6,
                      pan=0.4 if k % 2 else -0.4)
+        # the theme, now in A major with a Lydian D sharp: bars 1-2 over the first two chords
+        lyd = {'C5': 'C#5', 'D5': 'D#5', 'C4': 'C#4', 'G4': 'G#4'}
+        theme_line(self, self.lead, [1, 2], s, (Dr.start - s) / 8.0,
+                   lambda n, d, k: ins.strings([lyd.get(n, n)], d, attack=0.35, release=1.2, voices=5, vibrato=12,
+                                               bright=4600, seed=540 + k), -5)
         # hot Earth
         self.put(self.organ, He.start - 0.5, ins.organ(['A2', 'E3'], He.dur + 1.0, 'drone', attack=2.0, release=1.5,
                                                        seed=530), -5)
@@ -913,8 +997,8 @@ class Score:
         self.put(self.amb, He.start, ins.rumble(He.dur + 2.0, lp=260.0, vel=0.5, attack=2.5, release=2.0, seed=5), -12)
 
     def redgiant(self):
-        """240-248: huge, heavy, dark: low brass and organ pedal, swell from
-        redGiantSwell; 248-254 white dwarf: crystalline bells, soft pad."""
+        """Red giant: huge, heavy, dark: low brass and organ pedal, swell from
+        redGiantSwell; white dwarf: crystalline bells, soft pad."""
         R, W, sw = self.B('redgiant'), self.B('whitedwarf'), self.cue('redGiantSwell')
         if not self.want(R.start, W.end):
             return
@@ -946,8 +1030,8 @@ class Score:
         self.put(self.glass, W.start + 0.5, ins.glass('E6', W.dur - 1.0, attack=1.0, release=2.0, vel=0.4, seed=5), -4)
 
     def merger(self):
-        """254-262: the last grand swell: sweeping strings and choir; the
-        violins sing theme bars 5-6."""
+        """Merger: the last grand swell: sweeping strings and choir; the violins
+        sing theme bars 5-6."""
         Mg = self.B('merger')
         if not self.want(Mg.start, Mg.end):
             return
@@ -976,9 +1060,9 @@ class Score:
         self.put(self.perc, s, ins.timpani('F2', 1.0, seed=6), -2)
 
     def ending(self):
-        """262-296: the last stars (descending bells per starDeaths), black
-        holes (sub drone, eerie choir), evaporation (shimmer, lastFlash),
-        heat death (near silence)."""
+        """The last stars (descending bells per starDeaths), black holes (sub
+        drone, eerie choir), evaporation (shimmer, lastFlash), heat death
+        (near silence)."""
         Ls, Bh, Ev, Hd = self.B('laststars'), self.B('blackholes'), self.B('evaporation'), self.B('heatdeath')
         lf = self.cue('lastFlash')
         if not self.want(Ls.start, Hd.end):
@@ -1012,9 +1096,9 @@ class Score:
         self.put(self.sfx, lf, ins.noise_burst(3.0, 12000.0, 3000.0, 0.8, 0.6, 0.25, seed=97), -12)
 
     def epilogue(self):
-        """296-318: soft organ Am returns, strings enter, theme bars 1-3 on
-        piano leading into the Picardy A major at picardy; fade at
-        finalTitle; the final tick is in clock_part."""
+        """Epilogue: soft organ Am returns, strings enter, theme bars 1-3 on piano
+        leading into the Picardy A major at picardy; fade at finalTitle; the
+        final tick is in clock_part."""
         Ep, pc, ft = self.B('epilogue'), self.cue('picardy'), self.cue('finalTitle')
         fin = self.cue('finalTick')
         if not self.want(Ep.start, Ep.end):
