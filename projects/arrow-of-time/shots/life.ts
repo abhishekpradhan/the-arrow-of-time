@@ -83,57 +83,138 @@ function vent(): Shot {
 }
 
 // ------------------------------------------------------------------ cells
+// Binary fission of a rod-shaped microbe. Life 3.8 billion years ago was bacteria- and
+// archaea-like: no nucleus, just a tangle of DNA (the nucleoid), ribosomes, storage granules and a
+// flagellum. The cell grows, copies its DNA and pulls the copies apart, a protein ring (FtsZ)
+// constricts the middle, and the daughters snap apart. Interior textures are looked up in material
+// coordinates that each daughter carries away, so the two halves are never copies of each other.
 const CELLS = `
 #include <noise>
-#include <color>
 #include <sdf>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uT, uSplit;
-// Membrane glow for a signed distance d (units of screen height), blurred by "blur" for depth of field.
-vec3 cellLook(float d, vec2 q, float r, float blur, float seed) {
-  float w = 0.004 + blur;
-  float mem = exp(-abs(d) / w) * (0.35 + 0.65 * smoothstep(-0.5, 0.5, q.y / r + 0.3));
-  float inside = smoothstep(w, -w, d);
-  float org = smoothstep(0.62, 0.8, fbm(vec3(q * 18.0 / r, uGTime * 0.2 + seed), 4)) * inside;
-  float nuc = exp(-pow(length(q - vec2(0.12, 0.08) * r) / (0.35 * r), 4.0)) * inside;
-  vec3 c = vec3(0.3, 0.85, 0.9) * mem * 1.3 + vec3(0.05, 0.25, 0.3) * inside * 0.35;
-  c += vec3(0.9, 0.6, 0.35) * org * 0.35 + vec3(0.7, 0.45, 0.8) * nuc * 0.3;
-  return c / (1.0 + blur * 60.0);
+uniform vec2 uRes; uniform float uAspect, uGTime, uCycle, uSnap, uDrift, uZoom;
+const float R = 0.066;             // rod radius (screen heights)
+const float H0 = 0.08, H1 = 0.2;   // half-length of the rod's axis at birth and before division
+
+float sdRod(vec2 p, float h, float r) { p.x -= clamp(p.x, -h, h); return length(p) - r; }
+
+// Dividing cell in its own frame: h = parent half-length, k = neck blend, th/gap = snap apart.
+// qa, qb are the daughters' rest-frame coordinates (equal to l until they separate).
+float cellSd(vec2 l, float h, float k, float th, float gap, out vec2 qa, out vec2 qb, out float da, out float db) {
+  vec2 ca = vec2(-(h + R) * 0.5, 0.0);
+  float hd = (h - R) * 0.5;
+  qa = rot2(-th) * l + vec2(gap, 0.0);
+  qb = rot2(th) * l - vec2(gap, 0.0);
+  da = sdRod(qa - ca, hd, R);
+  db = sdRod(qb + ca, hd, R);
+  float d = k > 1e-5 ? smin(da, db, k) : min(da, db);
+  return th > 0.0 ? d : max(d, sdRod(l, h, R));
 }
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  vec3 col = mix(vec3(0.0, 0.03, 0.045), vec3(0.01, 0.09, 0.11), smoothstep(-0.6, 0.6, p.y + p.x * 0.2));
-  // Caustic shimmer.
-  vec2 w = worley(p * 7.0 + vec2(uGTime * 0.1, -uGTime * 0.07));
-  col += vec3(0.05, 0.2, 0.22) * pow(max(1.0 - (w.y - w.x), 0.0), 8.0) * 0.08;
-  // Background cells (out of focus).
-  for (int i = 0; i < 6; i++) {
-    vec3 h = hash31(float(i) * 7.3 + 1.0);
-    vec2 c = vec2(h.x * 2.2 - 1.1, h.y * 1.1 - 0.55) + 0.03 * vec2(sin(uGTime * 0.3 + h.z * 9.0), cos(uGTime * 0.25 + h.x * 7.0));
-    float r = 0.05 + 0.08 * h.z;
-    vec2 q = p - c;
-    col += cellLook(length(q) - r, q, r, 0.02 + 0.03 * h.z, h.x * 10.0) * 0.7;
+
+vec3 water(vec2 p) {
+  vec3 col = mix(vec3(0.0, 0.02, 0.032), vec3(0.006, 0.07, 0.09), smoothstep(-0.7, 0.6, p.y + p.x * 0.25));
+  col *= 0.75 + 0.5 * fbm(vec3(p * 2.2, uGTime * 0.03), 3);
+  // Warm glow from the vent, off frame to the lower left.
+  col += vec3(0.32, 0.13, 0.04) * 0.07 * exp(-1.7 * length(p - vec2(-1.0, -0.55)));
+  // Other microbes, out of focus at different depths: rods and cocci.
+  for (int i = 0; i < 7; i++) {
+    vec3 h = hash31(float(i) * 11.7 + 3.0);
+    vec2 c = vec2(h.x * 2.0 - 1.0, h.y * 0.8 - 0.4) + 0.02 * vec2(sin(uGTime * 0.2 + h.z * 7.0), cos(uGTime * 0.17 + h.x * 5.0));
+    float r = 0.025 + 0.03 * h.y;
+    float hl = h.x > 0.4 ? r * (0.6 + 1.2 * h.z) : 0.0;
+    float d = sdRod(rot2(-h.z * 6.28 - uGTime * 0.03 * (h.x - 0.5)) * (p - c), hl, r);
+    float blur = 0.018 + 0.03 * h.z;
+    col += vec3(0.2, 0.6, 0.65) * (exp(-abs(d) / (0.003 + blur)) * 0.22 + smoothstep(blur, -blur, d) * 0.04) / (1.0 + blur * 40.0);
   }
-  // The dividing cell: two lobes separating, joined by a smooth union that pinches off.
-  float R = 0.2;
-  float sep = uSplit * R * 1.15;
-  vec2 c1 = vec2(-sep, 0.0), c2 = vec2(sep, 0.0);
-  float k = mix(0.12, 0.0, smoothstep(0.55, 1.0, uSplit));
-  float r1 = R * mix(1.0, 0.8, uSplit);
-  float d1 = length(p - c1) - r1, d2 = length(p - c2) - r1;
-  float d = k > 0.0 ? smin(d1, d2, k) : min(d1, d2);
-  d += 0.004 * gnoise(vec3(p * 12.0, uGTime * 0.5));
-  vec2 q = p - (length(p - c1) < length(p - c2) ? c1 : c2);
-  col += cellLook(d, q, r1, 0.0, 3.0) * 1.2;
-  // Floating specks.
-  vec2 g = p * 50.0 + vec2(uGTime * 0.4, uGTime * 0.9);
-  vec3 hh = hash32(floor(g));
-  col += vec3(0.5, 0.9, 1.0) * step(0.9, hh.z) * exp(-dot(fract(g) - hh.xy, fract(g) - hh.xy) / 0.01) * 0.2;
+  // Marine snow: fine specks and a few large out-of-focus motes.
+  vec2 g = p * 48.0 + vec2(uGTime * 0.3, uGTime * 0.7);
+  vec3 hs = hash32(floor(g));
+  vec2 f = fract(g) - hs.xy;
+  col += vec3(0.45, 0.8, 0.9) * step(0.92, hs.z) * exp(-dot(f, f) / 0.008) * 0.12;
+  vec2 g2 = p * 9.0 + vec2(uGTime * 0.08, uGTime * 0.18);
+  vec3 hb = hash32(floor(g2) + 31.0);
+  vec2 fb = fract(g2) - (0.2 + 0.6 * hb.xy);
+  col += vec3(0.3, 0.6, 0.7) * step(0.8, hb.z) * smoothstep(0.12, 0.09, length(fb)) * 0.025;
+  return col;
+}
+
+void main() {
+  vec2 C = vec2(-0.09, 0.035) + 0.004 * vec2(sin(uGTime * 0.7), cos(uGTime * 0.53));
+  vec2 p = C + (centered(vUv, uAspect) - C) / uZoom;
+  vec3 col = water(p);
+  float ang = 0.33 + 0.03 * sin(uGTime * 0.2);
+  vec2 l = rot2(-ang) * (p - C);
+
+  // Cell cycle: elongate, segregate the DNA, constrict, pinch; then snap apart and drift.
+  float e = smoothstep(0.0, 0.55, uCycle);
+  float h = mix(H0, H1, e);
+  float seg = smoothstep(0.08, 0.62, uCycle);
+  float u = seg * (h + R) * 0.5;
+  float con = smoothstep(0.4, 0.97, uCycle);
+  float w = R * (1.0 - con);                             // neck radius
+  float k = 4.0 * (sqrt(R * R + w * w) - R);             // smin blend that gives that neck
+  float th = 0.22 * uSnap, gap = 0.012 * uSnap + 0.012 * uDrift;
+  float sx = mix(1.0, (H0 + R) / (h + R), 0.65);         // the cytoplasm stretches as the cell grows
+
+  vec2 qa, qb, qa2, qb2; float da, db, t1, t2;
+  float d = cellSd(l, h, k, th, gap, qa, qb, da, db);
+  vec2 n = vec2(cellSd(l + vec2(0.0015, 0.0), h, k, th, gap, qa2, qb2, t1, t2) - d,
+                cellSd(l + vec2(0.0, 0.0015), h, k, th, gap, qa2, qb2, t1, t2) - d);
+  n = rot2(ang) * normalize(n + 1e-7);
+  vec2 m = (da < db ? qa : qb) * vec2(sx, 1.0);
+
+  float inside = smoothstep(0.0025, -0.0025, d);
+  // Depth for shading: the parent rod's until the neck forms (the blended field is shallow there).
+  float s = clamp(-(th > 0.0 ? d : mix(sdRod(l, h, R), d, con)) / R, 0.0, 1.0);
+  float thick = sqrt(max(2.0 * s - s * s, 0.0));          // optical depth through a round rod
+  col *= 1.0 - 0.35 * inside;
+
+  // Cytoplasm, ribosomes.
+  float cyto = 0.7 + 0.6 * fbm(vec3(m * 25.0, uGTime * 0.1), 3);
+  float ribo = smoothstep(0.25, 0.75, gnoise(vec3(m * 170.0, uGTime * 0.25)));
+  col += (vec3(0.03, 0.13, 0.15) * cyto + vec3(0.25, 0.55, 0.55) * ribo * 0.12) * thick * inside;
+
+  // Nucleoid: two copies of a fibrous DNA tangle, overlapping at first, pulled to the daughters.
+  float rx = mix(0.085, 0.07, seg), ry = 0.04;
+  vec2 na = qa + vec2(u, 0.0), nb = qb - vec2(u, 0.0);
+  float ga = exp(-2.2 * (na.x * na.x / (rx * rx) + na.y * na.y / (ry * ry)));
+  float gb = exp(-2.2 * (nb.x * nb.x / (rx * rx) + nb.y * nb.y / (ry * ry)));
+  float dna = 1.0 - (1.0 - ga * ridged(vec3(na * 60.0, uGTime * 0.12), 3)) * (1.0 - gb * ridged(vec3(nb * 60.0 + 17.3, uGTime * 0.12 + 5.0), 3));
+  col += vec3(0.5, 0.42, 1.0) * dna * inside * 0.5;
+
+  // Storage granules, away from the division plane.
+  for (int i = 0; i < 6; i++) {
+    vec3 hh = hash31(float(i) * 3.7 + 1.3);
+    float gx = (0.03 + 0.08 * hh.x) * (i < 3 ? -1.0 : 1.0);
+    vec2 gp = vec2(gx, (hh.y - 0.5) * 0.08);
+    float r = 0.006 + 0.005 * hh.z;
+    float gd = length(m - gp);
+    col += (vec3(1.0, 0.72, 0.42) * (smoothstep(r, r * 0.6, gd) * 0.07 + exp(-abs(gd - 0.8 * r) / (0.12 * r)) * 0.1)
+          + vec3(1.0, 0.9, 0.75) * exp(-length(m - gp - r * vec2(-0.3, 0.4)) / (0.15 * r)) * 0.18) * inside;
+  }
+
+  // FtsZ ring at the division plane, seen edge-on: bright where it meets the membrane.
+  float ring = exp(-l.x * l.x / 1.5e-5) * smoothstep(0.32, 0.55, uCycle) * (1.0 - smoothstep(0.9, 1.0, uCycle)) * (1.0 - uSnap);
+  col += vec3(0.6, 1.0, 1.0) * ring * inside * (0.012 + 0.7 * exp(-abs(d) / 0.006));
+
+  // Envelope: inner membrane and the wall just outside it, lit cool from above and warm by the vent.
+  vec3 rim = vec3(0.35, 0.9, 0.95) * (0.35 + 0.65 * max(dot(n, vec2(-0.45, 0.89)), 0.0))
+           + vec3(1.0, 0.55, 0.25) * 0.6 * max(dot(n, vec2(-0.8, -0.6)), 0.0);
+  col += rim * (exp(-abs(d) / 0.0032) * 1.1 + exp(-abs(d - 0.0055) / 0.0022) * 0.4 + exp(-max(d, 0.0) / 0.02) * (1.0 - inside) * 0.06);
+
+  // Flagellum on the right-hand pole: a waving filament that leaves with that daughter.
+  float fs = qb.x - (h + R - 0.003);
+  if (fs > -0.01 && fs < 0.26) {
+    float amp = 0.016 * smoothstep(0.0, 0.07, fs), ph = fs * 42.0 - uGTime * 10.0;
+    float fd = abs(qb.y - amp * sin(ph)) / sqrt(1.0 + amp * amp * 1764.0 * cos(ph) * cos(ph));
+    col += vec3(0.45, 0.9, 0.95) * exp(-fd / 0.0016) * (1.0 - smoothstep(0.15, 0.26, fs)) * smoothstep(-0.004, 0.01, fs) * 0.45 * (1.0 - inside);
+  }
   fragColor = vec4(col, 1.0);
 }`;
 
 function cells(): Shot {
   const b = beat('life');
+  const pinch = b.end - 1.3;
   return {
     id: 'cells',
     start: b.start + 3.2,
@@ -141,7 +222,12 @@ function cells(): Shot {
     fadeIn: 1.0,
     fadeOut: 1.0,
     render(c) {
-      c.fullscreen(c.e.program(CELLS, 'cells'), { uT: c.time - b.start, uSplit: prog(c.time, b.start + 4.6, b.end + 0.3, 'inOutSine') });
+      c.fullscreen(c.e.program(CELLS, 'cells'), {
+        uCycle: prog(c.time, b.start + 3.3, pinch, 'inOutSine'),
+        uSnap: prog(c.time, pinch, pinch + 0.9, 'outCubic'),
+        uDrift: Math.max(0, c.time - pinch),
+        uZoom: 1 + 0.08 * prog(c.time, b.start + 3.2, b.end + 0.5, 'inOutSine'),
+      });
     },
   };
 }
