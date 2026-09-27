@@ -36,6 +36,7 @@ npm run render -- arrow-of-time          # 1080p24 film -> out/arrow-of-time/ren
 | `npm run still -- <id> --shot <shotId>` | Contact sheet of frames spread across one shot. |
 | `npm run still -- <id> --sheet --from 0 --to 80 --n 40 --cols 8` | Contact sheet of a whole time range. |
 | `npm run still -- <id> --t 10 --t 20 --bench --scale 1` | Per-frame render cost, for planning renders. |
+| `npm run still -- <id> --t 73 --textonly` | Captions only, over black, without grain or bloom: for checking typography. |
 | `npm run render -- <id> [--preset draft\|final]` | Render the film. `draft` is half resolution, fast x264 and no motion blur. Rendering is split into 20 s segments that workers pull from a queue; an interrupted render continues with `--resume`. Also takes `--from/--to` seconds, `--workers n`, `--segment s`, `--crf`, `--scale`, `--gl auto\|egl\|vulkan\|swiftshader\|gpu` and `--no-audio`. |
 | `npm run release -- <id> [--poster 75]` | Package the latest final render into `releases/<id>/` (tracked with Git LFS): a two-pass 1080p encode at 8 Mbps (`--mbps`), a 720p preview sized to fit `--preview-mb` (default 28), a poster frame and `info.json`. |
 | `npm run audio -- <id>` | Run `projects/<id>/score.py` and write `out/<id>/audio/score.wav`. |
@@ -54,8 +55,10 @@ npm run render -- arrow-of-time          # 1080p24 film -> out/arrow-of-time/ren
 3. **Look.** `project.look(t)` animates the post chain over time: exposure kicks, white flashes,
    camera shake, the 2.39:1 letterbox (which opens to full frame for "IMAX" moments), bloom,
    anamorphic streaks, grading, grain and vignette.
-4. **Type.** Captions are Canvas2D text items (per-letter reveals, blur-ins, tracking drift,
-   superscripts like `10^40`) composited after tonemapping.
+4. **Type.** Captions are text items (per-letter reveals, blur-ins, tracking drift,
+   superscripts like `10^40`) composited after tonemapping. Glyphs come from a sub-pixel sprite
+   cache, so slow drifts never jitter. Each beat places its card in the shot's negative space
+   (`layout` in `timeline.json`).
 5. **Score.** `score.py` uses the `audio/studio` synthesizer (organ, strings, piano, synth brass,
    bells, choir, drums, booms, risers, clock) with convolution reverb and loudness mastering.
 6. **Review loop.** Render stills and contact sheets constantly, and look at them before

@@ -32,8 +32,17 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `#include <<id>/name>`.
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
-  documented on `PlanetParams`). `Galaxy` (or raw `galaxyData`) is a rotating sprite spiral.
-  Promote anything a second film could use into the engine rather than copying it.
+  documented on `PlanetParams`). Colliding or overlapping planets need `depthTest: true`;
+  `impacts` scars scale with the length of their vector (1 = crater, ~10 = planet-scale), and
+  `planetLocal()` converts a world direction for them. `Galaxy` (or raw `galaxyData`) is a
+  rotating sprite spiral. Promote anything a second film could use into the engine rather than
+  copying it.
+- **Captions** sit in each shot's negative space: set `layout` on a beat in `timeline.json`
+  (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or
+  `{ "at": ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first. The
+  scrim follows the card (`Look.scrimCenter/scrimRadius`). If a card collides with the subject,
+  reframe the shot (`Camera.pan`, target offsets) rather than squeezing the text. Review
+  layouts with a sheet of one frame per beat.
 - **Camera**: `engine/core/camera.ts` feeds both sprites and ray-marched shaders
   (`...cam.uniforms()` plus `#include <camera>` and `camRay(p)`). The chunk declares
   `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj`, so do not
@@ -47,6 +56,10 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   from the template. Keep `npm run typecheck` clean: the engine is shared by every film.
 
 ## Pitfalls (all have bitten this repo)
+
+- Licensing: code must be original or permissively licensed. Never paste Shadertoy code under
+  its default CC BY-NC-SA or tutorial code (LearnOpenGL is CC BY-NC). When adapting MIT or
+  Apache code, keep a source comment and add it to `THIRD_PARTY_NOTICES.md`.
 
 - Shaders live in JS template strings: **never put a backtick in GLSL, even in a comment**,
   and remember `${...}` interpolates.
@@ -64,6 +77,10 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 - The first frame that uses a big shader pays a one-time LLVM compile (seconds). Benchmarks
   must render a second frame of the same shot.
 - `starLayer` glows must stay inside one cell (3x3 search) or square halos appear.
+- Additive particle clouds saturate to flat white where thousands overlap (an impact spray, a
+  launch point): dim particles while they are dense, cool their colour, spread launch times.
+- A display-space `flash` over a dark frame reads as a grey veil. Prefer an exposure kick plus
+  light that comes from the scene itself.
 
 ## Audio
 
