@@ -80,8 +80,8 @@ integrated, −1 dBTP**. 48 kHz stereo.
 | 166–172 | mammals | soft dawn chord (C add9) with **theme bars 3–4** in the violins |
 | 172–180 | humans | **solo piano: theme bars 1–2**; soft fire crackle from `fire` |
 | 180–186 | caves | breathy pad and soft taps |
-| 186–211.6 | civilization | the clock accelerates from 60 BPM (`accelStart`) to 140 at the launch, with an accent (taiko, boom, stab) on every age: **pastoral** plucked arpeggios and hand drums (farming, cities, writing), **monumental** organ, taiko and choir (pyramids, philosophy, printing), a **mechanical** string ostinato with anvil clangs (industry, flight), brass stabs and a riser (the atom, space) |
-| **211.6** | `launch` | a breath of silence, then **ignition**: sub boom, rumble, timpani, and **theme bars 1–4** in full (horns, violins, organ) as the rocket climbs |
+| 186–211.6 | civilization | the clock accelerates from 60 BPM (`accelStart`) to 140 at the launch, with an accent (taiko, boom, stab) on every card: **pastoral** plucked arpeggios and hand drums (farming, cities, writing), **monumental** organ, taiko and choir (pyramids, philosophy, printing), a **mechanical** string ostinato with anvil clangs (industry, flight), brass stabs and a riser (the atom, space). Each scene's own sounds land on its picture: four stylus taps as the scribe presses wedges into the clay, the press's platen coming down, a steam whistle and chuffing with the train, a deep thud at the Trinity flash |
+| **211.6** | `launch` | no cut: a reverse swell and a timpani roll lead straight into **ignition**: sub boom, timpani, and the engines' roar, which builds over the first second and falls silent with the dissolve to the Moon (no air to carry it); **theme bars 1–4** in full (horns, violins) as the rocket climbs |
 | **217.0** | `moonStep` | the theme's third bar lands with the C major chord of the Moon landing |
 | 222–228 | nightearth | peak intensity: brass on every chord change, riser into the cut |
 | **228.0** | `now` | **HARD CUT TO SILENCE** |

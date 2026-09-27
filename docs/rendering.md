@@ -42,9 +42,15 @@ are also copied to `out/<id>/renders/<id>-final-latest.mp4`.
   each frame twice.
 - Render soft, noisy layers (nebulae, volumes, glows) into a half-resolution target and composite
   them (`scratch(e, 0.5)` in *The Arrow of Time*).
-- Bake what does not change: the valley in the civilization sequence renders its terrain once
-  into a 2048x2048 height-and-slope texture, so each march step is one texture fetch.
+- Bake what does not change: a ray-marched terrain whose shape never moves can be rendered once
+  into a height-and-slope texture (`RenderTarget`, `rgba16f`), so each march step is one texture
+  fetch instead of several noise octaves.
 - Motion blur multiplies the cost by its sample count; the film enables it only where it shows.
+  Its samples also anti-alias ray-marched edges (each is shifted by a sub-pixel jitter), so two
+  samples are worth it for scenes with crisp silhouettes.
+- Skip work a ray cannot need: rays that climb above the highest terrain never march it, points
+  well above a detailed ground use its coarse shape as their distance, and a volume is marched
+  only over the part of the ray that crosses its bounds.
 - Keep text on the CPU canvas. Canvas `filter: blur()` costs seconds per frame on software GL.
 
 ## 4K

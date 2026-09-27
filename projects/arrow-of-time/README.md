@@ -33,7 +33,7 @@ at itself. See `MUSIC.md` for the score design.
 | 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
 | 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
 | 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
-| 3:06 | Civilization | one river valley from the first fields to the first rocket, twelve thousand years in thirty seconds; the Moon landing; Earth at night |
+| 3:06 | Civilization | twelve thousand years in ten scenes: the first harvest, Uruk, a scribe writing cuneiform, Giza, Athens, Gutenberg's press, a steam train, the Wright Flyer, Trinity, a Moon rocket; the first steps on the Moon; Earth at night |
 | 3:48 | Now | the pale blue dot, and silence |
 | 3:56 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
 | 4:42 | The End | the last stars, the black hole era, evaporation, the end of time |
@@ -54,9 +54,12 @@ at itself. See `MUSIC.md` for the score design.
   mutual escape speed, run with SWIFT on 61,139 particles for the first day after contact
   ([how](../../tools/assets/giant_impact/README.md)). The film plays back 20,000 of them:
   every particle thrown clear of the Earth and a thinned sample of the rest. Each one glows at its
-  simulated temperature and absorbs what lies behind it. Theia grazes the Earth, its remnant
-  swings out and hits again six hours later, and a long arm breaks into clumps and a disk. A
-  cut to years later shows the molten Earth and the newborn Moon, which recedes as the oceans
+  simulated temperature and absorbs what lies behind it. The shot is continuous from the molten
+  Earth: the camera pulls back as Theia, another rendered planet, falls in on the orbit the
+  simulation starts from (integrated backwards from its first frame) and hands over to its
+  parcels at contact. Theia grazes the Earth, its remnant swings out and hits again six hours
+  later, and a long arm breaks into clumps and a disk. The same camera carries on through a
+  dissolve to years later, the molten Earth and the newborn Moon, which recedes as the oceans
   form.
 - **Planets**: one shader for every era. Voronoi lava cracks, procedural oceans and ice lines,
   real present-day Earth from Natural Earth maps (bathymetry shelves, deserts, city lights from
@@ -67,12 +70,17 @@ at itself. See `MUSIC.md` for the score design.
   (Anomalocaris, trilobites, jellyfish, Tiktaalik, sauropods, T. rex, pterosaurs, mammals,
   people) over painted-light skies; underwater god rays and caustics; a bump-mapped cave wall lit
   by a moving torch.
-- **Civilization** (`shaders/valley.glsl`): a ray-marched valley whose terrain is baked once into
-  a height-and-slope texture. A grid city grows outward from the river bend and rebuilds itself
-  taller with each age; the ziggurat, the pyramids of Giza, a temple on its acropolis, a
-  cathedral, chimneys with coal smoke, a power station and a coastal launch pad rise on
-  schedule. Days race past between the montage cards; each night shows the lights of its age,
-  from fires to sodium street light.
+- **Civilization** (`shots/ages.ts`, `shaders/age-*.glsl`): ten ray-marched scenes, one per
+  montage card, each a single moving camera: a reaper in a wheat field at golden hour (layered
+  planes of stalks), the White Temple of Uruk above a mud-brick city, a stylus pressing wedges into
+  a clay tablet (an exact height-field intersection), Giza at dawn, the Parthenon's colonnade, a
+  printed page of Genesis in blackletter lifting off a Gutenberg press (canvas text as a texture),
+  a steam train crossing a viaduct under mill chimneys, the Wright Flyer over Kill Devil Hills,
+  the Trinity fireball, and a Saturn V lifting off. Motion blur samples double as anti-aliasing:
+  each one jitters the camera rays by a sub-pixel offset.
+- **The Moon landing** (`shots/apollo.ts`, `shaders/apollo.glsl`): the lunar module, an astronaut
+  stepping off the ladder, bootprints, rocks and the flag in hard, airless sunlight, with the
+  Earth over the horizon.
 - **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
   nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
   friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.

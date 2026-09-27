@@ -46,6 +46,8 @@ remaps (slow motion around an event) and camera moves. Also `envelope`, `drift`,
 | `noise` | value and gradient noise, fbm, ridged, turbulence, Worley, Voronoi edges, domain warping |
 | `color` | sRGB conversion, blackbody, palettes, saturation and hue, ACES/AgX/neutral tonemaps, fire ramp |
 | `sdf` | 2D distance fields (circle, box, segment, tapered strokes, Bézier, ellipse, triangle), smooth min/max, anti-aliased fills |
+| `sdf3` | 3D distance fields (sphere, box, capsule, tapered capsule, cylinders, cone frustum, torus, square pyramid, ellipsoid, hexagonal prism) and limited repetition |
+| `march` | a ray marcher for 3D scenes: `march`, `calcNormal`, `softShadow`, `calcAO`, `skyColor`, `applyFog` (see below) |
 | `stars` | procedural star fields for backgrounds |
 | `camera` | `camRay(p)` and `depthOf(worldPos)` matching `engine/core/camera.ts` |
 | `creatures` | animated 2D silhouettes, from trilobites and fish to dinosaurs and people |
@@ -53,15 +55,30 @@ remaps (slow motion around an event) and camera moves. Also `envelope`, `drift`,
 
 A film can add its own chunks: put them in `projects/<id>/shaders/*.glsl`, register them with
 `registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default', eager: true }), '<id>/')`
-and `#include <<id>/name>`. Chunks may use `#ifdef` to share code between passes (the valley in
-*The Arrow of Time* bakes its terrain into a texture with the same source).
+and `#include <<id>/name>`. Chunks may use `#ifdef` to share code between passes (a terrain chunk
+can bake its height field into a texture and march it from the same source).
+
+## Ray-marched scenes
+
+`<march>` marches any signed-distance scene. The shader defines `float mapD(vec3 p)` (the distance
+to everything; the chunk declares it), then calls `march(ro, rd, tmin, tmax, pixelAngle(uRes.y))`
+for the first hit, `calcNormal`, `softShadow` and `calcAO` to light it, and `skyColor` and
+`applyFog` for the air. Classify the material at the hit by the closest component (the argmin of
+their distances). Tune it with defines before the include: `MARCH_STEPS`, `SHADOW_STEPS`,
+`MARCH_RELAX` (under-step distances that are only bounds, such as height fields) and
+`SHADOW_MIN_STEP` (below the thickness of thin parts, or they cast dotted shadows). A ray that
+runs out of steps counts as a hit: a ray creeping along terrain near the horizon has found it.
+The civilization scenes of *The Arrow of Time* (`projects/arrow-of-time/shaders/age-*.glsl`) and
+its Moon landing (`apollo.glsl`) are worked examples.
 
 ## The camera
 
 `Camera` (`engine/core/camera.ts`) is a look-at camera shared by sprites and ray-marched shaders:
 `cam.set({ pos, target, fov })`, `cam.pan(dx, dy)` to reframe a subject, and `...cam.uniforms()`
 to hand `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj` to a shader
-that includes `<camera>` (do not reuse those names).
+that includes `<camera>` (do not reuse those names). When a shot renders several motion-blur
+samples, the engine shifts `camRay` by a different sub-pixel offset for each (`uJitter`, a Halton
+sequence), so the same accumulation that blurs motion also anti-aliases ray-marched edges.
 
 ## Sprites
 
@@ -79,7 +96,8 @@ and never flicker. `starSphere(rng, options)` makes a sky; draw it with `{ sky: 
   knob (lava, crust, ocean, ice, deserts, clouds and storms, atmosphere, haze, dust veils, impact
   scars) is documented on `PlanetParams`. Colliding or overlapping planets need `depthTest: true`;
   impact scars scale with the length of their vector (1 is a crater, about 10 a planet-scale
-  wound), and `planetLocal()` converts a world direction into the planet's frame.
+  wound), and `planetLocal()` converts a world direction into the planet's frame. `opacity` fades
+  the whole planet (a body dissolving into a particle simulation of itself, for example).
 - **`Galaxy`** (or raw `galaxyData`) is a rotating barred spiral made of sprites: stars, a glow
   layer and dust lanes.
 

@@ -31,20 +31,29 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   are `uRes` (the bound target's size), `uTime` (shot-local), `uDur`, `uProg`, `uGTime`
   (global), `uAspect` and `uScale`. Use `centered(vUv, uAspect)`: y spans [-0.5, 0.5]. With the
   2.39:1 letterbox only |y| < 0.372 is visible, so keep subjects inside it.
-- **GLSL includes**: `#include <common|noise|color|sdf|stars|camera|creatures|structures>`
+- **GLSL includes**: `#include <common|noise|color|sdf|sdf3|march|stars|camera|creatures|structures>`
   (`engine/shaders/*.glsl`, registered by file name). `creatures` and `structures` are 2D
   silhouette SDF libraries, from trilobites to people and from huts to rockets. For
   film-specific chunks, call `registerChunks(import.meta.glob('./shaders/*.glsl', { query: '?raw',
   import: 'default', eager: true }), '<id>/')` in a module the shots import, then
   `#include <<id>/name>`. Big shaders read better as `.glsl` files (no backtick hazard); a chunk
-  can serve two passes with `#ifdef` (the valley bakes its terrain with `#define VALLEY_BAKE`).
+  can serve two passes with `#ifdef` (a terrain chunk can bake its height field with a define
+  and march the texture in the same source).
 - **Bake what never changes.** A ray-marched shot whose terrain or data is static should render
   it once into a texture in its first `render` call (`new RenderTarget(e.gl, w, h, { format:
   'rgba16f' })`, bind, `c.fullscreen`, then `c.target.bind()`): one fetch per march step instead
   of several noise octaves. Store the slope too, for smooth normals.
+- **Ray-marched 3D scenes**: `#include <sdf3>` (primitives, `repLim`) and `<march>`, then define
+  `float mapD(vec3 p)` and call `march`, `calcNormal`, `softShadow`, `calcAO`, `skyColor` and
+  `applyFog`. Tune with `MARCH_STEPS`, `SHADOW_STEPS`, `MARCH_RELAX` and `SHADOW_MIN_STEP`
+  defined before the include. `motionBlur: N` also anti-aliases: each sample shifts `camRay` by
+  a sub-pixel jitter (`uJitter`), so 2 samples clean up crisp silhouettes. In
+  `projects/arrow-of-time`, each civilization scene is an `Age` in `shots/ages.ts` (a camera
+  function plus `shaders/age-<id>.glsl`), a template for adding one; the Moon landing
+  (`shots/apollo.ts`) composites a ray-marched shader over a `Planet` with premultiplied alpha.
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
-  documented on `PlanetParams`). Colliding or overlapping planets need `depthTest: true`;
+  documented on `PlanetParams`; `opacity` fades one out). Colliding or overlapping planets need `depthTest: true`;
   `impacts` scars scale with the length of their vector (1 = crater, ~10 = planet-scale), and
   `planetLocal()` converts a world direction for them. `Galaxy` (or raw `galaxyData`) is a
   rotating sprite spiral. Promote anything a second film could use into the engine rather than
@@ -57,8 +66,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   layouts with a sheet of one frame per beat.
 - **Camera**: `engine/core/camera.ts` feeds both sprites and ray-marched shaders
   (`...cam.uniforms()` plus `#include <camera>` and `camRay(p)`). The chunk declares
-  `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj`, so do not
-  reuse those names.
+  `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj, uJitter`, so do
+  not reuse those names.
 - **Sprites** (`Sprites`, `allocSprites`, `starSphere`): the colour is the flux and the size is the world-space
   sigma. Sub-pixel sprites keep their flux, so they never flicker. Draw sky spheres with
   `{ sky: true }`. The `animate`/`shade` GLSL hooks run per sprite and per fragment.
@@ -94,12 +103,24 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 - A display-space `flash` over a dark frame reads as a grey veil. Prefer an exposure kick plus
   light that comes from the scene itself.
 - GLSL ES 3.00 reserves words you might use as names: `flat`, `smooth`, `sample`, `input`,
-  `output`, `filter`, `active`, `common`, `partition`. The compile error is cryptic.
+  `output`, `filter`, `active`, `common`, `partition`. The compile error is cryptic. Built-in
+  function names (`sign`, `step`, `length`, ...) cannot be redefined or overloaded either.
 - Ray-marching heightfields: the vertical height difference overshoots on steep or convex ground,
   so rays tunnel through ridges (the sea shows through hills) or stop inside cliffs. Use the
   distance to the local tangent plane with a safety factor, bisect each hit back onto the
   surface, and start shadow rays from a baked (faceted) heightfield further out, or steep slopes
   get black contour bands.
+- A march that runs out of steps has almost always crept along a surface at a grazing angle
+  (terrain near the horizon): count it as a hit, or slivers of sky show through the ground.
+- A volume marched over an interval (a fireball, a dust skirt) must end at the first opaque hit
+  and never run backwards: clamp the far end to `max(min(t1, tHit), t0)`, or rays that meet the
+  ground first integrate the volume underground (a dark slab across the frame).
+- Soft shadows of thin parts (ladder rungs, struts, flag poles) come out dotted unless the
+  shadow step (`SHADOW_MIN_STEP`) is smaller than their thickness.
+- Repetition searched over neighbouring cells (`repLim`, a 3x3 grid): keep every object inside
+  its own cell and cap the distance at the cell size, or objects are sliced into stripes.
+- Procedural terrain rises and falls under a camera path: check the height along the whole move
+  (or flatten the terrain along it). A camera underground renders a black or inside-out frame.
 - After a march, classify the material by the closest surface (argmin of the component
   distances), not by a fixed tolerance: the hit tolerance grows with distance, and a pyramid
   hit 200 units away otherwise shades as ground.
@@ -124,7 +145,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   played with `theme_line`) at the main title, the Milky Way, the oceans, the mammals, the launch,
   Mars and the epilogue, in different orchestrations and keys.
 - A big hit needs a clean onset: `mix.cut(cue - BREATH)` stops everything (tails included) a
-  moment before the hit, as for the asteroid and the launch.
+  moment before the hit, as for the asteroid. Don't cut where the music should carry through:
+  the launch ignition swells out of the montage and rolls on into the Moon landing.
 - Take every time from `Timeline.load(.../timeline.json)` (`tl.cue()`, `tl.beat()`); express
   extra times as offsets from cues. Use `mix.cut(t)` for hard cuts (it stops reverb tails too).
 - Master to -14 LUFS / -1 dBTP with `master.master()`. Verify with
@@ -167,5 +189,6 @@ over the image, letterbox framing, and transitions between shots.
   re-mux the audio with ffmpeg (`-map 0:v -map 1:a -c:v copy -c:a aac -b:a 320k`).
 - Container note: there is no GPU; `--gl auto` picks Mesa llvmpipe via EGL (needs `libegl1`
   and `mesa-vulkan-drivers`/`libgl1-mesa-dri`). Install ffmpeg with apt if it is missing.
-- The civilization sequence is the most expensive shot (about 2 to 3 s per 1080p frame on a
-  4-core CPU); render it on Modal or budget for it.
+- The ray-marched civilization scenes and the Moon landing are the most expensive shots: 1.3
+  to 11 s per 1080p frame on a 4-core CPU with their two motion-blur samples (the wheat field,
+  the launch and the Moon landing cost the most). Render them on Modal or budget for it.

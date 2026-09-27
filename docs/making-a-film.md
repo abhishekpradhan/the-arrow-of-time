@@ -88,7 +88,7 @@ Two rules save a lot of time:
 
 - **Never put a backtick in GLSL** inside a JS template string, even in a comment, and remember
   that `${...}` interpolates. Big shaders can live in `projects/<id>/shaders/*.glsl` instead
-  (register them with `registerChunks`, as `projects/arrow-of-time/shots/civilization.ts` does).
+  (register them with `registerChunks`, as `projects/arrow-of-time/shots/ages.ts` does).
 - With the 2.39:1 letterbox only `|y| < 0.372` is visible: keep subjects inside it.
 
 ## 3. Captions

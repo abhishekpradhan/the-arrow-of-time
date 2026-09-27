@@ -7,6 +7,26 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-27
+
+### Added
+
+- `sdf3` and `march` shader chunks: 3D distance-field primitives with limited repetition, and a
+  ray marcher with normals, soft shadows (`SHADOW_MIN_STEP` for thin parts), ambient occlusion,
+  sky and fog, for ray-marched scenes ([docs/engine.md](docs/engine.md#ray-marched-scenes)).
+- Motion-blur samples jitter camera rays by a sub-pixel Halton offset (`uJitter` in `camRay`),
+  so `motionBlur` also anti-aliases ray-marched shots.
+- `PlanetParams.opacity` fades a planet, for hand-overs to particle simulations.
+- Instruments: `steam_whistle` and `chuff`.
+- The Arrow of Time: ten ray-marched civilization scenes, a 3D Moon landing, and one continuous
+  shot from the molten Earth to the young Moon (see its [changelog](projects/arrow-of-time/CHANGELOG.md)).
+- The Unifraktur Maguntia font (OFL-1.1, `@fontsource/unifrakturmaguntia`) for the printed page.
+
+### Removed
+
+- The Arrow of Time's single-valley civilization sequence (`valley.glsl`), replaced by the
+  scenes above.
+
 ## [0.3.0] - 2026-09-27
 
 ### Added

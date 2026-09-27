@@ -9,7 +9,7 @@ appears in the source.
 | Where | What | Copyright |
 |---|---|---|
 | `engine/shaders/common.glsl` (hash11 … hash43) | "Hash without Sine", Dave Hoskins ([Shadertoy 4djSRW](https://www.shadertoy.com/view/4djSRW)) | Copyright (c) 2014 David Hoskins |
-| `engine/shaders/noise.glsl` (`voronoiEdge`, fbm octave rotations, domain warp), `engine/shaders/sdf.glsl` (`sdBox`, `sdSegment`, `sdEllipse`, `sdTriangle`, `smin`), `engine/shaders/color.glsl` (`palette`) | Inigo Quilez ([articles](https://iquilezles.org/articles/), [Voronoi – distances](https://www.shadertoy.com/view/ldl3W8)) | Copyright © 2013 Inigo Quilez (Voronoi); Copyright © Inigo Quilez (article snippets) |
+| `engine/shaders/noise.glsl` (`voronoiEdge`, fbm octave rotations, domain warp), `engine/shaders/sdf.glsl` (`sdBox`, `sdSegment`, `sdEllipse`, `sdTriangle`, `smin`), `engine/shaders/sdf3.glsl` (the 3D primitives), `engine/shaders/march.glsl` (`calcNormal`, `softShadow`, `calcAO`), `engine/shaders/color.glsl` (`palette`) | Inigo Quilez ([articles](https://iquilezles.org/articles/), [Voronoi – distances](https://www.shadertoy.com/view/ldl3W8)) | Copyright © 2013 Inigo Quilez (Voronoi); Copyright © Inigo Quilez (article snippets) |
 | `engine/shaders/color.glsl` (`tonemapACES`) | Stephen Hill's ACES fit, as published in [BakingLab](https://github.com/TheRealMJP/BakingLab) | Copyright (c) 2016 MJP |
 | `engine/shaders/color.glsl` (`tonemapAgX`) | Benjamin Wrensch, ["Minimal AgX"](https://iolite-engine.com/blog_posts/minimal_agx_implementation) (AgX by Troy Sobotka) | Copyright (c) 2024 Missing Deadlines (Benjamin Wrensch) |
 | `engine/core/math.ts` (`m4.invert`) | [gl-matrix](https://github.com/toji/gl-matrix) `mat4.invert` | Copyright (c) 2015-2025, Brandon Jones, Colin MacKenzie IV |
@@ -61,11 +61,12 @@ SOFTWARE.
 
 ## Fonts
 
-Cinzel, Jost and Cormorant Garamond are installed from npm ([Fontsource](https://fontsource.org/))
-and are not redistributed in this repository. They are licensed under the
-[SIL Open Font License 1.1](https://openfontlicense.org/) (The Cinzel Project Authors, The Jost
-Project Authors, The Cormorant Project Authors). The OFL places no restrictions on rendered
-output such as the films.
+Cinzel, Jost, Cormorant Garamond and UnifrakturMaguntia are installed from npm
+([Fontsource](https://fontsource.org/)) and are not redistributed in this repository. They are
+licensed under the [SIL Open Font License 1.1](https://openfontlicense.org/) (The Cinzel Project
+Authors, The Jost Project Authors, The Cormorant Project Authors; UnifrakturMaguntia by
+j. 'mach' wust and Peter Wiegel). The OFL places no restrictions on rendered output such as the
+films.
 
 ## Methods credited (no code copied)
 

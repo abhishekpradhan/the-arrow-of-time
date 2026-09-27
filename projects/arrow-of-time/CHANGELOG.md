@@ -3,6 +3,30 @@
 The newest section is used for the release notes. Cuts are published on the
 [Releases page](https://github.com/abhishekpradhan/movies/releases).
 
+## v0.4 (27 September 2026)
+
+- **Civilization** is rebuilt as ten scenes, one per card, each a ray-marched set with its own
+  light and a moving camera: a reaper with a flint sickle in wild wheat at golden hour, the White
+  Temple of Uruk at dusk, a scribe's stylus pressing cuneiform into wet clay, the pyramids of Giza
+  at dawn, a Doric colonnade at sunset, a page of Genesis lifting off Gutenberg's press, a night
+  train on a viaduct under mill chimneys, the Wright Flyer over Kill Devil Hills, the Trinity
+  fireball, and a Saturn V lifting off under searchlights. The cards now read 2500 BCE for the
+  pyramids (when all three stood) and 1830 for industry (the railway age).
+- **The Moon landing** is a 3D scene: the lunar module on a cratered plain under a low Sun, an
+  astronaut stepping off the ladder onto the regolith on the beat, a bootprint, a kick of dust
+  on ballistic arcs, the flag, and the real Earth above the horizon as the camera cranes back.
+- **The Moon** forms in one continuous shot. The molten Earth stays the same planet from its
+  card to the young Moon: the camera pulls back as Theia, another magma world, falls in on the
+  orbit traced back from the simulation, and hands over to its simulated parcels at contact.
+  The same camera carries through to years later, so the dissolve lines up.
+- **Score**: the civilization no longer stops dead before the launch. The build, the clock and
+  every tail run into the ignition; the engines' roar falls silent with the cut to the Moon,
+  where there is no air to carry it. Scene sounds land on their pictures: the stylus in the
+  clay, the platen of the press, a steam whistle and the chuff of the train, a thud at Trinity.
+- **Homo sapiens**: the caption sits in the sky, clear of the people and the fire; a meteor
+  crosses the Milky Way above them.
+- **Prologue**: motes of light drift in towards the point before the Big Bang.
+
 ## v0.3 (27 September 2026)
 
 - **The Moon** now comes from a real simulation. An SPH run (SWIFT, 61,139 particles) of Theia

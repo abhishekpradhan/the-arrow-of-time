@@ -20,8 +20,9 @@ A film is source code: diffable, reproducible, forkable, and renderable on any m
 
 The featured film, **[The Arrow of Time](projects/arrow-of-time/)**, tells the history and future
 of everything in 5 minutes 38 seconds: the Big Bang, the first stars, the birth of the Sun and the
-Moon, four billion years of life, twelve thousand years of civilization in a single valley, and
-onward to the red giant Sun, the last stars and the heat death of the universe.
+Moon, four billion years of life, twelve thousand years of civilization in ten scenes from the
+first fields to the first steps on the Moon, and onward to the red giant Sun, the last stars and
+the heat death of the universe.
 
 **[Watch the latest cut on the Releases page](https://github.com/abhishekpradhan/movies/releases)**
 (1080p, a 720p preview and a poster). The film is CC BY 4.0: re-cut it, translate it, remix it,
