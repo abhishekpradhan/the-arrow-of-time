@@ -1,0 +1,33 @@
+name: Bug report
+description: Something in the engine, the tools or the audio studio does not work.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The command you ran (for example `npm run render -- arrow-of-time --from 10 --to 12`) and any changes you made.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Error messages or logs. Attach stills (`npm run still`) for visual problems.
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, GPU or CPU-only, Node and Python versions, ffmpeg version.
+      placeholder: Ubuntu 24.04, no GPU (llvmpipe), Node 22, Python 3.12, ffmpeg 6.1
+    validations:
+      required: true

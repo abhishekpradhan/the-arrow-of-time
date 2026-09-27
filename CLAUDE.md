@@ -7,7 +7,9 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 
 - `engine/`: reusable film engine (TypeScript, browser). Public API: `@engine` (`engine/index.ts`).
 - `audio/studio/`: reusable Python synthesizer and mastering (`audio/README.md`).
-- `tools/`: Node CLIs (`render`, `still`, `audio`, `new-project`) and `tools/assets/` builders.
+- `tools/`: Node CLIs (`render`, `still`, `audio`, `release`, `new-project`), `tools/assets/`
+  builders, and the Modal pipeline (`tools/modal/studio.py`).
+- `docs/`: guides (getting started, making a film, engine, rendering, Modal, releasing).
 - `projects/<id>/`: one film per folder. `timeline.json` + `project.ts` + `shots/` + `score.py`.
 - `templates/starter/`: copied by `npm run new -- <id>`.
 - `out/`: all generated media (git-ignored). Finished films are published as GitHub Releases,
@@ -30,7 +32,12 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   silhouette SDF libraries, from trilobites to people and from huts to rockets. For
   film-specific chunks, call `registerChunks(import.meta.glob('./shaders/*.glsl', { query: '?raw',
   import: 'default', eager: true }), '<id>/')` in a module the shots import, then
-  `#include <<id>/name>`.
+  `#include <<id>/name>`. Big shaders read better as `.glsl` files (no backtick hazard); a chunk
+  can serve two passes with `#ifdef` (the valley bakes its terrain with `#define VALLEY_BAKE`).
+- **Bake what never changes.** A ray-marched shot whose terrain or data is static should render
+  it once into a texture in its first `render` call (`new RenderTarget(e.gl, w, h, { format:
+  'rgba16f' })`, bind, `c.fullscreen`, then `c.target.bind()`): one fetch per march step instead
+  of several noise octaves. Store the slope too, for smooth normals.
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
   documented on `PlanetParams`). Colliding or overlapping planets need `depthTest: true`;
@@ -82,11 +89,33 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   launch point): dim particles while they are dense, cool their colour, spread launch times.
 - A display-space `flash` over a dark frame reads as a grey veil. Prefer an exposure kick plus
   light that comes from the scene itself.
+- GLSL ES 3.00 reserves words you might use as names: `flat`, `smooth`, `sample`, `input`,
+  `output`, `filter`, `active`, `common`, `partition`. The compile error is cryptic.
+- Ray-marching heightfields: the vertical height difference overshoots on steep or convex ground,
+  so rays tunnel through ridges (the sea shows through hills) or stop inside cliffs. Use the
+  distance to the local tangent plane with a safety factor, bisect each hit back onto the
+  surface, and start shadow rays from a baked (faceted) heightfield further out, or steep slopes
+  get black contour bands.
+- After a march, classify the material by the closest surface (argmin of the component
+  distances), not by a fixed tolerance: the hit tolerance grows with distance, and a pyramid
+  hit 200 units away otherwise shades as ground.
+- A ray-marched grid city must never step across a cell without evaluating the next cell's
+  building: cap the step at the cell boundary, but never count that cap as a surface (it
+  produces a lattice of phantom walls).
+- Masks from slope thresholds (`n.y > 0.95`) flicker between on and off along contours of gentle
+  slopes; derive them from a smooth measure over a wide range.
+- Chromatic aberration fringes thousands of tiny bright lights red and blue (city lights read
+  pink): keep `aberration` low in those shots.
 
 ## Audio
 
 - Scores are Python (`projects/<id>/score.py`) using `audio/studio` (read `audio/README.md`).
   Run with `npm run audio -- <id>`; `--from/--to` renders a window in seconds for fast iteration.
+- A recurring theme ties a long score together: *The Arrow of Time* states its theme (`THEME`,
+  played with `theme_line`) at the main title, the Milky Way, the oceans, the mammals, the launch,
+  Mars and the epilogue, in different orchestrations and keys.
+- A big hit needs a clean onset: `mix.cut(cue - BREATH)` stops everything (tails included) a
+  moment before the hit, as for the asteroid and the launch.
 - Take every time from `Timeline.load(.../timeline.json)` (`tl.cue()`, `tl.beat()`); express
   extra times as offsets from cues. Use `mix.cut(t)` for hard cuts (it stops reverb tails too).
 - Master to -14 LUFS / -1 dBTP with `master.master()`. Verify with
@@ -111,8 +140,8 @@ over the image, letterbox framing, and transitions between shots.
 - `npm run render -- <id> --preset draft`: half resolution in about 25 min for 5 minutes of film on a 4-core CPU.
 - `npm run render -- <id>`: final 1080p, x264 CRF 17 `slow`, Rec.709, AAC 320k. Outputs
   `out/<id>/renders/<id>-final-<stamp>.mp4` and `...-final-latest.mp4`. The Arrow of Time
-  took 1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on); the master is about
-  1 GB because film grain is expensive to encode.
+  (5:18 cut) took 1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on); the master
+  is about 1 GB because film grain is expensive to encode.
 - `npm run release -- <id>` makes the distribution encodes in `out/<id>/release/` (1080p, 720p
   preview, poster, checksums; `--variants 2160p,...` from a 4K master). Check sync on the master
   first with `tools/check_sync.py`. Publish them as a GitHub Release; never commit video.
@@ -126,3 +155,5 @@ over the image, letterbox framing, and transitions between shots.
   re-mux the audio with ffmpeg (`-map 0:v -map 1:a -c:v copy -c:a aac -b:a 320k`).
 - Container note: there is no GPU; `--gl auto` picks Mesa llvmpipe via EGL (needs `libegl1`
   and `mesa-vulkan-drivers`/`libgl1-mesa-dri`). Install ffmpeg with apt if it is missing.
+- The civilization sequence is the most expensive shot (about 2 to 3 s per 1080p frame on a
+  4-core CPU); render it on Modal or budget for it.

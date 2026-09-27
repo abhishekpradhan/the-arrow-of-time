@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea for the engine, the tools, the audio studio or a new film.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you would like, and what it would make possible.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Other ways you have considered, or how you work around it today.

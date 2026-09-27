@@ -1,0 +1,102 @@
+# The engine
+
+`engine/` is a small WebGL2 film engine written in TypeScript. Films import it as `@engine`
+(`engine/index.ts`). It renders one frame at a time, deterministically, for a given time.
+
+```text
+for each frame:
+  active shots ──► each renders HDR, linear light into its target ──► dissolves composited
+              ──► motion blur (optional sub-frame accumulation)
+              ──► post: bloom, streaks, tonemap, grade, grain, vignette, letterbox, flash, shake
+              ──► captions composited from the glyph cache ──► canvas
+```
+
+## Projects and shots
+
+A project (`defineProject`) declares the frame size, `fps`, `duration`, the soundtrack, fonts to
+preload, its shots, its text items, timeline markers for the preview, and `look(t)`.
+
+A shot has an `id`, a `start` and `end`, optional `fadeIn`/`fadeOut` (overlap shots to dissolve),
+an optional `motionBlur` sample count, an optional `setup(engine)` that creates GPU resources once,
+and `render(ctx, state)`. The context carries the engine (`c.e`), the GL context, times (`c.t`
+shot-local, `c.time` film time, `c.p` progress), the frame size and the target to draw into, plus
+`c.fullscreen(program, uniforms)`.
+
+Uniforms are typed by reflection (`Program.set`): pass numbers, arrays (flat), `Vec3`s, matrices,
+textures or render targets. Unknown names are ignored silently, so a misspelt uniform just does
+nothing.
+
+## Full-screen shaders and the GLSL library
+
+`c.fullscreen(c.e.program(SOURCE, 'name'), uniforms)` draws a full-screen pass. Standard uniforms:
+`uRes` (the bound target's size), `uTime`, `uDur`, `uProg`, `uGTime`, `uAspect`, `uScale`.
+`centered(vUv, uAspect)` gives picture coordinates with y in [-0.5, 0.5].
+
+`#include <name>` pulls in a chunk from `engine/shaders/`:
+
+| Chunk | Contents |
+| --- | --- |
+| `common` | constants, `saturate`, `remap`, rotations, hashes, `centered`, ray/sphere, `band` |
+| `noise` | value and gradient noise, fbm, ridged, turbulence, Worley, Voronoi edges, domain warping |
+| `color` | sRGB conversion, blackbody, palettes, saturation and hue, ACES/AgX/neutral tonemaps, fire ramp |
+| `sdf` | 2D distance fields (circle, box, segment, tapered strokes, Bézier, ellipse, triangle), smooth min/max, anti-aliased fills |
+| `stars` | procedural star fields for backgrounds |
+| `camera` | `camRay(p)` and `depthOf(worldPos)` matching `engine/core/camera.ts` |
+| `creatures` | animated 2D silhouettes, from trilobites and fish to dinosaurs and people |
+| `structures` | 2D silhouettes from huts and pyramids to factories, rockets and skylines |
+
+A film can add its own chunks: put them in `projects/<id>/shaders/*.glsl`, register them with
+`registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default', eager: true }), '<id>/')`
+and `#include <<id>/name>`. Chunks may use `#ifdef` to share code between passes (the valley in
+*The Arrow of Time* bakes its terrain into a texture with the same source).
+
+## The camera
+
+`Camera` (`engine/core/camera.ts`) is a look-at camera shared by sprites and ray-marched shaders:
+`cam.set({ pos, target, fov })`, `cam.pan(dx, dy)` to reframe a subject, and `...cam.uniforms()`
+to hand `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj` to a shader
+that includes `<camera>` (do not reuse those names).
+
+## Sprites
+
+`Sprites` draws instanced, Gaussian point sprites: stars, dust, particles, debris. The colour is the
+flux and the size is the world-space sigma, so sprites smaller than a pixel keep their brightness
+and never flicker. `starSphere(rng, options)` makes a sky; draw it with `{ sky: true }`.
+`allocSprites(n)` gives raw arrays to fill. Two GLSL hooks customise sprites:
+`animate(p, x, col, size)` runs per sprite in the vertex shader (orbits, explosions), and
+`shade(q, col, x)` per fragment.
+
+## Components
+
+- **`Planet`** renders a planet from any era: molten, ocean world, snowball, present-day Earth
+  (from `loadEarth`, Natural Earth maps), city lights, Mars and its terraforming, the Moon. Every
+  knob (lava, crust, ocean, ice, deserts, clouds and storms, atmosphere, haze, dust veils, impact
+  scars) is documented on `PlanetParams`. Colliding or overlapping planets need `depthTest: true`;
+  impact scars scale with the length of their vector (1 is a crater, about 10 a planet-scale
+  wound), and `planetLocal()` converts a world direction into the planet's frame.
+- **`Galaxy`** (or raw `galaxyData`) is a rotating barred spiral made of sprites: stars, a glow
+  layer and dust lanes.
+
+Promote anything a second film could use into the engine rather than copying it.
+
+## Post-processing
+
+The post chain turns the HDR frame into the picture: 13-tap bloom with Karis averaging, anamorphic
+streaks, ACES/AgX/neutral tonemapping, lift/gamma/gain grading, saturation and contrast, grain,
+vignette, chromatic aberration, a letterbox that animates between 16:9 and 2.39:1, fades, flashes
+and camera shake. Everything is animated through `project.look(t)` (see `Look` in
+`engine/core/types.ts`). NaNs are zeroed so they cannot bloom into black holes, but the pixel is
+still wrong: guard `pow()` and `exp()`.
+
+## Text
+
+`engine/text/` draws captions on a 2D canvas composited after tonemapping. Canvas2D snaps every
+`fillText` origin to whole pixels, so animated text drawn with it jitters. `drawText` and
+`drawGlyph` draw from a cache of glyphs rasterized at four sub-pixel phases and blurred in
+JavaScript. `caption()` and `stack()` build common cards; films can write their own builders.
+
+## Headless rendering
+
+`engine/runtime/headless.ts` serves `render.html`, which renders frame ranges on request and posts
+raw RGBA frames back to the Node tools (`tools/lib/session.ts`), which stream them into ffmpeg. The
+preview player (`engine/runtime/player.ts`, `index.html`) runs the same engine interactively.

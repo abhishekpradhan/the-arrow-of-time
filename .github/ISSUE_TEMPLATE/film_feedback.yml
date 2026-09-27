@@ -1,0 +1,26 @@
+name: Film feedback
+description: A note on a film itself (a shot, a caption, the music, a scientific detail).
+labels: [film]
+body:
+  - type: input
+    id: film
+    attributes:
+      label: Film and cut
+      placeholder: The Arrow of Time v0.3
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: Timestamp
+      description: Where in the film (mm:ss), or the beat name from timeline.json.
+      placeholder: "3:05 (civilization)"
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: What you noticed
+      description: What looks, sounds or reads wrong or could be better. For scientific points, a source helps.
+    validations:
+      required: true

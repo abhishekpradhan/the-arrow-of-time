@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/abhishekpradhan/movies/tree/main/docs
+    about: Guides for installing, making films, rendering and releasing.
+  - name: Security issues
+    url: https://github.com/abhishekpradhan/movies/security/advisories/new
+    about: Report vulnerabilities privately, not as issues.

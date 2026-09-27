@@ -1,14 +1,14 @@
 # The Arrow of Time
 
-*The history and future of everything, from the first instant to the last.* 5:18, 1920×1080,
+*The history and future of everything, from the first instant to the last.* 5:34, 1920×1080,
 24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
 
 ![Frames from the film](poster.jpg)
 
 Watch: the latest cut is on the [Releases page](https://github.com/abhishekpradhan/movies/releases)
 (1080p, a 720p preview and a poster).
-The final render took 1 h 23 min on a 4-core CPU without a GPU (Mesa llvmpipe, 2 workers,
-motion blur on; about 0.8 s of GPU time per frame).
+Rendering on a 4-core CPU without a GPU (Mesa llvmpipe) takes a couple of hours; on
+[Modal](../../docs/modal.md) it takes minutes. Cut history: [CHANGELOG.md](CHANGELOG.md).
 
 ```bash
 npm run audio -- arrow-of-time      # score  -> out/arrow-of-time/audio/score.wav
@@ -32,11 +32,12 @@ at itself. See `MUSIC.md` for the score design.
 | 0:50 | Cosmic Dawn | dark ages, first stars igniting on the score's bell notes, galaxies, the Milky Way |
 | 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
 | 1:56 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
-| 2:42 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils, civilization montage, the Moon landing, Earth at night |
-| 3:28 | Now | the pale blue dot, and silence |
-| 3:36 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
-| 4:22 | The End | the last stars, the black hole era, evaporation, the end of time |
-| 4:56 | Epilogue | "That moment is now." |
+| 2:42 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
+| 3:02 | Civilization | one river valley from the first fields to the first rocket, twelve thousand years in thirty seconds; the Moon landing; Earth at night |
+| 3:44 | Now | the pale blue dot, and silence |
+| 3:52 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
+| 4:38 | The End | the last stars, the black hole era, evaporation, the end of time |
+| 5:12 | Epilogue | "That moment is now." |
 
 ## Visual techniques
 
@@ -52,10 +53,17 @@ at itself. See `MUSIC.md` for the score design.
   real present-day Earth from Natural Earth maps (bathymetry shelves, deserts, city lights from
   populated places and roads), clouds, atmospheric rim and twilight, impact dust and fires,
   Mars terraforming, the Moon.
-- **Life and humanity**: animated signed-distance silhouettes (Anomalocaris, trilobites,
-  jellyfish, Tiktaalik, sauropods, T. rex, pterosaurs, mammals, people) over painted-light
-  skies, underwater god rays and caustics, a bump-mapped cave wall lit by a moving torch, and
-  an architectural montage from huts to rockets.
+- **Life and humanity**: binary fission of a rod-shaped microbe (textures in material
+  coordinates that each daughter carries away); animated signed-distance silhouettes
+  (Anomalocaris, trilobites, jellyfish, Tiktaalik, sauropods, T. rex, pterosaurs, mammals,
+  people) over painted-light skies; underwater god rays and caustics; a bump-mapped cave wall lit
+  by a moving torch.
+- **Civilization** (`shaders/valley.glsl`): a ray-marched valley whose terrain is baked once into
+  a height-and-slope texture. A grid city grows outward from the river bend and rebuilds itself
+  taller with each age; the ziggurat, the pyramids of Giza, a temple on its acropolis, a
+  cathedral, chimneys with coal smoke, a power station and a coastal launch pad rise on
+  schedule. Days race past between the montage cards; each night shows the lights of its age,
+  from fires to sodium street light.
 - **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
   nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
   friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.
