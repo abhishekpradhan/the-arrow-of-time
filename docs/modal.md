@@ -1,6 +1,6 @@
 # Rendering on Modal
 
-A local render of a five-minute film takes about an hour and a half on a 4-core CPU. On
+A local render of a five-minute film takes about two hours on a 4-core CPU. On
 [Modal](https://modal.com) the same film renders in minutes: the timeline is cut into short
 slices, dozens of CPU containers render them at once, and one container joins the slices and
 adds the score. Each slice is rendered by the same headless Chromium and software rasterizer
@@ -98,15 +98,17 @@ Modal bills CPU per core-second and memory per GiB-second. At the list prices in
 12 GiB costs about $0.40 an hour. Every run prints its own estimate from the time its containers
 actually spent.
 
-Rough numbers for a five-minute film, from local measurements (about 6 core-hours for a 1080p
-render with motion blur on llvmpipe):
+Measured on *The Arrow of Time* v0.3 (5:38, 8,112 frames, 1080p with motion blur): its 43
+slices rendered in 4 minutes on 43 containers at once, for about $0.85, and joining them plus the
+1080p, 720p and poster encodes took another 6 minutes and $0.10. Rough numbers for a five-minute
+film:
 
 | Render | Compute | Wall-clock time |
 | --- | --- | --- |
 | Draft (960×540, no motion blur) | about $0.15 | 2 to 4 min |
-| Final 1080p master | about $0.50 to $1 | 4 to 8 min |
+| Final 1080p master | about $1 | 4 to 8 min |
 | Final 4K master | about $2 to $4 | 10 to 20 min |
-| Release encodes (1080p, 720p, poster) | about $0.10 to $0.30 | 5 to 10 min |
+| Release encodes (1080p, 720p, poster) | about $0.10 | 5 to 7 min |
 
 The first run also builds the container image (Debian, Node, Chromium, ffmpeg, NumPy and SciPy),
 which takes about five minutes; later runs reuse it until `package-lock.json` or
