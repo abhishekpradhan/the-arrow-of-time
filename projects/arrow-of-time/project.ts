@@ -38,9 +38,10 @@ function letterbox(t: number) {
  */
 function scrimAt(t: number): Pick<Look, 'scrim' | 'scrimCenter' | 'scrimRadius'> {
   let best = { scrim: 0, scrimCenter: [0.5, 1.0] as [number, number], scrimRadius: [1.1, 0.42] as [number, number] };
-  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec }[]) {
+  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec; captionDelay?: number }[]) {
     if (b.card !== 'chapter' && b.card !== 'montage') continue;
-    const s = keys(t, [[b.start, 0], [b.start + 1.0, 1, 'inOutSine'], [b.end - 1.0, 1], [b.end, 0, 'inOutSine']]);
+    const s0 = b.start + (b.captionDelay ?? 0);
+    const s = keys(t, [[s0, 0], [s0 + 1.0, 1, 'inOutSine'], [b.end - 1.0, 1], [b.end, 0, 'inOutSine']]);
     if (s * 0.8 > best.scrim) {
       const sc = scrimFor(placeOf(b.layout));
       best = { scrim: s * 0.8, scrimCenter: sc.center, scrimRadius: sc.radius };
@@ -59,7 +60,7 @@ function flashAt(t: number) {
 /** Exposure kicks (EV) for impacts and ignitions. */
 function exposureAt(t: number) {
   return (
-    pulse(t, cues.supernova, 0.6, 2.5) + pulse(t, cues.sunIgnite, 0.7, 2.0) + pulse(t, cues.theia, 1.4, 2.4) +
+    pulse(t, cues.supernova, 0.6, 2.5) + pulse(t, cues.sunIgnite, 0.7, 2.0) + pulse(t, cues.theia, 0.5, 2.4) +
     pulse(t, cues.asteroidImpact, 1.8, 1.8) + pulse(t, cues.lastFlash, 1.5, 1.2)
   );
 }

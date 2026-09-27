@@ -61,6 +61,8 @@ type Beat = (typeof T.beats)[number] & {
   title?: string;
   line?: string;
   layout?: LayoutSpec;
+  /** Seconds to hold the card back (let an event play before the text arrives). */
+  captionDelay?: number;
   montage?: { t: number; era: string; title: string }[];
 };
 
@@ -107,7 +109,7 @@ export function scrimFor(p: Place): { center: [number, number]; radius: [number,
  * arrow motif) and drift a few pixels toward the centre over their life.
  */
 function chapter(b: Beat): TextItem {
-  const start = b.start + 0.5;
+  const start = b.start + 0.5 + (b.captionDelay ?? 0);
   const end = b.end - 0.25;
   const place = placeOf(b.layout);
   const lines: { text: string; style: TextStyle; delay: number; gap: number; mode: 'blur' | 'letters' | 'fade' }[] = [];

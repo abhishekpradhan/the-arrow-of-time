@@ -16,7 +16,7 @@
     { "id": "nebula", "act": "sun", "start": 80, "end": 86, "card": "chapter", "layout": "right", "era": "4.6 billion years ago", "line": "A cloud of gas and dust begins to collapse." },
     { "id": "sun", "act": "sun", "start": 86, "end": 94, "card": "chapter", "title": "The Sun Is Born", "line": "Around it, a disk of dust gathers into worlds." },
     { "id": "earth", "act": "sun", "start": 94, "end": 100, "card": "chapter", "layout": "right", "era": "4.54 billion years ago", "title": "Earth", "line": "A molten world, battered by debris." },
-    { "id": "moon", "act": "sun", "start": 100, "end": 108, "card": "chapter", "layout": "right", "era": "4.5 billion years ago", "title": "The Moon", "line": "A Mars-sized world strikes Earth. From the debris, the Moon." },
+    { "id": "moon", "act": "sun", "start": 100, "end": 108, "card": "chapter", "layout": "lower-left", "captionDelay": 3.0, "era": "4.5 billion years ago", "title": "The Moon", "line": "A Mars-sized world strikes Earth. From the debris, the Moon." },
     { "id": "oceans", "act": "sun", "start": 108, "end": 116, "card": "chapter", "layout": "left", "era": "4.4 billion years ago", "title": "Oceans", "line": "Steam condenses. Rain fills the first seas." },
     { "id": "life", "act": "life", "start": 116, "end": 124, "card": "chapter", "layout": "lower-right", "era": "3.8 billion years ago", "title": "Life", "line": "In the deep sea, chemistry becomes biology." },
     { "id": "oxygen", "act": "life", "start": 124, "end": 130, "card": "chapter", "layout": "right", "era": "2.4 billion years ago", "title": "The Great Oxidation", "line": "Microbes flood the air with oxygen." },

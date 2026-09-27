@@ -139,11 +139,15 @@ vec3 surface(vec3 q, vec3 n, vec3 sun, float daylight, out float spec, out vec3 
   for (int i = 0; i < 8; i++) {
     vec4 im = uImpacts[i];
     if (im.w < 0.0) continue;
-    float d = acos(clamp(dot(q, normalize(im.xyz)), -1.0, 1.0));
+    float sc = max(length(im.xyz), 1e-3);   // scar scale: 1 = crater
+    float d = acos(clamp(dot(q, im.xyz / sc), -1.0, 1.0));
     float age = im.w;
-    float ring = exp(-pow((d - age * 0.05) / 0.012, 2.0)) * exp(-age * 1.2);
-    float core = exp(-d * d / 0.0015) * exp(-age * 0.6);
-    emit += fireRamp(0.85) * (core * 2.5 + ring * 1.5);
+    float slow = inversesqrt(sc);
+    float ring = exp(-pow((d - age * 0.05 * sc) / (0.012 * sc), 2.0)) * exp(-age * 1.2 * slow);
+    float core = exp(-d * d / (0.0015 * sc * sc)) * exp(-age * 0.6 * slow);
+    // Big impacts: the heated region churns (convective magma).
+    float churn = sc > 1.5 ? 0.55 + 0.9 * fbm(q * 14.0 + vec3(0.0, uGTime * 0.3, 0.0), 3) : 1.0;
+    emit += fireRamp(0.85) * (core * 2.5 * churn + ring * 1.5);
   }
   // ---------------- impact winter: soot and dust spreading from the impact site
   if (uDust > 0.0) {
@@ -266,12 +270,22 @@ export interface PlanetParams {
   hazeColor?: Vec3;
   glint?: number;
   nightGlow?: number;
+  /**
+   * Up to 8 glowing impact sites: [x, y, z, ageSeconds] in planet-local coordinates. The
+   * vector's length scales the scar (1 = a crater, ~10 = a planet-scale shock-heated region).
+   */
   impacts?: [number, number, number, number][];
   dustDir?: Vec3;
   dustR?: number;
   dust?: number;
   bloom?: number;
+  /** Write depth unconditionally (sprites drawn later can depth-test against the planet). */
   depthWrite?: boolean;
+  /**
+   * Depth-test against what is already drawn, and write depth: planets that overlap or
+   * intersect (a collision) then occlude each other per pixel, in any draw order.
+   */
+  depthTest?: boolean;
 }
 
 export interface EarthMaps {
@@ -291,6 +305,16 @@ export async function loadEarth(e: Engine): Promise<EarthMaps> {
     e.texture('/assets/earth/relief.png', o),
   ]);
   return { albedo, masks, climate, relief };
+}
+
+/**
+ * Planet-local direction of a world-space direction, for surface features such as `impacts`
+ * (pass the same spin/tilt/yaw as the draw call they belong to).
+ */
+export function planetLocal(p: Pick<PlanetParams, 'spin' | 'tilt' | 'yaw'>, dir: Vec3): Vec3 {
+  const m = m4.invert(rotation(p as PlanetParams));
+  const [x, y, z] = dir;
+  return [m[0] * x + m[4] * y + m[8] * z, m[1] * x + m[5] * y + m[9] * z, m[2] * x + m[6] * y + m[10] * z];
 }
 
 function rotation(p: PlanetParams): Mat4 {
@@ -314,9 +338,10 @@ export class Planet {
     cam.aspect = c.aspect;
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    if (p.depthWrite) {
+    const depth = p.depthWrite || p.depthTest;
+    if (depth) {
       gl.enable(gl.DEPTH_TEST);
-      gl.depthFunc(gl.ALWAYS);
+      gl.depthFunc(p.depthTest ? gl.LEQUAL : gl.ALWAYS);
       gl.depthMask(true);
     }
     c.fullscreen(this.prog, {
@@ -360,10 +385,10 @@ export class Planet {
       uMasks: this.maps?.masks ?? this.e.blankTexture,
       uClimate: this.maps?.climate ?? this.e.blankTexture,
       uRelief: this.maps?.relief ?? this.e.blankTexture,
-      uDepthWrite: p.depthWrite ? 1 : 0,
+      uDepthWrite: depth ? 1 : 0,
     });
     gl.disable(gl.BLEND);
-    if (p.depthWrite) {
+    if (depth) {
       gl.depthFunc(gl.LEQUAL);
       gl.disable(gl.DEPTH_TEST);
     }
