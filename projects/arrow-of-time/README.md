@@ -33,7 +33,7 @@ at itself. See `MUSIC.md` for the score design.
 | 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
 | 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
 | 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
-| 3:06 | Civilization | twelve thousand years in ten scenes: the first harvest, Uruk, a scribe writing cuneiform, Giza, Athens, Gutenberg's press, a steam train, the Wright Flyer, Trinity, a Moon rocket; the first steps on the Moon; Earth at night |
+| 3:06 | Civilization | twelve thousand years in ten scenes: the first harvest, Uruk, a scribe writing cuneiform, Giza, a Greek temple, Gutenberg's press, a steam train, the Wright Flyer, Trinity, a Moon rocket; the first steps on the Moon; Earth at night |
 | 3:48 | Now | the pale blue dot, and silence |
 | 3:56 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
 | 4:42 | The End | the last stars, the black hole era, evaporation, the end of time |
@@ -72,12 +72,13 @@ at itself. See `MUSIC.md` for the score design.
   by a moving torch.
 - **Civilization** (`shots/ages.ts`, `shaders/age-*.glsl`): ten ray-marched scenes, one per
   montage card, each a single moving camera: a reaper in a wheat field at golden hour (layered
-  planes of stalks), the White Temple of Uruk above a mud-brick city, a stylus pressing wedges into
-  a clay tablet (an exact height-field intersection), Giza at dawn, the Parthenon's colonnade, a
-  printed page of Genesis in blackletter lifting off a Gutenberg press (canvas text as a texture),
-  a steam train crossing a viaduct under mill chimneys, the Wright Flyer over Kill Devil Hills,
-  the Trinity fireball, and a Saturn V lifting off. Motion blur samples double as anti-aliasing:
-  each one jitters the camera rays by a sub-pixel offset.
+  planes of stalks), the White Temple of Uruk above a mud-brick city, a stylus pressing wedges
+  into a clay tablet (an exact height-field intersection), Giza in its white casing on a summer
+  afternoon, a Doric colonnade above the Aegean at sunset, pages of Genesis in blackletter drying
+  above a Gutenberg press (canvas text as a texture), a steam train crossing a viaduct under mill
+  chimneys, the Wright Flyer over Kill Devil Hills, the Trinity fireball, and a Saturn V lifting
+  off. Motion blur samples double as anti-aliasing: each one jitters the camera rays by a
+  sub-pixel offset.
 - **The Moon landing** (`shots/apollo.ts`, `shaders/apollo.glsl`): the lunar module, an astronaut
   stepping off the ladder, bootprints, rocks and the flag in hard, airless sunlight, with the
   Earth over the horizon.

@@ -8,10 +8,11 @@ The newest section is used for the release notes. Cuts are published on the
 - **Civilization** is rebuilt as ten scenes, one per card, each a ray-marched set with its own
   light and a moving camera: a reaper with a flint sickle in wild wheat at golden hour, the White
   Temple of Uruk at dusk, a scribe's stylus pressing cuneiform into wet clay, the pyramids of Giza
-  at dawn, a Doric colonnade at sunset, a page of Genesis lifting off Gutenberg's press, a night
-  train on a viaduct under mill chimneys, the Wright Flyer over Kill Devil Hills, the Trinity
-  fireball, and a Saturn V lifting off under searchlights. The cards now read 2500 BCE for the
-  pyramids (when all three stood) and 1830 for industry (the railway age).
+  in their white limestone casing, a Doric colonnade at sunset, printed pages of Genesis drying
+  above Gutenberg's press, a night train on a viaduct under mill chimneys, the Wright Flyer over
+  Kill Devil Hills, the Trinity fireball, and a Saturn V lifting off under searchlights. The cards
+  now read 2500 BCE for the pyramids (when all three stood) and 1830 for industry (the railway
+  age).
 - **The Moon landing** is a 3D scene: the lunar module on a cratered plain under a low Sun, an
   astronaut stepping off the ladder onto the regolith on the beat, a bootprint, a kick of dust
   on ballistic arcs, the flag, and the real Earth above the horizon as the camera cranes back.
