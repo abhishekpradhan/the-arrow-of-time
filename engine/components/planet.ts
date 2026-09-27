@@ -208,6 +208,17 @@ void main() {
       lit = mix(lit, cloud, cov);
       emit *= 1.0 - cov * 0.8;
     }
+    // Stratospheric soot and dust (impact winter) veil the clouds too.
+    if (uDust > 0.0) {
+      float dAng = acos(clamp(dot(q, normalize(uDustDir)), -1.0, 1.0));
+      float dEdge = uDustR * (0.85 + 0.3 * fbm(q * 5.0, 4));
+      float veil = smoothstep(dEdge, dEdge * 0.6, dAng) * uDust;
+      // Swirled, uneven cover: thick soot, thinner brown dust, glimpses of the surface.
+      vec3 sq = q * 6.0 + vec3(2.0 * fbm(q * 3.0, 3), 0.0, uGTime * 0.02);
+      float swirl = fbm(sq, 4);
+      vec3 soot = mix(vec3(0.03, 0.026, 0.024), vec3(0.14, 0.105, 0.08), smoothstep(0.3, 0.75, swirl));
+      lit = mix(lit, soot * uSunColor * max(ndl, 0.0), veil * (0.5 + 0.42 * smoothstep(0.25, 0.7, swirl)));
+    }
     // Night-side airglow / thermal glow of a hot planet.
     lit += uNightGlow * vec3(0.9, 0.3, 0.08) * (1.0 - daylight) * 0.2;
     // Atmosphere on the disc: brighter towards the limb, blue by day, warm at the terminator.

@@ -54,14 +54,14 @@ const pulse = (t: number, t0: number, amp: number, decay: number) => (t >= t0 ? 
 
 /** White-out flashes (display space): only the Big Bang truly blinds; other hits use exposure. */
 function flashAt(t: number) {
-  return pulse(t, cues.bang, 1.1, 3.2) + pulse(t, cues.asteroidImpact, 0.25, 3.0) + pulse(t, cues.lastFlash, 0.2, 2.0);
+  return pulse(t, cues.bang, 1.1, 3.2) + pulse(t, cues.lastFlash, 0.2, 2.0);
 }
 
 /** Exposure kicks (EV) for impacts and ignitions. */
 function exposureAt(t: number) {
   return (
     pulse(t, cues.supernova, 0.6, 2.5) + pulse(t, cues.sunIgnite, 0.7, 2.0) + pulse(t, cues.theia, 0.5, 2.4) +
-    pulse(t, cues.asteroidImpact, 1.8, 1.8) + pulse(t, cues.lastFlash, 1.5, 1.2)
+    pulse(t, cues.asteroidImpact, 1.0, 2.2) + pulse(t, cues.lastFlash, 1.5, 1.2)
   );
 }
 

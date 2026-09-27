@@ -1,7 +1,24 @@
 // Act IV: the first life, oxygen, snowball Earth, the Cambrian seas, onto land, dinosaurs, the asteroid.
-import { Camera, Sprites, allocSprites, blackbody, keys, prog, rng, starSphere, type RenderTarget, type Shot, type Vec3 } from '@engine';
+import {
+  Camera,
+  Planet,
+  Sprites,
+  allocSprites,
+  blackbody,
+  ease,
+  keys,
+  loadEarth,
+  prog,
+  rng,
+  smoothstep,
+  starSphere,
+  v3,
+  type EarthMaps,
+  type RenderTarget,
+  type Shot,
+  type Vec3,
+} from '@engine';
 import { beat, cues, scratch, span } from '../lib';
-import { Planet, loadEarth, type EarthMaps } from '@engine';
 
 // ------------------------------------------------------------------ hydrothermal vent
 const VENT = `
@@ -456,30 +473,146 @@ function dinosaurs(): Shot {
 }
 
 // ------------------------------------------------------------------ the asteroid
+// Chicxulub, 66 million years ago: a ~10 km asteroid from the northeast at a steep angle.
+// From low orbit over the Gulf of Mexico: entry with a plasma trail, a flash, a fireball dome
+// rising from Yucatán with an ejecta curtain and a shock-heated ring, then (pulling back) the
+// ejecta re-entering around the planet as a spreading wave of fires under a soot veil.
+// Earth here: tilt 0, spin 0, yaw so that longitude -89.5 faces +z (world = local rotated).
 const YUCATAN: Vec3 = (() => {
   const lat = (21.4 * Math.PI) / 180, lon = (-89.5 * Math.PI) / 180;
   return [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
 })();
+const SITE_LAT = (21.4 * Math.PI) / 180;
+/** The impact site in world space, with local east and north. */
+const SITE: Vec3 = [0, Math.sin(SITE_LAT), Math.cos(SITE_LAT)];
+const EAST: Vec3 = [1, 0, 0];
+const NORTH: Vec3 = [0, Math.cos(SITE_LAT), -Math.sin(SITE_LAT)];
+/** Where the asteroid comes from: northeast, 58 degrees above the horizon. */
+const INCOMING = v3.norm(v3.add(v3.scale(v3.norm(v3.add(EAST, NORTH)), Math.cos(1.01)), v3.scale(SITE, Math.sin(1.01))));
+const AST_SPEED = 1.15; // Earth radii per second (film time)
+const asteroidAt = (age: number): Vec3 => v3.add(v3.scale(SITE, 1.004), v3.scale(INCOMING, -age * AST_SPEED));
 
 const TRAIL = `
 #include <common>
+#include <noise>
 #include <color>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uHeat;
+uniform vec2 uRes; uniform float uAspect, uHeat, uGTime;
 uniform vec2 uHead, uTail;
 void main() {
   vec2 p = centered(vUv, uAspect);
   vec2 ab = uTail - uHead;
   float h = saturate(dot(p - uHead, ab) / dot(ab, ab));
   float d = length(p - uHead - ab * h);
-  float w = 0.002 + 0.01 * h;
-  float trail = exp(-d * d / (w * w)) * pow(1.0 - h, 1.5);
-  float glow = exp(-length(p - uHead) / 0.012);
-  vec3 col = fireRamp(0.55 + 0.4 * (1.0 - h)) * trail * 2.2 + vec3(1.0, 0.9, 0.75) * glow * 2.0;
+  // The ionized wake widens and flickers behind the head.
+  float w = 0.0018 + 0.012 * h * (0.8 + 0.4 * vnoise(vec2(h * 40.0 - uGTime * 30.0, 0.0)));
+  float trail = exp(-d * d / (w * w)) * pow(1.0 - h, 1.2);
+  float sheath = exp(-length(p - uHead) / 0.006);
+  float halo = exp(-length(p - uHead) / 0.03) * 0.25;
+  vec3 col = fireRamp(0.45 + 0.5 * (1.0 - h)) * trail * 2.0 + vec3(1.0, 0.95, 0.85) * sheath * 3.0 + vec3(1.0, 0.6, 0.3) * halo;
   fragColor = vec4(col * uHeat, 1.0);
 }`;
 
-function impact(): Shot<EarthShot & { maps: EarthMaps; rock: Planet; ejecta: Sprites }> {
+/**
+ * Fireball plume: an emission-absorption volume on the local vertical, a mushroom cap on a
+ * widening stem that rises and cools from white-hot to embers under dark soot (premultiplied).
+ */
+const FIREBALL = `
+#include <common>
+#include <noise>
+#include <color>
+#include <camera>
+in vec2 vUv; out vec4 fragColor;
+uniform vec2 uRes;
+uniform float uAspect;
+uniform vec3 uSite, uSunDir;
+uniform float uAge, uR, uLift;
+void main() {
+  vec2 p = centered(vUv, uAspect);
+  vec3 rd = camRay(p), ro = uCamPos;
+  vec3 c = uSite * (1.0 + 0.95 * uR);
+  float Rb = uR * (1.7 + 1.6 * smoothstep(1.4, 4.5, uAge));
+  vec3 oc = ro - c;
+  float b = dot(oc, rd), h = b * b - dot(oc, oc) + Rb * Rb;
+  if (h <= 0.0) { fragColor = vec4(0.0); return; }
+  float t0 = max(-b - sqrt(h), 0.0), t1 = -b + sqrt(h);
+  float be = dot(ro, rd), he = be * be - dot(ro, ro) + 1.0;
+  if (he > 0.0) { float te = -be - sqrt(he); if (te > 0.0) t1 = min(t1, te); }
+  if (t1 <= t0) { fragColor = vec4(0.0); return; }
+  const int N = 40;
+  float dt = (t1 - t0) / float(N);
+  float T = 1.0;
+  vec3 L = vec3(0.0);
+  float j = hash12(gl_FragCoord.xy + fract(uAge * 7.31) * 100.0);
+  float cool = exp(-uAge * 0.33) * (1.0 - 0.6 * smoothstep(1.4, 3.6, uAge));
+  float hc = 0.45 + 0.6 * uLift;   // cap centre height, in plume radii
+  // Later the cap spreads sideways and thins into a smoke sheet over the dust veil.
+  float spread = 1.0 + 1.6 * smoothstep(1.4, 4.5, uAge);
+  float thin = 1.0 - 0.85 * smoothstep(1.6, 4.2, uAge);
+  for (int i = 0; i < N; i++) {
+    vec3 x = ro + rd * (t0 + (float(i) + j) * dt);
+    vec3 d = x - uSite;
+    float hh = dot(d, uSite) / uR;
+    if (hh < -0.05) continue;
+    float l = length(d - uSite * dot(d, uSite)) / uR;
+    float n = fbm(d / uR * 2.3 + vec3(0.0, -uAge * 0.9, uAge * 0.2), 4);
+    float cap = length(vec2(l / spread, (hh - hc) * spread / 0.72));
+    float stem = hh < hc ? l / (0.3 + 0.35 * hh) : 9.0;
+    float shape = min(cap, stem) + 0.55 * (n - 0.5);
+    float dens = smoothstep(1.0, 0.5, shape) * smoothstep(-0.05, 0.1, hh) * thin;
+    if (dens < 0.002) continue;
+    float heat = cool * (0.72 + 0.28 * saturate(1.0 - shape)) * (0.6 + 0.4 * n);
+    vec3 em = blackbody(1300.0 + 5400.0 * heat) * heat * heat * 11.0;
+    float lit = 0.3 + 0.7 * max(dot(normalize(x), uSunDir), 0.0);
+    vec3 soot = vec3(0.075, 0.07, 0.065) * lit * (1.0 - cool) * (1.0 - cool);
+    float a = 1.0 - exp(-dens * 7.0 * dt / uR);
+    L += T * (em + soot) * a;
+    T *= 1.0 - a;
+    if (T < 0.02) break;
+  }
+  fragColor = vec4(L, 1.0 - T);
+}`;
+
+const OVER = `
+in vec2 vUv; out vec4 fragColor;
+uniform sampler2D uSrc;
+void main() { fragColor = texture(uSrc, vUv); }`;
+
+/** Ejecta curtain: ballistic debris thrown out of the crater at ~45 degrees, all around. */
+const CURTAIN = `
+#include <color>
+uniform float uAge;
+uniform vec3 uSite, uE, uN;
+// position = (azimuth, speed, elevation); extra = (launch delay, ...)
+vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
+  float t = uAge - x.x;
+  if (t < 0.0) { size = 0.0; return uSite; }
+  vec3 hor = cos(p.x) * uE + sin(p.x) * uN;
+  vec3 pos = uSite * 1.002 + (hor * cos(p.z) + uSite * sin(p.z)) * p.y * t;
+  pos -= normalize(pos) * 0.5 * 0.42 * t * t;
+  if (length(pos) < 1.0) { size = 0.0; return pos; }
+  float heat = exp(-t * 1.6);
+  col = mix(vec3(0.07, 0.06, 0.05) * col.g, blackbody(1600.0 + 2800.0 * heat) * col.r, heat);
+  size *= 1.0 + 1.2 * t;
+  return pos;
+}`;
+
+/** Re-entering ejecta: flashes that race outward over the globe and leave fires behind. */
+const REENTRY = `
+#include <color>
+uniform float uAge;
+// position = point on the surface; extra = (arrival time, ...)
+vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
+  float t = uAge - x.x;
+  if (t < 0.0) { size = 0.0; return p; }
+  float flash = exp(-t * 5.0);
+  float ember = 0.18 * smoothstep(0.0, 0.3, t) * (0.6 + 0.4 * sin(t * 13.0 + x.y * 50.0));
+  col = blackbody(1500.0 + 1700.0 * flash) * col.r * (flash * 2.0 + ember);
+  size *= 1.0 + 1.2 * flash;
+  return p;
+}`;
+
+function impact(): Shot<EarthShot & { maps: EarthMaps; curtain: Sprites; reentry: Sprites; half: RenderTarget }> {
   const start = cues.asteroidStreak + 0.7;
   return {
     id: 'impact',
@@ -490,71 +623,93 @@ function impact(): Shot<EarthShot & { maps: EarthMaps; rock: Planet; ejecta: Spr
     async setup(e) {
       const maps = await loadEarth(e);
       const r = rng(158);
-      const n = 1200;
-      const d = allocSprites(n);
-      for (let i = 0; i < n; i++) {
-        const dir = r.onSphere();
-        d.position.set(dir, i * 3);
-        const c = blackbody(r.range(1500, 3500));
-        const b = r.range(0.3, 1.2);
-        d.color.set([c[0] * b, c[1] * b, c[2] * b], i * 3);
-        d.size[i] = r.range(0.0015, 0.004);
-        d.extra!.set([r.next(), r.next(), r.next(), r.next()], i * 4);
+      const nc = 30000;
+      const cd = allocSprites(nc);
+      for (let i = 0; i < nc; i++) {
+        cd.position.set([r.range(0, Math.PI * 2), r.range(0.08, 0.34) * (r.next() < 0.12 ? 1.5 : 1), r.range(0.62, 0.88)], i * 3);
+        cd.extra!.set([r.next() ** 2 * 0.4, r.next(), 0, 0], i * 4);
+        cd.color.set([r.range(0.35, 1.0), r.range(0.6, 1.4), 0], i * 3);
+        cd.size[i] = r.range(0.0005, 0.0013);
       }
-      const ejecta = new Sprites(e, d, {
-        animate: `
-          uniform float uAge; uniform vec3 uSite;
-          vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
-            if (uAge < 0.0) { size = 0.0; return p; }
-            vec3 n = normalize(uSite);
-            vec3 dir = normalize(n * (0.6 + x.x) + p * 0.7);
-            float sp = 0.12 + 0.35 * x.y;
-            float tt = uAge;
-            vec3 pos = uSite * 1.0 + dir * sp * tt - n * 0.06 * tt * tt;
-            col *= exp(-tt * 1.3) * (1.0 + 2.0 * exp(-tt * 3.0));
-            return pos;
-          }`,
-      });
+      // Re-entry: points on the globe, reached by a front moving ~0.85 rad/s from the site.
+      const nr = 14000;
+      const rd = allocSprites(nr);
+      for (let i = 0; i < nr; i++) {
+        const d = r.onSphere();
+        const ang = Math.acos(Math.max(-1, Math.min(1, v3.dot(d, SITE))));
+        if (ang < 0.12) {
+          rd.size[i] = 0;
+          continue;
+        }
+        rd.position.set(v3.scale(d, 1.004), i * 3);
+        rd.extra!.set([0.55 + ang / 0.85 + r.range(-0.12, 0.25), r.next(), 0, 0], i * 4);
+        rd.color.set([r.range(0.25, 0.8), 0, 0], i * 3);
+        rd.size[i] = r.range(0.0011, 0.0026);
+      }
       return {
         maps,
         planet: new Planet(e, maps),
-        rock: new Planet(e),
-        cam: new Camera({ fov: 34 }),
+        cam: new Camera({ fov: 46, far: 100 }),
         sky: new Sprites(e, starSphere(rng(157), { count: 8000, brightness: 0.35 })),
-        ejecta,
+        curtain: new Sprites(e, cd, { animate: CURTAIN, minPixels: 0.7 }),
+        reentry: new Sprites(e, rd, { animate: REENTRY, minPixels: 0.8 }),
+        half: scratch(e, 0.5),
       };
     },
     render(c, s) {
       const age = c.time - cues.asteroidImpact;
-      const yaw = (89.5 * Math.PI) / 180;
-      s.cam.set({ pos: [0.35, 0.55, keys(c.time, [[start, 2.6], [cues.asteroidImpact, 2.75], [163, 3.3, 'outCubic']])], target: [0.05, 0.25, 0] });
+      // Camera: low over the Gulf looking north (limb above), then a pull-back to the whole planet.
+      const closePos = v3.add(v3.add(v3.scale(SITE, 1.62), v3.scale(NORTH, -0.95)), v3.scale(EAST, -0.2));
+      const closeTarget = v3.add(v3.scale(SITE, 1.02), v3.scale(NORTH, 0.3));
+      const farPos: Vec3 = [0.55, 0.7, 3.1];
+      const farTarget: Vec3 = [0.12, 0.18, 0];
+      const k = ease.inOutCubic(smoothstep(1.2, 3.8, age));
+      const drift = v3.scale(EAST, 0.04 * (c.time - start));
+      s.cam.set({
+        pos: v3.add(v3.add(v3.scale(closePos, 1 - k), v3.scale(farPos, k)), drift),
+        target: v3.add(v3.scale(closeTarget, 1 - k), v3.scale(farTarget, k)),
+        up: v3.norm(v3.add(v3.scale(SITE, 1 - k), v3.scale([0, 1, 0], k))),
+        fov: 46 - 12 * k,
+      });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
-      const sun: Vec3 = [-0.55, 0.45, 0.7];
-      // Site in world space (tilt 0, yaw rotates longitude -89.5 deg to face +z).
-      const site: Vec3 = [0.0, Math.sin((21.4 * Math.PI) / 180), Math.cos((21.4 * Math.PI) / 180)];
+      const sun: Vec3 = v3.norm([-0.35, 0.55, 0.75]);
+      const yaw = (89.5 * Math.PI) / 180;
+      const smoke = smoothstep(1.0, 4.0, age);
       s.planet.draw(c, s.cam, {
         center: [0, 0, 0], radius: 1, spin: 0, yaw, tilt: 0, sunDir: sun, earth: 1, clouds: 0.4, cloudT: 0.3 + c.time * 0.004,
-        atmo: 0.9, atmoColor: [0.3, 0.55, 1.0], glint: 0.6,
-        impacts: age >= 0 ? [[YUCATAN[0], YUCATAN[1], YUCATAN[2], age * 2.5]] : [],
-        dustDir: YUCATAN, dustR: age > 0 ? 0.1 + 0.9 * (1 - Math.exp(-age * 0.55)) : 0, dust: age > 0 ? 0.92 : 0,
+        atmo: 0.9, glint: 0.6,
+        // Soot turns the blue limb a sick brown as it spreads.
+        atmoColor: v3.add(v3.scale([0.3, 0.55, 1.0], 1 - 0.8 * smoke), v3.scale([0.4, 0.26, 0.16], 0.8 * smoke)),
+        haze: 0.12 * smoke, hazeColor: [0.16, 0.11, 0.08],
+        impacts: age >= 0 ? [[YUCATAN[0] * 2.2, YUCATAN[1] * 2.2, YUCATAN[2] * 2.2, age * 1.8]] : [],
+        dustDir: YUCATAN, dustR: age > 0 ? 0.08 + 2.0 * (1 - Math.exp(-age * 0.36)) : 0, dust: age > 0 ? 0.95 : 0,
+        depthWrite: true,
       });
       if (age < 0) {
-        // The asteroid streaking in, wrapped in plasma, trailing a glowing wake.
-        const k = -age;
-        const pos: Vec3 = [site[0] + 0.55 * k, site[1] + 0.9 * k, site[2] + 0.25 * k];
-        const head = s.cam.project(pos);
-        const tail = s.cam.project([pos[0] + 0.55 * 0.35, pos[1] + 0.9 * 0.35, pos[2] + 0.25 * 0.35]);
+        // Entry: the head in a plasma sheath with an ionized wake; brightest in the atmosphere.
+        const head = s.cam.project(asteroidAt(age));
+        const tail = s.cam.project(asteroidAt(age - 0.32));
         c.gl.enable(c.gl.BLEND);
         c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
         c.fullscreen(c.e.program(TRAIL, 'trail'), {
           uHead: [(head.x - 0.5) * c.aspect, head.y - 0.5],
           uTail: [(tail.x - 0.5) * c.aspect, tail.y - 0.5],
-          uHeat: 0.6 + 0.4 * Math.exp(-k * 1.5),
+          uHeat: 0.7 + 1.6 * smoothstep(-0.3, 0.0, age),
         });
         c.gl.disable(c.gl.BLEND);
-        s.rock.draw(c, s.cam, { center: pos, radius: 0.012, sunDir: sun, seed: 5, lava: 0.6, crust: 0.8, atmo: 0 });
+        return;
       }
-      s.ejecta.draw(s.cam, c.time, { uAge: age, uSite: site }, { blend: 'add' });
+      s.curtain.draw(s.cam, c.time, { uAge: age, uSite: SITE, uE: EAST, uN: NORTH }, { blend: 'add', depthTest: true });
+      s.reentry.draw(s.cam, c.time, { uAge: age }, { blend: 'add', depthTest: true });
+      // The fireball dome at half resolution, composited over the scene (premultiplied).
+      const R = 0.004 + 0.1 * (1 - Math.exp(-age * 1.4));
+      s.half.clear(0, 0, 0, 0);
+      c.fullscreen(c.e.program(FIREBALL, 'fireball'), { ...s.cam.uniforms(), uSite: SITE, uSunDir: sun, uAge: age, uR: R, uLift: smoothstep(0.2, 3.0, age) });
+      c.target.bind();
+      c.gl.enable(c.gl.BLEND);
+      c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
+      c.fullscreen(c.e.program(OVER, 'over'), { uSrc: s.half });
+      c.gl.disable(c.gl.BLEND);
     },
   };
 }
