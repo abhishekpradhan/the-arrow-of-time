@@ -63,7 +63,7 @@ type Beat = (typeof T.beats)[number] & {
   layout?: LayoutSpec;
   /** Seconds to hold the card back (let an event play before the text arrives). */
   captionDelay?: number;
-  montage?: { t: number; era: string; title: string }[];
+  montage?: { t: number; year?: number; era: string; title: string }[];
 };
 
 export interface Place {
@@ -151,6 +151,7 @@ function chapter(b: Beat): TextItem {
 /** Fast date/title flashes for the civilization montage. */
 function montage(b: Beat): TextItem[] {
   const m = b.montage ?? [];
+  const at = placeOf(b.layout);
   return m.map((it, i) => {
     const next = i + 1 < m.length ? m[i + 1].t : b.end;
     const start = it.t;
@@ -162,9 +163,12 @@ function montage(b: Beat): TextItem[] {
       end,
       draw(ctx, t, L) {
         const life = lifeOf(t, start, end, inDur, outDur);
-        const base = L.top + 0.86 * (L.bottom - L.top);
-        drawText(ctx, it.era, L.w / 2, base - 66 * L.s, STYLE.era, L.s, 'center', { inP: life.inP, outP: life.outP, mode: 'fade' });
-        drawText(ctx, it.title, L.w / 2, base, STYLE.title, L.s, 'center', {
+        // The era sits 66 px above the title's baseline; the pair is anchored by the beat's layout.
+        const y = L.top + at.y * (L.bottom - L.top);
+        const base = at.v === 'top' ? y + 66 * L.s + 44 * L.s : at.v === 'middle' ? y + 33 * L.s : y;
+        const x = at.x * L.w;
+        drawText(ctx, it.era, x, base - 66 * L.s, STYLE.era, L.s, at.align, { inP: life.inP, outP: life.outP, mode: 'fade' });
+        drawText(ctx, it.title, x, base, STYLE.title, L.s, at.align, {
           inP: life.inP,
           outP: life.outP,
           lifeP: life.lifeP,
