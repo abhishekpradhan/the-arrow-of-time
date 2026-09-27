@@ -71,6 +71,7 @@ uniform vec2 uRes, uShake;
 uniform float uBloomAmt, uBloomNorm, uStreakAmt, uExposure, uContrast, uSaturation;
 uniform float uVignette, uGrain, uAberration, uLetterbox, uLetterboxAspect, uFade, uFlash, uTextOpacity;
 uniform float uFrame, uFlipY, uHasText, uScrim;
+uniform vec2 uScrimCenter, uScrimRadius;
 uniform vec3 uStreakTint, uLift, uGamma, uGain, uFlashColor;
 uniform int uTonemap;
 
@@ -112,12 +113,14 @@ void main() {
   float vig = 1.0 - uVignette * smoothstep(0.35, 1.05, length(vp) * 1.15);
   col *= vig;
 
-  // Caption scrim: a soft darkening of the lower part of the visible picture.
+  // Caption scrim: a soft elliptical darkening behind the captions (caption space: x across,
+  // y down the visible picture).
   if (uScrim > 0.0) {
     float visibleH = min((uRes.x / uLetterboxAspect) / uRes.y, 1.0);
     float band0 = (1.0 - mix(1.0, visibleH, uLetterbox)) * 0.5;
     float yb = (uv.y - band0) / max(1.0 - 2.0 * band0, 1e-3);
-    col *= 1.0 - uScrim * 0.55 * smoothstep(0.42, 0.0, yb) * (0.8 + 0.2 * smoothstep(0.6, 0.0, abs(uv.x - 0.5)));
+    vec2 q = (vec2(uv.x, 1.0 - yb) - uScrimCenter) / max(uScrimRadius, vec2(1e-3));
+    col *= 1.0 - uScrim * 0.55 * smoothstep(1.0, 0.0, length(q));
   }
   col = linearToSrgb(saturate(col));
 
@@ -252,6 +255,8 @@ export class Post {
       uFlashColor: look.flashColor,
       uTextOpacity: look.textOpacity,
       uScrim: look.scrim,
+      uScrimCenter: look.scrimCenter,
+      uScrimRadius: look.scrimRadius,
       uFrame: frame,
       uFlipY: flipY ? 1 : 0,
       uTonemap: TONEMAP_ID[look.tonemap],

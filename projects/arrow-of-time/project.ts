@@ -6,7 +6,7 @@ import '@fontsource/cormorant-garamond/500-italic.css';
 import { defineProject, keys, shake, type Look, type Vec3 } from '@engine';
 import T from './timeline.json';
 import { cues } from './lib';
-import { buildText } from './text';
+import { buildText, placeOf, scrimFor, type LayoutSpec } from './text';
 import { universeShots } from './shots/universe';
 import { dawnShots } from './shots/dawn';
 import { sunShots } from './shots/sun';
@@ -32,14 +32,21 @@ function letterbox(t: number) {
   return 1 - open;
 }
 
-/** Caption scrim: fades in behind chapter cards so text stays legible over busy imagery. */
-function scrimAt(t: number) {
-  let s = 0;
-  for (const b of T.beats) {
+/**
+ * Caption scrim: fades in behind chapter cards so text stays legible over busy imagery, and
+ * sits wherever the beat's layout puts the card.
+ */
+function scrimAt(t: number): Pick<Look, 'scrim' | 'scrimCenter' | 'scrimRadius'> {
+  let best = { scrim: 0, scrimCenter: [0.5, 1.0] as [number, number], scrimRadius: [1.1, 0.42] as [number, number] };
+  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec }[]) {
     if (b.card !== 'chapter' && b.card !== 'montage') continue;
-    s = Math.max(s, keys(t, [[b.start, 0], [b.start + 1.0, 1, 'inOutSine'], [b.end - 1.0, 1], [b.end, 0, 'inOutSine']]));
+    const s = keys(t, [[b.start, 0], [b.start + 1.0, 1, 'inOutSine'], [b.end - 1.0, 1], [b.end, 0, 'inOutSine']]);
+    if (s * 0.8 > best.scrim) {
+      const sc = scrimFor(placeOf(b.layout));
+      best = { scrim: s * 0.8, scrimCenter: sc.center, scrimRadius: sc.radius };
+    }
   }
-  return s;
+  return best;
 }
 
 const pulse = (t: number, t0: number, amp: number, decay: number) => (t >= t0 ? amp * Math.exp(-(t - t0) * decay) : 0);
@@ -97,7 +104,7 @@ export default defineProject({
   look: (t) => ({
     ...grade(t),
     letterbox: letterbox(t),
-    scrim: scrimAt(t) * 0.8,
+    ...scrimAt(t),
     flash: flashAt(t),
     exposure: exposureAt(t),
     shake: shakeAt(t),

@@ -186,7 +186,7 @@ function hotEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
     render(c, s) {
       const t = c.time - beat('hotearth').start;
       const k = prog(t, 0.3, 6.3, 'inOutSine');
-      s.cam.set({ pos: [0.2, 0.3, keys(t, [[-1, 3.7], [7, 3.3]])], target: [0.25, 0.1, 0] });
+      s.cam.set({ pos: [0.2, 0.3, keys(t, [[-1, 4.0], [7, 3.6]])], target: [-0.75, 0.1, 0] });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       s.planet.draw(c, s.cam, {
         center: [0, 0, 0], radius: 1, yaw: -0.6 - t * 0.02, spin: 0, tilt: 0.35, sunDir: [-0.65, 0.3, 0.7],
@@ -320,7 +320,8 @@ function whiteDwarf(): Shot<{ half: RenderTarget; cam: Camera; sky: Sprites }> {
     render(c, s) {
       const t = c.time - beat('whitedwarf').start;
       const az = 0.6 + t * 0.06;
-      s.cam.set({ pos: [Math.sin(az) * 2.2, 2.0, Math.cos(az) * 2.2], target: [0, 0, 0] });
+      // Nebula right of centre: the caption sits at lower left.
+      s.cam.set({ pos: [Math.sin(az) * 2.2, 2.0, Math.cos(az) * 2.2], target: [0, 0, 0] }).pan(-0.68);
       s.half.bind();
       c.fullscreen(c.e.program(PNEB, 'pnebula'), { ...s.cam.uniforms(), uExpand: 0.9 + 0.04 * t });
       c.target.bind();

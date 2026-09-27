@@ -35,6 +35,19 @@ export class Camera {
     return this;
   }
 
+  /**
+   * Slide the camera and its target together along the view's right/up axes (world units).
+   * Reframes without rotating: use it to move a subject off-centre, e.g. to leave room for a
+   * caption. Positive dx moves the view right, so the subject moves left on screen.
+   */
+  pan(dx: number, dy = 0) {
+    const { right, up } = this.basis();
+    const d = v3.add(v3.scale(right, dx), v3.scale(up, dy));
+    this.pos = v3.add(this.pos, d);
+    this.target = v3.add(this.target, d);
+    return this;
+  }
+
   basis() {
     const fwd = v3.norm(v3.sub(this.target, this.pos));
     let right = v3.cross(fwd, this.up);

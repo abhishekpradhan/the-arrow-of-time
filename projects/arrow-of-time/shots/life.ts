@@ -164,7 +164,7 @@ function snowball(): Shot<EarthShot> {
     setup: (e) => ({ planet: new Planet(e), cam: new Camera({ fov: 32 }), sky: new Sprites(e, starSphere(rng(130), { count: 8000, brightness: 0.35 })) }),
     render(c, s) {
       const t = c.time - beat('snowball').start;
-      s.cam.set({ pos: [-0.3, 0.2, keys(t, [[-1, 3.4], [5, 3.1]])], target: [-0.2, 0, 0] });
+      s.cam.set({ pos: [-0.3, 0.2, keys(t, [[-1, 3.9], [5, 3.6]])], target: [-0.85, 0.05, 0] });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       s.planet.draw(c, s.cam, {
         center: [0, 0, 0], radius: 1, spin: c.time * 0.05, tilt: 0.3, sunDir: [-0.75, 0.3, 0.55], seed: 9,

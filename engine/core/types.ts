@@ -70,8 +70,14 @@ export interface Look {
   /** Whole-frame offset in pixels (camera shake). */
   shake: Vec2;
   textOpacity: number;
-  /** Darken the lower third of the picture (behind captions), 0..1. */
+  /** Darken the picture softly behind captions, 0..1. */
   scrim: number;
+  /**
+   * Scrim ellipse centre and radii in caption space: x 0..1 across the frame, y 0..1 down the
+   * visible picture (inside the letterbox). The default is a band along the bottom.
+   */
+  scrimCenter: Vec2;
+  scrimRadius: Vec2;
 }
 
 export const DEFAULT_LOOK: Look = {
@@ -98,6 +104,8 @@ export const DEFAULT_LOOK: Look = {
   shake: [0, 0],
   textOpacity: 1,
   scrim: 0,
+  scrimCenter: [0.5, 1.0],
+  scrimRadius: [1.1, 0.42],
 };
 
 export interface Project {

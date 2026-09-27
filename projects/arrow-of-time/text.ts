@@ -52,29 +52,90 @@ export const STYLE = {
   },
 } satisfies Record<string, TextStyle>;
 
-type Beat = (typeof T.beats)[number] & { era?: string; title?: string; line?: string; montage?: { t: number; era: string; title: string }[] };
+/** Where a chapter card sits: a preset name, or a preset with its anchor moved. */
+export type LayoutSpec = Anchor | { at?: Anchor; x?: number; y?: number };
+export type Anchor = 'lower' | 'lower-left' | 'lower-right' | 'left' | 'right' | 'upper-left' | 'upper-right' | 'upper' | 'center';
 
-/** Era label / title / line, staggered in, sharing one exit. Anchored in the lower third. */
+type Beat = (typeof T.beats)[number] & {
+  era?: string;
+  title?: string;
+  line?: string;
+  layout?: LayoutSpec;
+  montage?: { t: number; era: string; title: string }[];
+};
+
+export interface Place {
+  /** Anchor in caption space: x 0..1 across the frame, y 0..1 down the visible picture. */
+  x: number;
+  y: number;
+  align: 'left' | 'center' | 'right';
+  /** Which part of the text block sits on the anchor. */
+  v: 'top' | 'middle' | 'bottom';
+}
+
+/** Side margins sit on a 1/12 grid, just inside title-safe. */
+const PLACES: Record<Anchor, Place> = {
+  lower: { x: 0.5, y: 0.86, align: 'center', v: 'bottom' },
+  'lower-left': { x: 0.083, y: 0.84, align: 'left', v: 'bottom' },
+  'lower-right': { x: 0.917, y: 0.84, align: 'right', v: 'bottom' },
+  left: { x: 0.083, y: 0.5, align: 'left', v: 'middle' },
+  right: { x: 0.917, y: 0.5, align: 'right', v: 'middle' },
+  'upper-left': { x: 0.083, y: 0.16, align: 'left', v: 'top' },
+  'upper-right': { x: 0.917, y: 0.16, align: 'right', v: 'top' },
+  upper: { x: 0.5, y: 0.16, align: 'center', v: 'top' },
+  center: { x: 0.5, y: 0.5, align: 'center', v: 'middle' },
+};
+
+export function placeOf(spec: LayoutSpec | undefined): Place {
+  if (!spec) return PLACES.lower;
+  if (typeof spec === 'string') return PLACES[spec];
+  const base = PLACES[spec.at ?? 'lower'];
+  return { ...base, x: spec.x ?? base.x, y: spec.y ?? base.y };
+}
+
+/** Scrim ellipse (caption space) that sits behind a card placed at `p`. */
+export function scrimFor(p: Place): { center: [number, number]; radius: [number, number] } {
+  if (p.align === 'center' && p.v === 'bottom') return { center: [0.5, 1.0], radius: [1.1, 0.42] };
+  const cx = p.align === 'left' ? p.x + 0.15 : p.align === 'right' ? p.x - 0.15 : p.x;
+  const cy = p.v === 'top' ? p.y + 0.1 : p.v === 'bottom' ? p.y - 0.1 : p.y;
+  return { center: [cx, cy], radius: p.align === 'center' ? [0.5, 0.34] : [0.36, 0.42] };
+}
+
+/**
+ * Era label / title / line, staggered in, sharing one exit, placed by the beat's `layout`.
+ * Side-aligned cards get a hairline under the era label that draws left to right (the film's
+ * arrow motif) and drift a few pixels toward the centre over their life.
+ */
 function chapter(b: Beat): TextItem {
   const start = b.start + 0.5;
   const end = b.end - 0.25;
+  const place = placeOf(b.layout);
   const lines: { text: string; style: TextStyle; delay: number; gap: number; mode: 'blur' | 'letters' | 'fade' }[] = [];
   if (b.era) lines.push({ text: b.era, style: STYLE.era, delay: 0, gap: 0, mode: 'blur' });
   if (b.title) lines.push({ text: b.title, style: STYLE.title, delay: b.era ? 0.35 : 0, gap: b.era ? 66 : 0, mode: 'letters' });
   if (b.line) lines.push({ text: b.line, style: STYLE.line, delay: b.title ? 1.1 : 0.6, gap: b.title ? 58 : b.era ? 54 : 0, mode: 'blur' });
-  const total = lines.reduce((a, l) => a + l.gap, 0);
+  // Baselines relative to the first line, and the block's ink extent (design px).
+  const baselines: number[] = [];
+  lines.reduce((y, l) => (baselines.push(y + l.gap), y + l.gap), 0);
+  const top = baselines[0] - lines[0].style.size * 0.74;
+  const bottom = baselines[baselines.length - 1] + lines[lines.length - 1].style.size * 0.24;
+  const anchorOffset = place.v === 'top' ? top : place.v === 'bottom' ? baselines[baselines.length - 1] : (top + bottom) / 2;
+  const side = place.align !== 'center';
+  const ruleAfterEra = side && !!b.era && lines.length > 1;
   return {
     start,
     end,
     draw(ctx, t, L) {
-      // Keep the block's bottom line at a fixed height regardless of how many lines it has.
-      let y = L.top + 0.86 * (L.bottom - L.top) - total * L.s;
-      for (const l of lines) {
-        y += l.gap * L.s;
+      const life0 = lifeOf(t, start, end, 1.1, 0.9);
+      const drift = side ? (place.align === 'left' ? 1 : -1) * 9 * L.s * ease.inOutSine(life0.lifeP) : 0;
+      const x = place.x * L.w + drift;
+      const y0 = L.top + place.y * (L.bottom - L.top) - anchorOffset * L.s;
+      lines.forEach((l, i) => {
         const s0 = start + l.delay;
-        if (t < s0) continue;
+        if (t < s0) return;
+        const y = y0 + baselines[i] * L.s;
         const life = lifeOf(t, s0, end, l.mode === 'letters' ? 1.6 : 1.1, 0.9);
-        drawText(ctx, l.text, L.w / 2, y, l.style, L.s, 'center', {
+        drawText(ctx, l.text, x, y, l.style, L.s, place.align, {
           inP: life.inP,
           outP: life.outP,
           lifeP: life.lifeP,
@@ -82,9 +143,30 @@ function chapter(b: Beat): TextItem {
           blur: l.mode === 'letters' ? 10 : 12,
           trackingDrift: l.style === STYLE.title ? 0.04 : 0.02,
         });
-      }
+        if (i === 0 && ruleAfterEra) hairline(ctx, x, y + 20 * L.s, 46 * L.s, place.align, life, L.s);
+      });
     },
   };
+}
+
+/** A short rule that draws itself left to right, then fades with its card. */
+function hairline(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  align: 'left' | 'center' | 'right',
+  life: { inP: number; outP: number },
+  s: number,
+) {
+  const grow = ease.inOutCubic(Math.min(1, life.inP * 1.25));
+  const alpha = 0.6 * (1 - ease.inOutSine(life.outP));
+  if (grow <= 0 || alpha <= 0.002) return;
+  const x0 = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#eadfcd';
+  ctx.fillRect(x0, y - 0.6 * s, w * grow, Math.max(1, 1.2 * s));
+  ctx.globalAlpha = 1;
 }
 
 /** Fast date/title flashes for the civilization montage. */

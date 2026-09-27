@@ -229,7 +229,7 @@ function moltenEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
     setup: (e) => ({ planet: new Planet(e), cam: new Camera({ fov: 32 }), sky: new Sprites(e, starSphere(rng(94), { count: 8000, brightness: 0.35 })) }),
     render(c, s) {
       const t = c.time - beat('earth').start;
-      s.cam.set({ pos: [0.0, 0.25, keys(t, [[-1, 4.2], [7, 3.5, 'inOutSine']])], target: [0.35, 0.05, 0] });
+      s.cam.set({ pos: [0.0, 0.25, keys(t, [[-1, 4.4], [7, 3.8, 'inOutSine']])], target: [0.55, 0.05, 0] });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       s.planet.draw(c, s.cam, {
         center: [0, 0, 0],
@@ -343,7 +343,7 @@ function oceans(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
     setup: (e) => ({ planet: new Planet(e), cam: new Camera({ fov: 34 }), sky: new Sprites(e, starSphere(rng(108), { count: 8000, brightness: 0.35 })) }),
     render(c, s) {
       const t = c.time - beat('oceans').start;
-      s.cam.set({ pos: [0.3, 0.35, keys(t, [[-1, 5.2], [9, 4.3, 'inOutSine']])], target: [-0.1, 0, 0] });
+      s.cam.set({ pos: [0.3, 0.35, keys(t, [[-1, 5.2], [9, 4.3, 'inOutSine']])], target: [-0.5, 0, 0] });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       const cool = prog(t, -0.5, 3.5, 'inOutSine');
       const flashes: [number, number, number, number][] = [];
