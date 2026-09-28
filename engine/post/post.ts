@@ -57,10 +57,12 @@ void main() {
   // Only compact highlights streak: subtract a much blurrier level so bright extended
   // regions (a galaxy core, a planet) don't smear across the frame.
   vec3 acc = vec3(0.0); float wsum = 0.0;
-  for (int i = -40; i <= 40; i++) {
+  // Taps a texel and a half apart with bilinear filtering, so a point of light draws a continuous
+  // line rather than a row of dots.
+  for (int i = -60; i <= 60; i++) {
     float x = float(i);
-    float w = exp(-abs(x) / 11.0);
-    vec2 uv = vUv + vec2(x * 3.0 * uTexel.x, 0.0);
+    float w = exp(-abs(x) / 22.0);
+    vec2 uv = vUv + vec2(x * 1.5 * uTexel.x, 0.0);
     vec3 c = texture(uSrc, uv).rgb - 1.5 * texture(uLow, uv).rgb;
     c = max(c - uThreshold, 0.0);
     acc += c * w; wsum += w;

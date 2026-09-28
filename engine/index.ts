@@ -12,3 +12,4 @@ export * from './text/captions';
 export * from './components/sprites';
 export * from './components/planet';
 export * from './components/galaxy';
+export * from './components/atmosphere';
