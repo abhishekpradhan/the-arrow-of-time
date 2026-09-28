@@ -1,9 +1,9 @@
 # Changelog
 
 Every version of *The Arrow of Time*: the film, and the engine, tools and synthesizer that make
-it. Versions are published on the
+it. Releases start with v1.0 and are published on the
 [Releases page](https://github.com/abhishekpradhan/the-arrow-of-time/releases); the newest section
-here becomes the release notes. The format follows
+here becomes the release notes. The working cuts before it (v0.1 to v0.4) are recorded below. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [v1.0] - 2026-09-28
@@ -111,7 +111,7 @@ film's own.
 - CI synthesizes the film's score and checks its hits and cuts against the timeline.
 - Docs rewritten around the film: a making-of, the score, and a guide to working on it.
 
-## [v0.4] - 2026-09-27
+## v0.4 - 2026-09-27
 
 ### The film
 
@@ -151,7 +151,7 @@ film's own.
 - Instruments: `steam_whistle` and `chuff`.
 - The Unifraktur Maguntia font (OFL-1.1, `@fontsource/unifrakturmaguntia`) for the printed page.
 
-## [v0.3] - 2026-09-27
+## v0.3 - 2026-09-27
 
 ### The film
 
@@ -215,7 +215,7 @@ film's own.
   so premultiplied sprites no longer darken what is behind them.
 - CI compiles every Python tool.
 
-## [v0.2] - 2026-09-27
+## v0.2 - 2026-09-27
 
 ### The film
 
@@ -256,6 +256,3 @@ film's own.
 - `npm run new` and the starter template.
 
 [v1.0]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/v1.0
-[v0.4]: https://github.com/abhishekpradhan/the-arrow-of-time/tree/arrow-of-time-v0.4
-[v0.3]: https://github.com/abhishekpradhan/the-arrow-of-time/tree/arrow-of-time-v0.3
-[v0.2]: https://github.com/abhishekpradhan/the-arrow-of-time/tree/arrow-of-time-v0.2

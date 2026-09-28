@@ -33,7 +33,7 @@ def main() -> None:
 
     tl = json.loads((FILM / "timeline.json").read_text())
     title = tl.get("title", "The Arrow of Time")
-    # Tags are v1.0, v1.1, ... (the cuts before v1.0 were tagged arrow-of-time-v0.x).
+    # Tags are v1.0, v1.1, ...
     version = a.tag.rsplit("-", 1)[-1].lstrip("v") if a.tag else ""
     if a.title:
         print(f"{title} v{version}" if version else title)
