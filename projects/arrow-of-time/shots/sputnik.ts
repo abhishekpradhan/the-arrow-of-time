@@ -1,15 +1,18 @@
 // Space, 1957: in orbit (shaders/orbit.glsl), from the dissolve out of the ascent to the crossing
-// to the Moon. Over the night side of the Earth the core stage's fairing splits and falls away;
-// at cue sputnik the satellite is pushed off and its antennas spring out; ahead the limb glows
-// until the Sun breaks over it (cue orbitalDawn) and sunlight turns the polished sphere into a
-// star; the camera slides round until Sputnik passes before the Sun, and its glare takes the frame.
+// to the Moon, in two shots. Over the night side of the Earth the core stage's fairing splits and
+// falls away; at cue sputnik the satellite is pushed off and its antennas spring out, and the
+// camera eases round behind it as it drifts into the dawn, until the Sun breaks over the limb
+// beside it (cue orbitalDawn). Through the glare the film dissolves to the other side: Sputnik
+// blazing in the sunlight with the Moon beyond, and the camera turns to the Moon and closes in.
+// Every move is slow and eased into the next (no whip pans: a fast turn draws the background
+// twice with the motion-blur samples a frame can afford).
 //
 // Axes: x along the track (the way the stage is flying), y up, z across; the camera sits at the
 // origin of the shader's frame, the hardware is placed relative to it in metres and the Earth
 // through uCamP (the camera relative to the Earth's centre, km). Where on Earth: over Kamchatka,
 // heading east-north-east into the dawn (the first orbit crossed into sunlight over the North
 // Pacific and the Arctic; the film brings the sunrise forward).
-import { Atmosphere, Camera, Sprites, keys, loadEarth, rng, starSphere, v3, type EarthMaps, type Look, type Shot, type Vec3 } from '@engine';
+import { Atmosphere, Camera, Sprites, keys, loadEarth, rng, spline, starSphere, v3, type EarthMaps, type Engine, type Look, type Shot, type ShotContext, type Vec3 } from '@engine';
 import { beat, cues } from '../lib';
 import './civilization';
 
@@ -66,7 +69,7 @@ function layout(time: number) {
   const top = v3.scale([1, 0, 0], -0.1 * since - 0.12 * since * since);
   // Sputnik: on its adapter under the fairing, then pushed off, tumbling slowly.
   const sat = v3.add(top, v3.add(v3.scale(axis, 0.62 + 0.75 * since), [0, 0.04 * since, 0.03 * since]));
-  const tumble = 0.45 * since;
+  const tumble = 0.25 * since;
   const [sx0, sy0, sz0] = frameAlong(axis, [0, 0, 1]);
   // Sputnik's frame: its x (front) along the stage's axis, then turning.
   let fx = sy0, fy = sz0, fz = sx0;
@@ -92,8 +95,8 @@ function layout(time: number) {
     hz = rotateAbout(hz, hingeAxis, ang);
     const away = v3.add(v3.scale(v3.sub(hinge, top), 2.4 * open + 0.6 * open * open), v3.scale([1, 0, 0], -1.4 * open));
     base = v3.add(base, away);
-    // Out of every later shot's way once it has tumbled off.
-    if (open > 2.5) base = v3.add(base, [0, 1e4, 0]);
+    // Out of the way once it has tumbled off out of view.
+    if (open > 4.0) base = v3.add(base, [0, 1e4, 0]);
     fair.push({ pos: base, rot: rows(hx, hy, hz) });
   }
   return { axis, top, sat, satRot: rows(fx, fy, fz), sweep, fair };
@@ -106,44 +109,64 @@ function turn(d: Vec3, az: number, el: number): Vec3 {
   return [Math.cos(e0) * Math.cos(a0), Math.sin(e0), Math.cos(e0) * Math.sin(a0)];
 }
 
-/** The swing round Sputnik ends, and the camera turns up to the Moon. */
-const T_SWING = cues.orbitalDawn + 1.9;
-const T_MOON = beat('moonlanding').start + 0.2;
+/** The dissolve from the sunrise to Sputnik in full sunlight (its midpoint and length). */
+const T_AB = cues.orbitalDawn + 1.7;
+const D_AB = 1.2;
+const ML = beat('moonlanding');
+
+/** Behind Sputnik, looking into the coming dawn with the satellite `az` round from the Sun and a
+ * little above it; the aim sits between the two until the Sun is up, then settles on Sputnik. */
+function dawnView(t: number): { pos: Vec3; target: Vec3 } {
+  const sun = sunAt(t);
+  const st = layout(t).sat;
+  const az = spline(t, [[cues.sputnik, -46], [cues.orbitalDawn, -18], [T_AB + D_AB, -8]]) * DEG;
+  const view = turn(sun, az, 7 * DEG);
+  const pos = v3.sub(st, v3.scale(view, 2.5));
+  const mid = keys(t, [[cues.orbitalDawn - 0.2, 0.5], [cues.orbitalDawn + 1.6, 1, 'inOutSine']]);
+  return { pos, target: v3.add(pos, v3.scale(v3.lerp(v3.norm(v3.add(view, sun)), view, mid), 2.5)) };
+}
 
 /**
- * The camera (orbit axes, metres): on the stage's shaded side of the track (-z) with the Moon
- * behind it, so the hardware is moonlit and the limb runs across the frame; then close on
- * Sputnik as it is released; looking into the dawn as the Sun breaks over the limb, Sputnik
- * backlit; then swinging round it until the Sun is behind the lens and Sputnik blazes against
- * the night side, the Moon beyond; and last, turning up to the Moon and closing in on it.
+ * The release and the sunrise (orbit axes, metres): on the stage's shaded side of the track (-z),
+ * the hardware moonlit and the limb across the frame, as the fairing splits; then one long move,
+ * in close past Sputnik as it is released and on round behind it as it drifts into the dawn (a
+ * quadratic Bezier through the three setups, eased once from end to end, so it never stops).
  */
-function cameraAt(time: number, top: Vec3): { pos: Vec3; target: Vec3; fov: number } {
+function cameraA(time: number, top: Vec3): { pos: Vec3; target: Vec3; fov: number } {
   const sat = layout(time).sat;
   const k0Pos = v3.add(top, [-1.4 + 0.25 * (time - T_FAIR), 1.25, -6.8]), k0Tgt = v3.add(top, [0.9, 0.15, 0]);
   const k1Pos = v3.add(sat, [-1.2, 0.45, -2.1]), k1Tgt = v3.add(sat, [0.45, -0.12, 0.1]);
-  // Seen from the camera, Sputnik stands `az` round from the Sun.
-  const around = (t: number) => {
-    const sun = sunAt(t);
-    const st = layout(t).sat;
-    const az = keys(t, [[cues.sputnik + 1.4, -30], [cues.orbitalDawn + 0.2, -18, 'inOutSine'], [T_SWING, -142, 'inOutSine']]) * DEG;
-    const el = keys(t, [[cues.orbitalDawn + 0.2, 7], [T_SWING, -9, 'inOutSine']]) * DEG;
-    const view = turn(sun, az, el);
-    const pos = v3.sub(st, v3.scale(view, 2.5));
-    const mid = keys(t, [[cues.orbitalDawn + 0.3, 0.5], [cues.orbitalDawn + 1.2, 1, 'inOutSine']]);
-    return { pos, target: v3.add(pos, v3.scale(v3.lerp(v3.norm(v3.add(view, sun)), view, mid), 2.5)) };
+  const k2 = dawnView(time);
+  const u = keys(time, [[cues.sputnik - 1.1, 0], [cues.orbitalDawn + 1.1, 1, 'inOutSine']]);
+  const bez = (a: Vec3, b: Vec3, c: Vec3) => v3.add(v3.add(v3.scale(a, (1 - u) * (1 - u)), v3.scale(b, 2 * u * (1 - u))), v3.scale(c, u * u));
+  return {
+    pos: bez(k0Pos, k1Pos, k2.pos),
+    target: bez(k0Tgt, k1Tgt, k2.target),
+    fov: keys(time, [[cues.sputnik - 0.2, 42], [cues.sputnik + 1.8, 36, 'inOutSine']]),
   };
-  const k2 = around(Math.min(time, T_SWING));
-  // Up to the Moon: Sputnik drifts on out of the frame, a point of light.
-  const k3Tgt = v3.add(k2.pos, v3.scale(MOON, 2.5));
-  const w1 = keys(time, [[cues.sputnik - 0.2, 0], [cues.sputnik + 1.6, 1, 'inOutSine']]);
-  const w2 = keys(time, [[cues.sputnik + 1.5, 0], [cues.orbitalDawn - 0.4, 1, 'inOutSine']]);
-  const w3 = keys(time, [[T_SWING - 0.35, 0], [T_MOON - 0.35, 1, 'inOutSine']]);
-  let pos = v3.lerp(k0Pos, k1Pos, w1), tgt = v3.lerp(k0Tgt, k1Tgt, w1);
-  pos = v3.lerp(pos, k2.pos, w2);
-  tgt = v3.lerp(tgt, k2.target, w2);
-  tgt = v3.lerp(tgt, k3Tgt, w3);
-  const fov = Math.exp(keys(time, [[cues.sputnik - 0.2, Math.log(42)], [cues.sputnik + 1.6, Math.log(36), 'inOutSine'], [T_SWING + 0.1, Math.log(36)], [T_MOON, Math.log(3.2), 'inOutCubic']]));
-  return { pos, target: tgt, fov };
+}
+
+/** Where the turn to the Moon ends: just below it, so the Moon sits above the lander it dissolves
+ * into. */
+const MOON_AIM: Vec3 = v3.norm(v3.sub(MOON, v3.scale(v3.norm(v3.sub([0, 1, 0], v3.scale(MOON, MOON[1]))), Math.tan(1.2 * DEG))));
+
+/**
+ * Sputnik in full sunlight: the camera on the Sun's side of it, the Sun straight behind the lens
+ * so the polished sphere blazes. It starts where the sunrise shot left Sputnik, centred and as
+ * large, so the dissolve turns the same sphere from dark to blazing; then the camera falls back
+ * and turns up to the gibbous Moon beyond, which comes in from the corner, and closes in on it as
+ * it dissolves into the Sea of Tranquility (the turn and the push overlap).
+ */
+function cameraB(time: number): { pos: Vec3; target: Vec3; fov: number } {
+  const sat = layout(time).sat;
+  const toSat = v3.scale(sunAt(time), -1);
+  const t0 = T_AB - D_AB / 2, t1 = T_AB + D_AB / 2, t2 = ML.start - 0.9, t3 = ML.start + 0.4;
+  const pos = v3.sub(sat, v3.scale(toSat, keys(time, [[t0, 2.9], [t3, 9.0, 'inOutSine']])));
+  // (A repeated first knot starts a curve from rest.)
+  const k = spline(time, [[t0 - 1, 0], [t0, 0], [t1, 0.2], [t2, 0.86], [t3, 1.0]]);
+  const fwd = v3.norm(v3.lerp(toSat, MOON_AIM, k));
+  const fov = Math.exp(spline(time, [[t0 - 1, Math.log(38)], [t0, Math.log(38)], [t1, Math.log(38)], [ML.start - 1.4, Math.log(26)], [t3, Math.log(7)]]));
+  return { pos, target: v3.add(pos, fwd), fov };
 }
 
 /**
@@ -152,81 +175,106 @@ function cameraAt(time: number, top: Vec3): { pos: Vec3; target: Vec3; fov: numb
  */
 const lookCam = new Camera({ fov: 42, aspect: 16 / 9 });
 export function sunriseLook(time: number): Partial<Look> {
-  const a = cues.orbitalDawn - 0.15, b = cues.orbitalDawn + 2.4;
+  const a = cues.orbitalDawn - 0.15, b = T_AB;
   if (time < a || time > b) return {};
-  const cam = cameraAt(time, layout(time).top);
+  const cam = cameraA(time, layout(time).top);
   lookCam.set({ pos: [0, 0, 0], target: v3.sub(cam.target, cam.pos), up: [0, 1, 0], fov: cam.fov });
   const pr = lookCam.project(v3.scale(sunAt(time), 1000));
   if (!pr.visible) return {};
-  const amt = keys(time, [[a + 0.3, 0], [cues.orbitalDawn + 0.7, 0.3, 'outSine'], [b - 0.8, 0.2], [b, 0, 'inOutSine']]);
+  const amt = keys(time, [[a + 0.3, 0], [cues.orbitalDawn + 0.7, 0.3, 'outSine'], [b - 0.6, 0.2], [b, 0, 'inOutSine']]);
   return { rays: amt, raysCenter: [pr.x, pr.y], raysThreshold: 5.0, raysDecay: 0.965, raysTint: [1.0, 0.95, 0.88] as Vec3 };
 }
 
-export function sputnik(): Shot<{ cam: Camera; sky: Sprites; maps: EarthMaps; atmo: Atmosphere }> {
+type Orbit = { cam: Camera; sky: Sprites; maps: EarthMaps; atmo: Atmosphere };
+
+async function orbitSetup(e: Engine): Promise<Orbit> {
+  return {
+    cam: new Camera({ fov: 42, near: 0.001, far: 1e5 }),
+    sky: new Sprites(e, starSphere(rng(1004), { count: 9000, brightness: 0.4, band: 0.3 })),
+    maps: await loadEarth(e),
+    atmo: new Atmosphere(),
+  };
+}
+
+/** The orbit scene at film time `time`, seen from `cam` (orbit axes, metres). */
+function drawOrbit(c: ShotContext, s: Orbit, cam: { pos: Vec3; target: Vec3; fov: number }) {
+  const time = c.time;
+  const sun = sunAt(time);
+  const L = layout(time);
+  s.cam.set({ pos: [0, 0, 0], target: v3.sub(cam.target, cam.pos), up: [0, 1, 0], fov: cam.fov });
+  const rel = (p: Vec3) => v3.sub(p, cam.pos);
+  const [sx, sy, sz] = frameAlong(L.axis, [0, 1, 0]);
+  // (The spent stage falls behind; once the camera turns away from it, it is gone.)
+  const stageTail = v3.add(v3.sub(L.top, v3.scale(L.axis, 24.5)), [0, time > cues.orbitalDawn - 0.4 ? 1e4 : 0, 0]);
+  const camP: Vec3 = [cam.pos[0] / 1000, R + ALT + cam.pos[1] / 1000, cam.pos[2] / 1000];
+  // The stars fade as the Sun comes up (an exposure for sunlit metal cannot hold them) and come
+  // back, faintly, once Sputnik has left the frame and only the Moon is in it.
+  const stars = keys(time, [[cues.orbitalDawn - 0.2, 1], [cues.orbitalDawn + 0.6, 0.1, 'inOutSine'], [ML.start - 2.0, 0.1], [ML.start - 0.7, 0.35, 'inOutSine']]);
+  s.sky.draw(s.cam, time, {}, { sky: true, brightness: stars });
+  c.gl.enable(c.gl.BLEND);
+  c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
+  c.fullscreen(c.e.program('#include <arrow-of-time/orbit>', 'orbit'), {
+    ...s.cam.uniforms(),
+    ...s.atmo.uniforms(c),
+    uCamP: camP,
+    uCamAlt: ALT + cam.pos[1] / 1000,
+    uToMap: TO_MAP,
+    uAlbedo: s.maps.albedo,
+    uMasks: s.maps.masks,
+    uRelief: s.maps.relief,
+    uSunDir: sun,
+    uSunE: [3.2, 3.1, 3.0],
+    uSunSize: 0.00465 * 1.3,
+    uMoonDir: MOON,
+    uMoonE: [0.26, 0.33, 0.5],
+    uMoonLit: sun,
+    uMoonSize: 0.0046 * 2.0,
+    uMoonBright: 2.6,
+    uLights: 0.2,
+    uGlow: 0.007,
+    uCloudT: 0.3,
+    uStage: rel(stageTail),
+    uStageRot: rows(sx, sy, sz),
+    uFair: [...rel(L.fair[0].pos), ...rel(L.fair[1].pos)],
+    uFairRot: [...L.fair[0].rot, ...L.fair[1].rot],
+    uSat: rel(L.sat),
+    uSatRot: L.satRot,
+    uSweep: L.sweep,
+    uSatShadow: time > cues.sputnik + 0.2 ? 1 : 0,
+    uR7Boosters: 0,
+  });
+  c.gl.disable(c.gl.BLEND);
+}
+
+/** The release and the sunrise; it dissolves through the glare into sputnikMoon. */
+export function sputnik(): Shot<Orbit> {
   return {
     id: 'sputnik',
     start: cues.sputnik - 1.7,
-    end: beat('moonlanding').start + 0.4,
+    end: T_AB + D_AB / 2,
     fadeIn: 0.8,
-    fadeOut: 0.8,
-    motionBlur: (time) => (time > cues.orbitalDawn + 0.2 && time < T_MOON - 0.2 ? 5 : 2),
-    async setup(e) {
-      return {
-        cam: new Camera({ fov: 42, near: 0.001, far: 1e5 }),
-        sky: new Sprites(e, starSphere(rng(1004), { count: 9000, brightness: 0.4, band: 0.3 })),
-        maps: await loadEarth(e),
-        atmo: new Atmosphere(),
-      };
-    },
+    fadeOut: D_AB,
+    // (Six samples while the camera turns, so the stars and the limb streak instead of doubling.)
+    motionBlur: (time) => (time > cues.sputnik - 1.1 && time < cues.orbitalDawn + 1.1 ? 6 : 3),
+    setup: orbitSetup,
     render(c, s) {
-      const time = c.time;
-      const sun = sunAt(time);
-      const L = layout(time);
-      const cam = cameraAt(time, L.top);
-      s.cam.set({ pos: [0, 0, 0], target: v3.sub(cam.target, cam.pos), up: [0, 1, 0], fov: cam.fov });
-      const rel = (p: Vec3) => v3.sub(p, cam.pos);
-      const [sx, sy, sz] = frameAlong(L.axis, [0, 1, 0]);
-      // (The spent stage falls behind; once the camera turns away from it, it is gone.)
-      const stageTail = v3.add(v3.sub(L.top, v3.scale(L.axis, 24.5)), [0, time > cues.orbitalDawn - 0.4 ? 1e4 : 0, 0]);
-      const camP: Vec3 = [cam.pos[0] / 1000, R + ALT + cam.pos[1] / 1000, cam.pos[2] / 1000];
-      // The stars fade as the Sun comes up: an exposure for sunlit metal (and then for the
-      // Moon) cannot hold them.
-      const stars = keys(time, [[cues.orbitalDawn - 0.2, 1], [cues.orbitalDawn + 0.6, 0.1, 'inOutSine']]);
-      s.sky.draw(s.cam, time, {}, { sky: true, brightness: stars });
-      c.gl.enable(c.gl.BLEND);
-      c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
-      c.fullscreen(c.e.program('#include <arrow-of-time/orbit>', 'orbit'), {
-        ...s.cam.uniforms(),
-        ...s.atmo.uniforms(c),
-        uCamP: camP,
-        uCamAlt: ALT + cam.pos[1] / 1000,
-        uToMap: TO_MAP,
-        uAlbedo: s.maps.albedo,
-        uMasks: s.maps.masks,
-        uRelief: s.maps.relief,
-        uSunDir: sun,
-        uSunE: [3.2, 3.1, 3.0],
-        uSunSize: 0.00465 * 1.3,
-        uMoonDir: MOON,
-        uMoonE: [0.26, 0.33, 0.5],
-        uMoonLit: sun,
-        uMoonSize: 0.0046 * 2.0,
-        uMoonBright: 2.6,
-        uLights: 0.2,
-        uGlow: 0.007,
-        uCloudT: 0.3,
-        uStage: rel(stageTail),
-        uStageRot: rows(sx, sy, sz),
-        uFair: [...rel(L.fair[0].pos), ...rel(L.fair[1].pos)],
-        uFairRot: [...L.fair[0].rot, ...L.fair[1].rot],
-        uSat: rel(L.sat),
-        uSatRot: L.satRot,
-        uSweep: L.sweep,
-        uSatShadow: time > cues.sputnik + 0.2 ? 1 : 0,
-        uR7Boosters: 0,
-      });
-      c.gl.disable(c.gl.BLEND);
+      drawOrbit(c, s, cameraA(c.time, layout(c.time).top));
     },
   };
 }
 
+/** Sputnik blazing, and the turn to the Moon; it dissolves into the Moon landing. */
+export function sputnikMoon(): Shot<Orbit> {
+  return {
+    id: 'sputnik-moon',
+    start: T_AB - D_AB / 2,
+    end: ML.start + 0.4,
+    fadeIn: D_AB,
+    fadeOut: 0.8,
+    motionBlur: 3,
+    setup: orbitSetup,
+    render(c, s) {
+      drawOrbit(c, s, cameraB(c.time));
+    },
+  };
+}

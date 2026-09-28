@@ -118,10 +118,10 @@ function landedCamera(time: number): { pos: Vec3; target: Vec3; fov: number } {
   const dist = spline(time, [[T_SET - 1, 31], [T_SET, 31], [rf, 28.5], [T_BOTH, 27], [end, 26.5]]);
   const above = spline(time, [[T_SET - 1, 4.3], [T_SET, 4.3], [rf, 3.8], [T_BOTH, 3.4], [end, 3.3]]);
   const pos: Vec3 = [dist * Math.cos(az), above, dist * Math.sin(az)];
-  const k = spline(time, [[rf - 1, 0], [rf, 0], [T_BOTH, 0.5], [NE - 0.4, 1.0], [end, 1.06]]);
+  const k = spline(time, [[rf - 1, 0], [rf, 0], [T_BOTH, 0.5], [NE - 1.0, 1.0], [end, 1.08]]);
   const toLm = v3.norm(v3.sub([0, 2.6, 0], pos));
   const fwd = v3.norm(v3.lerp(toLm, EARTH_AIM, k));
-  return { pos, target: v3.add(pos, fwd), fov: keys(time, [[T_BOTH, 40], [end, 20, 'inOutSine']]) };
+  return { pos, target: v3.add(pos, fwd), fov: keys(time, [[T_BOTH, 40], [NE + 0.6, 20, 'inOutSine']]) };
 }
 
 export function moonLanding(): Shot<{ planet: Planet; cam: Camera }> {

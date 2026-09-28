@@ -53,6 +53,11 @@ SOFTWARE.
 - **Big Dipper** (`projects/arrow-of-time/shots/future.ts`): positions, proper motions and
   magnitudes of seven stars from the Hipparcos catalogue (ESA).
 - **Vocal formants** (`audio/studio/instruments.py`): the formant table in the Csound manual.
+- **Apollo 11 audio** (`assets/apollo11/`): Neil Armstrong's "Houston, Tranquility Base here. The
+  Eagle has landed.", courtesy of NASA ([Historical Sounds](https://www.nasa.gov/historical-sounds/)).
+  NASA audio is generally not subject to copyright in the United States; NASA is acknowledged as
+  the source, as its [media usage guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/)
+  ask, and no endorsement is implied.
 - **Giant impact** (`assets/giant-impact/`): our own SPH simulation, run with
   [SWIFT](https://github.com/SWIFTSIM/SWIFT) (LGPL-3.0), initial conditions from
   [WoMa](https://github.com/srbonilla/WoMa) and [SEAGen](https://github.com/jkeger/seagen)

@@ -4,7 +4,8 @@
     python3 tools/retime.py projects/<id>/timeline.json --at 108 --by 4 [--extend moon]
 
 Every time at or after ``--at`` moves by ``--by`` seconds: beat starts and ends, cues, montage
-times, time lists (e.g. ``starIgnitions``), line and title-card times, and the duration.
+times, the times cards leave (``until``, ``captionUntil``), time lists (e.g. ``starIgnitions``),
+line and title-card times, and the duration.
 ``--extend <beat>`` lengthens that beat instead of moving it (its start stays). The file keeps
 its layout: numbers are edited in place, so one-beat-per-line formatting survives.
 Shots, captions and the score read the timeline, so they follow; check hard-coded times with
@@ -36,7 +37,7 @@ def main() -> None:
 
     out = []
     # Walk the text; for each number, decide from its key or context whether it is a time.
-    time_keys = {'start', 'end', 't', 'duration'}
+    time_keys = {'start', 'end', 't', 'until', 'captionUntil', 'duration'}
     list_re = re.compile(r'"(\w+)":\s*\[([0-9.,\s-]+)\]')
     # 1. numeric lists of times (e.g. starIgnitions), except those not made of times
     def fix_list(m):
@@ -49,7 +50,7 @@ def main() -> None:
     if cues:
         block = re.sub(r'("\w+":\s*)(-?[0-9.]+)', lambda m: m.group(1) + fmt(shift(float(m.group(2)))), cues.group(0))
         text = text[:cues.start()] + block + text[cues.end():]
-    # 3. start / end / t / duration fields anywhere; --extend keeps that beat's start and moves its end
+    # 3. start / end / t / until / duration fields anywhere; --extend keeps that beat's start and moves its end
     def fix_field(m):
         key, val = m.group(1), float(m.group(2))
         return f'"{key}": {fmt(shift(val))}'

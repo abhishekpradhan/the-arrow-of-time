@@ -4,7 +4,7 @@ import { Camera, Sprites, allocSprites, keys, m4, prog, rng, starSphere, type Ma
 import { beat, cues, span, timeline } from '../lib';
 import { civilization } from './civilization';
 import { moonLanding } from './apollo';
-import { sputnik } from './sputnik';
+import { sputnik, sputnikMoon } from './sputnik';
 import { ascent } from './ascent';
 import { Planet, loadEarth, type EarthMaps } from '@engine';
 
@@ -295,5 +295,5 @@ function now(): Shot<{ planet: Planet; cam: Camera; sky: Sprites; dot: Sprites }
 }
 
 export function humanShots(): Shot[] {
-  return [mammals(), humans(), caves(), civilization(), ascent(), sputnik(), moonLanding(), nightEarth(), now()];
+  return [mammals(), humans(), caves(), civilization(), ascent(), sputnik(), sputnikMoon(), moonLanding(), nightEarth(), now()];
 }

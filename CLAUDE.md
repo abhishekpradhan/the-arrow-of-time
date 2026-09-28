@@ -13,7 +13,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 - `projects/<id>/`: one film per folder. `timeline.json` + `project.ts` + `shots/` + `score.py`.
 - `templates/starter/`: copied by `npm run new -- <id>`.
 - `assets/`: data the films load (Earth maps; the giant-impact SPH simulation, whose recipe is in
-  `tools/assets/giant_impact/`). Each folder has a README and a builder in `tools/assets/`.
+  `tools/assets/giant_impact/`; NASA's Apollo 11 audio). Each folder has a README and a builder
+  in `tools/assets/`.
 - `out/`: all generated media (git-ignored). Finished films are published as GitHub Releases,
   never committed (`docs/releasing.md`).
 
@@ -82,12 +83,12 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   the planet's shadow). Promote anything a second film could use into the engine rather than
   copying it.
 - **Captions** sit in each shot's negative space: set `layout` on a beat in `timeline.json`
-  (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or
-  `{ "at": ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first (`captionUntil` takes it away early; a `line`
-  with `\n` in it arrives a line at a time, `lineStagger` seconds apart). The
-  scrim follows the card (`Look.scrimCenter/scrimRadius`). If a card collides with the subject,
-  reframe the shot (`Camera.pan`, target offsets) rather than squeezing the text. Review
-  layouts with a sheet of one frame per beat.
+  (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or `{ "at":
+  ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first (`captionUntil` takes
+  it away early; a `line` with `\n` in it arrives a line at a time, `lineStagger` seconds apart).
+  The scrim follows the card (`Look.scrimCenter/scrimRadius`). If a card collides with the subject,
+  reframe the shot (`Camera.pan`, target offsets) rather than squeezing the text. Review layouts
+  with a sheet of one frame per beat.
 - **Camera**: `engine/core/camera.ts` feeds both sprites and ray-marched shaders
   (`...cam.uniforms()` plus `#include <camera>` and `camRay(p)`). The chunk declares
   `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj, uJitter`, so do
@@ -166,7 +167,11 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   rough lobe too (the lit crescent a real sphere shows).
 - A camera that turns fast (a long lens tracking a fast subject) with two motion-blur samples
   draws everything in the background twice. Lock a long lens and let the subject cross it, or
-  give the shot more samples for the move.
+  give the shot more samples for the move. Measure a move before rendering it (replay the camera
+  function in `tsx` and project the subject and the background): above about 40 px per frame at
+  1080p it reads as judder. Blend camera setups with one eased curve (a Bezier through them),
+  not overlapping eases that stop and start again; where the angle is too large for the time,
+  dissolve to the other side instead of whipping round.
 - Cloud cover from orbit: fbm normalised over many octaves varies little at the scale you see,
   so a view a few hundred kilometres wide can land in one clear patch. Give the cover a band of
   octaves at the scale on screen, not only continental ones.
@@ -187,9 +192,13 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   Mars and the epilogue, in different orchestrations and keys.
 - A big hit needs a clean onset: `mix.cut(cue - BREATH)` stops everything (tails included) a
   moment before the hit, as for the asteroid. Don't cut where the music should carry through:
-  the launch ignition swells out of the montage. A cut can also be the event itself: at
-  `eagleLands` the music stops dead with the descent engine. Nothing placed after a cut is cut:
-  check that a cue list (the Quindar tones) does not run past it.
+  the launch ignition swells out of the montage, and at `eagleLands` (where a dead stop felt
+  abrupt) the engine stops but the tension opens into a chord that carries under Armstrong's
+  voice. Nothing placed after a cut is cut: check that a cue list does not run past it.
+- Recorded sound is an asset like any other: NASA's Apollo 11 loop is in `assets/apollo11/`
+  (built by `tools/assets/build_apollo11.py`, credited in `THIRD_PARTY_NOTICES.md`), read with
+  `wav.read_wav` and placed on a cue. Know what is in a clip before placing it (its envelope and
+  spectrum: this one opens with Houston's Quindar tone).
 - Take every time from `Timeline.load(.../timeline.json)` (`tl.cue()`, `tl.beat()`); express
   extra times as offsets from cues. Use `mix.cut(t)` for hard cuts (it stops reverb tails too).
 - Master to -14 LUFS / -1 dBTP with `master.master()`. Verify with

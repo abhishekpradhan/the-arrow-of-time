@@ -124,28 +124,29 @@ def quindar(f: float) -> np.ndarray:
     return flt.HP(300)(flt.LP(3400)(x, 0.0), 0.0)
 
 
-def radio(dur: float, seed: int = 0) -> np.ndarray:
-    """A voice loop from the Moon as Houston heard it, without the voice (the caption carries the
-    words): the squelch opens with a click and a burst of noise, the carrier hisses under the
-    words (band-limited like the radio, fluttering, crackling now and then) and the squelch closes
-    with a longer burst."""
-    from studio.core import fade, tvec
-    r = rng('radio', seed)
-    n = ns(dur)
-    t = tvec(n)
-    flutter = 1.0 + 0.3 * np.sin(2 * np.pi * 0.9 * t + r.uniform(0.0, 6.3)) * np.sin(2 * np.pi * 0.31 * t + 1.0)
-    x = r.standard_normal(n).astype(F32) * flutter.astype(F32) * 0.09
-    pops = r.integers(0, n, size=int(dur * 12))
-    x[pops] += r.uniform(-0.5, 0.5, size=pops.shape[0]).astype(F32)
-    for at, length, amp in ((0.0, 0.07, 0.5), (dur - 0.17, 0.17, 0.45)):
-        a, m = ns(at), ns(length)
-        k = np.linspace(0.0, 1.0, m, dtype=np.float64)
-        env = (1.0 - k) ** 2 if at == 0.0 else np.minimum(1.0, k * 12.0) * (1.0 - k) ** 1.5
-        x[a:a + m] += (r.standard_normal(m) * env * amp).astype(F32)
-    for at in (0.0, dur - 0.012):
-        x[ns(at):ns(at) + 24] += np.hanning(24).astype(F32) * 0.8
-    x = fade(x, 0.002, 0.01)
+def squelch(seed: int = 0) -> np.ndarray:
+    """A voice loop's squelch closing: a short burst of noise ending in a click, band-limited like
+    the radio."""
+    from studio.core import fade
+    r = rng('squelch', seed)
+    n = ns(0.2)
+    k = np.linspace(0.0, 1.0, n, dtype=np.float64)
+    x = (r.standard_normal(n) * np.minimum(1.0, k * 10.0) * (1.0 - k) ** 1.5 * 0.45).astype(F32)
+    x[n - 24:] += np.hanning(24).astype(F32) * 0.8
+    x = fade(x, 0.002, 0.004)
     return flt.HP(300)(flt.LP(3000)(x, 0.0), 0.0)
+
+
+def armstrong() -> np.ndarray:
+    """Neil Armstrong, 20 July 1969: "Houston, Tranquility Base here. The Eagle has landed." NASA's
+    recording of the air-to-ground loop (assets/apollo11/, built by tools/assets/build_apollo11.py):
+    the Quindar tone that ended Houston's last call (0.25-0.6 s), then his words (1.0-4.9 s); the
+    hiss is faded out after the last word."""
+    from studio.core import fade
+    x, sr = wav.read_wav(str(ROOT / 'assets' / 'apollo11' / 'eagle-has-landed.wav'))
+    assert sr == SR, sr
+    x = np.asarray(x, dtype=F32).mean(axis=0)[:ns(4.98)]
+    return fade(x, 0.01, 0.08)
 
 
 def theme_line(score, track, bars, start, beat, synth, gain_db=0.0, shape=None, legato=0.15):
@@ -213,7 +214,6 @@ class Score:
         m.cut(self.cue('bang') - GAP)
         m.cut(self.cue('now'))
         m.cut(self.cue('asteroidImpact') - BREATH)   # all music (and every tail) stops, then the hit
-        m.cut(self.cue('eagleLands'))                  # the descent engine stops: so does everything
         self._cache = {}
         self.offset = 0.0
 
@@ -1079,11 +1079,11 @@ class Score:
         holding bar 4's D over them as the limb pales, and the sunrise (orbitalDawn) breaks in C
         major with bar 5 as the camera swings round the blazing satellite; bar 6's high A arrives
         with the Moon. The descent: a low pulse, Houston's Quindar tones, the engine and the dust,
-        all rising until eagleLands, where everything stops dead (a cut in the mix). Silence; the
-        pads settle; Armstrong's call (tranquilityBase) is the hiss of the voice loop under its
-        caption. Then the reflection (cue reflection): the theme's first two bars on a far piano,
-        slow, over Fmaj7 and G6, as the camera looks up from the lander to the Earth; their last
-        note, A, becomes the A minor of night Earth."""
+        all rising until eagleLands, where the engine stops and the tension opens into F major 7,
+        which sinks to a hush under Armstrong's own voice (tranquilityBase, NASA's recording). Then
+        the reflection (cue reflection): the theme's first two bars on a far piano, slow, over
+        Fmaj7 and G6, as the camera looks up from the lander to the Earth; their last note, A,
+        becomes the A minor of night Earth."""
         launch, clouds, staging = self.cue('launch'), self.cue('clouds'), self.cue('staging')
         sput, dawn, lands = self.cue('sputnik'), self.cue('orbitalDawn'), self.cue('eagleLands')
         call, rf = self.cue('tranquilityBase'), self.cue('reflection')
@@ -1177,8 +1177,8 @@ class Score:
         # the crossing to the Moon: a deep breath of air
         self.put(self.sfx, ml.start - 0.9, ins.whoosh(1.8, 90.0, 900.0, 0.5, 0.0, 0.0, vel=0.7, seed=111), -12)
 
-        # ---- the descent: a pulse on the quarter, the radio, the engine and the dust, rising into
-        # the cut at eagleLands (the Score's cut stops every note and tail there)
+        # ---- the descent: a pulse on the quarter, the radio, the engine and the dust, rising to
+        # eagleLands, where the engine stops and the tension opens into a chord
         d0 = b6 + 2.0
         for i in range(int((lands - d0) / q) + 1):
             t = d0 + i * q
@@ -1190,36 +1190,46 @@ class Score:
             self.put(self.strings, t, self.cached(('pizz',), lambda: ins.strings(['A2', 'A3'], 0.35, attack=0.01, release=0.25,
                                                                                  voices=5, vibrato=0, bright=3000, seed=114)),
                      -13 + 8 * u)
-        self.put(self.strings, d0, ins.strings(['E4', 'F4', 'A4', 'B4'], lands - d0, attack=2.0, release=0.1, voices=6,
+        self.put(self.strings, d0, ins.strings(['E4', 'F4', 'A4', 'B4'], lands - d0, attack=2.0, release=0.5, voices=6,
                                                vibrato=8, bright=3500, seed=115), -9, shape=[(d0, -20), (lands - 0.1, 0)])
-        self.put(self.brass, lands - 1.8, ins.brass(['A2', 'E3', 'A3'], 1.85, attack=1.6, release=0.05, vel=0.9, bright=0.9,
+        self.put(self.brass, lands - 1.8, ins.brass(['A2', 'E3', 'A3'], 1.8, attack=1.6, release=0.7, vel=0.9, bright=0.9,
                                                     growl=0.3, seed=127), -6)
-        self.put(self.amb, d0, ins.rumble(lands - d0 + 0.2, lp=200.0, vel=0.8, attack=1.5, release=0.05, seed=116), -5,
+        self.put(self.amb, d0, ins.rumble(lands - d0, lp=200.0, vel=0.8, attack=1.5, release=0.4, seed=116), -5,
                  shape=[(d0, -16), (lands - 0.05, 0)])
         self.put(self.sfx, lands - 2.6, ins.riser(2.6, 200.0, 6000.0, q=1.6, vel=0.9, seed=126), -9)
         dust0 = lands - 2.3
-        self.put(self.sfx, dust0, ins.noise_burst(lands - dust0 + 0.1, 7000.0, 2500.0, 2.0, 5.0, 0.5, seed=117), -13,
-                 shape=[(dust0, -24), (lands - 0.05, 0)])
+        self.put(self.sfx, dust0, ins.noise_burst(lands - dust0 + 0.35, 7000.0, 2500.0, 2.0, 5.0, 0.5, seed=117), -13,
+                 shape=[(dust0, -24), (lands - 0.05, 0), (lands + 0.3, -30)])
         for a, b in ((d0 + 0.25, d0 + 0.95), (lands - 1.3, lands - 0.65)):
             self.put(self.sfx, a, self.cached(('quindar', 0), lambda: quindar(2525.0)), -16)
             self.put(self.sfx, b, self.cached(('quindar', 1), lambda: quindar(2475.0)), -16)
 
-        # ---- landed: silence (the cut); the pads settle; Armstrong calls Houston over the hiss of
-        # the loop, his words in the caption
+        # ---- touchdown: the engine stops and the tension opens into F major 7 (the chord the
+        # reflection will begin on), a breath of choir and low horns; it sinks to a hush under
+        # Armstrong's call from the Moon (cue tranquilityBase), and the reflection (cue reflection)
+        # takes it up: the theme's first two bars, slow, on a far piano, the camera looking up from
+        # the lander to the Earth; bar 2 comes with the Earth, over G6, and its last note (A) is the
+        # root of night Earth's A minor
         settle = lands + math.sqrt(1 / 1.62) / 2.2       # the lander drops onto its pads (apollo.ts)
-        self.put(self.boom, settle, ins.sub_boom(1.4, 58.0, 36.0, 0.05, 0.4, 0.3, click=0.15, seed=118), -14)
-        self.put(self.sfx, call + 0.4, radio(rf - 0.2 - call - 0.4, seed=1), -4)
-        # ---- the reflection: the theme's first two bars, slow, on a far piano, the camera looking
-        # up from the lander to the Earth; bar 2 comes with the Earth, over G6, and its last note
-        # (A) is the root of night Earth's A minor
         rq = (ne.start - rf) / 8.0
         b2 = rf + 4 * rq
+        self.put(self.boom, lands, ins.sub_boom(3.0, 50.0, 30.0, 0.25, 1.4, 0.45, click=0.0, seed=118), -11)
+        self.put(self.boom, settle, ins.sub_boom(1.4, 58.0, 36.0, 0.05, 0.4, 0.3, click=0.15, seed=119), -15)
+        self.string_prog([(lands, 'F2', ['C3', 'A3', 'E4']), (b2, 'G2', ['D3', 'B3', 'E4'])], ne.start + 0.5,
+                         attack=0.3, release=1.2, gain_db=-5, bright=3000, voices=6, vibrato=7, seed=121,
+                         shape=[(lands, -1), (lands + 0.35, 0), (lands + 1.6, -11), (call + 1.0, -17), (rf - 0.4, -17),
+                                (rf + 1.2, -9), (b2, -7), (ne.start, -5)])
+        self.put(self.choir, lands, ins.choir(['F3', 'A3', 'C4', 'E4'], 1.6, 'a', attack=0.35, release=1.8, voices=4,
+                                              seed=124), -9)
+        self.put(self.brass, lands + 0.05, ins.brass(['F2', 'C3', 'A3'], 1.1, attack=0.3, release=1.6, vel=0.6, bright=0.7,
+                                                     seed=125), -10)
+        # Armstrong, as Houston heard him: the Quindar tone that ended Houston's "We copy you down,
+        # Eagle", then his words; the loop's squelch closes after them
+        self.put(self.sfx, call, self.cached(('armstrong',), armstrong), -5)
+        self.put(self.sfx, call + 4.9, squelch(seed=2), -10)
         vels = [0.45, 0.38, 0.42, 0.46, 0.4]
         theme_line(self, self.piano_far, [1, 2], rf, rq,
                    lambda n, d, k: ins.piano(n, d + 1.4, vel=vels[k], tone=0.6, seed=120 + k), -5)
-        self.string_prog([(rf + 0.15, 'F2', ['C3', 'A3', 'E4']), (b2, 'G2', ['D3', 'B3', 'E4'])], ne.start + 0.5,
-                         attack=1.8, release=1.2, gain_db=-10, bright=2600, voices=6, vibrato=7, seed=121,
-                         shape=[(rf, -4), (b2, -2), (ne.start, 0)])
         self.put(self.choir, b2, ins.choir(['G3', 'B3', 'E4'], ne.start - b2 + 0.8, 'u', attack=1.6, release=1.0,
                                            voices=4, seed=122), -13, shape=[(b2, -12), (ne.start, 0)])
         # the E held high over it all (the pedal of the core progression), as the Earth appears

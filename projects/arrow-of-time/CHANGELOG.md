@@ -5,32 +5,34 @@ The newest section is used for the release notes. Cuts are published on the
 
 ## v0.6 (27 September 2026)
 
-- **The space race** is the new centrepiece: 33 seconds from Baikonur to the Sea of
-  Tranquility with the letterbox open to full frame, and the film runs 5:59. The camera cranes
+- **The space race** is the new centrepiece: 36 seconds from Baikonur to the Sea of
+  Tranquility with the letterbox open to full frame, and the film runs 6:02. The camera cranes
   up after the painted R-7 into the cloud over the pad and comes out above it in 3D: the rocket
   bursts through a moonlit cloud deck, its fire glowing inside the cloud, and climbs across the
   face of the gibbous Moon (it was ten days old that night) on a long lens. At 45 km, in slow
   motion, the four boosters peel away in the Korolev cross over the curve of the Earth. In orbit
-  over the night side the fairing splits and Sputnik springs off, antennas swinging out, beeping;
-  the Sun breaks over the limb through a red and blue dawn arc, and the camera swings round the
-  polished sphere until it blazes like a star, then turns to the Moon and closes in.
+  over the night side the fairing splits and Sputnik springs off, antennas swinging out, beeping,
+  and the camera eases round behind it in one long, slow arc as the Sun breaks over the limb
+  through a red and blue dawn arc. Through the glare the film dissolves to the other side, where
+  the polished sphere blazes like a star, and the camera draws back and turns to the gibbous Moon
+  beyond it, closing in slowly (no whip pans).
 - **The Moon landing** is rebuilt in 3D, photographic rather than painted: Eagle, gold foil and
   all, comes down over a cratered Sea of Tranquility in the low morning Sun, its exhaust tearing
   a radial sheet of dust across the plain until the engine stops and the dust is gone. Then the
-  film holds its breath: the lander stands alone in the silence while Armstrong's call comes in
-  over the radio ("Houston, Tranquility Base here. The Eagle has landed.", dated 20 July 1969 and
-  arriving a line at a time, its opening quote hung in the margin). The camera drifts round and
-  looks up to the Earth in the black sky, gibbous as it was that day and turned to the Americas,
-  and closes in on it as it dissolves slowly into the Earth of today.
+  film holds on the lander while Armstrong's own voice comes in over the radio (NASA's recording:
+  "Houston, Tranquility Base here. The Eagle has landed."), and the 1969 card arrives with the
+  reflection that follows. The camera drifts round and looks up to the Earth in the black sky,
+  gibbous as it was that day and turned to the Americas, and closes in on it as it dissolves
+  slowly into the Earth of today.
 - **Score**: the theme's first two bars carry the launch at the clock's own tempo so that bar 3
   lands on the staging; the clock falls silent above the clouds; Sputnik's beeps over a held
   glass-harmonica note; C major and theme bar 5 at the orbital sunrise, bar 6's high A on the
-  Moon; a pulse, Houston's Quindar tones and the engine's rumble through the descent, and a dead
-  cut to silence at touchdown; the squelch and hiss of the voice loop under Armstrong's words;
-  then a moment of reflection, the theme's first two bars on a far piano over soft strings, whose
-  last note becomes the A minor of night Earth, where the clock comes back from far away and the
-  orchestra builds again to NOW. New cues `clouds`, `staging`, `orbitalDawn`, `eagleLands`,
-  `tranquilityBase` and `reflection`.
+  Moon; a pulse, Houston's Quindar tones and the engine's rumble through the descent; at
+  touchdown the engine stops and the tension opens into F major 7, which sinks to a hush under
+  Armstrong's voice; then a moment of reflection, the theme's first two bars on a far piano over
+  that chord, whose last note becomes the A minor of night Earth, where the clock comes back from
+  far away and the orchestra builds again to NOW. New cues `clouds`, `staging`, `orbitalDawn`,
+  `eagleLands`, `tranquilityBase` and `reflection`.
 
 ## v0.5 (27 September 2026)
 
