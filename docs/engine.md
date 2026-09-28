@@ -1,7 +1,9 @@
 # The engine
 
-`engine/` is a small WebGL2 film engine written in TypeScript. Films import it as `@engine`
-(`engine/index.ts`). It renders one frame at a time, deterministically, for a given time.
+`engine/` is the small WebGL2 film engine *The Arrow of Time* is rendered with, written in
+TypeScript. The film imports it as `@engine` (`engine/index.ts`). It renders one frame at a time,
+deterministically, for a given time, and knows nothing about the film: everything specific to it
+lives in `film/`.
 
 ```text
 for each frame:
@@ -11,10 +13,11 @@ for each frame:
               ──► captions composited from the glyph cache ──► canvas
 ```
 
-## Projects and shots
+## The project and its shots
 
-A project (`defineProject`) declares the frame size, `fps`, `duration`, the soundtrack, fonts to
-preload, its shots, its text items, timeline markers for the preview, and `look(t)`.
+`film/project.ts` calls `defineProject` to declare the frame size, `fps`, `duration`, the
+soundtrack, fonts to preload, the shots, the text items, timeline markers for the preview, and
+`look(t)`.
 
 A shot has an `id`, a `start` and `end`, optional `fadeIn`/`fadeOut` (overlap shots to dissolve),
 an optional `motionBlur` sample count (or a function of film time, so a shot pays for many samples
@@ -56,10 +59,11 @@ remaps (slow motion around an event) and camera moves. Also `envelope`, `drift`,
 | `figures` | people and four-legged animals posed from a few joints (see below) |
 | `illustration` | painted light: skies from the sun's elevation, haze, rim light, clouds, mist, smoke |
 
-A film can add its own chunks: put them in `projects/<id>/shaders/*.glsl`, register them with
-`registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default', eager: true }), '<id>/')`
-and `#include <<id>/name>`. Chunks may use `#ifdef` to share code between passes (a terrain chunk
-can bake its height field into a texture and march it from the same source).
+The film adds its own chunks from `film/shaders/*.glsl`: it registers them with
+`registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default', eager: true }), 'arrow-of-time/')`
+and includes them as `#include <arrow-of-time/name>`. Chunks may use `#ifdef` to share code
+between passes (a terrain chunk can bake its height field into a texture and march it from the
+same source).
 
 ## Painted scenes
 
@@ -80,8 +84,8 @@ knees with a two-bone IK (`ik2`) and strokes the limbs, so a gesture is a handfu
 and `oratePose` are starting points; `dress` adds a robe, a tunic, long hair or a hat. `sdBeast`
 walks a four-legged animal from a `Build` (body, legs, neck, head, tail), with species built on it
 (`sdOx`, `sdDonkey`, `sdHorse`, `sdGiraffe`, `sdAntelope`, `sdGoat`, `sdDog`), and `sdBird` flaps.
-The civilization of *The Arrow of Time* (`projects/arrow-of-time/shots/civilization.ts`,
-`shaders/civ-*.glsl`) and its Homo sapiens scene are worked examples.
+The film's civilization (`film/shots/civilization.ts`, `film/shaders/civ-*.glsl`) and its Homo
+sapiens scene (`film/shaders/humans.glsl`) are worked examples.
 
 ## Ray-marched scenes
 
@@ -149,7 +153,8 @@ and never flicker. `starSphere(rng, options)` makes a sky; draw it with `{ sky: 
   ground, the limb from orbit and a sunrise's red and blue arc all come out of it. The Earth
   defaults can be overridden (radius, height, scattering, scale heights, ozone, the Sun's size).
 
-Promote anything a second film could use into the engine rather than copying it.
+Keep the engine general: anything that isn't specific to one scene of the film belongs here,
+where the next scene (or someone else's film) can use it.
 
 ## Post-processing
 
@@ -166,7 +171,8 @@ still wrong: guard `pow()` and `exp()`.
 `engine/text/` draws captions on a 2D canvas composited after tonemapping. Canvas2D snaps every
 `fillText` origin to whole pixels, so animated text drawn with it jitters. `drawText` and
 `drawGlyph` draw from a cache of glyphs rasterized at four sub-pixel phases and blurred in
-JavaScript. `caption()` and `stack()` build common cards; films can write their own builders.
+JavaScript. `caption()` and `stack()` build common cards; the film has its own builder
+(`film/text.ts`).
 
 ## Headless rendering
 

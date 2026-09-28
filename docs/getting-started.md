@@ -14,14 +14,14 @@ A GPU is optional. Without one, Linux renders use Mesa's llvmpipe (see [Renderin
 ## Install
 
 ```bash
-git clone https://github.com/abhishekpradhan/movies.git
-cd movies
+git clone https://github.com/abhishekpradhan/the-arrow-of-time.git
+cd the-arrow-of-time
 npm install
 npm run setup
 ```
 
-`npm run setup` creates `.venv` with the Python audio dependencies (`requirements.txt`), installs
-Playwright's Chromium, and checks for ffmpeg.
+`npm run setup` creates `.venv` with the Python dependencies of the score (`requirements.txt`),
+installs Playwright's Chromium, and checks for ffmpeg.
 
 **Linux (Debian/Ubuntu):** `sudo apt install ffmpeg python3-venv`. For CPU-only rendering you
 also need Mesa's EGL and DRI drivers: `sudo apt install libegl1 libgl1-mesa-dri`.
@@ -35,8 +35,8 @@ the commands from PowerShell. WSL2 works too.
 npm run dev
 ```
 
-Open http://localhost:5173 and pick a film. The player scrubs the timeline, plays the soundtrack
-(once it is synthesized) and steps frame by frame:
+Open http://localhost:5173. The player scrubs the film, plays the soundtrack (once it is
+synthesized with `npm run audio`) and steps frame by frame:
 
 | Key | Action |
 | --- | --- |
@@ -50,28 +50,28 @@ reduced resolution by default so it stays interactive.
 ## Score, stills, and a first render
 
 ```bash
-npm run audio -- arrow-of-time                          # the score (about 2.5 min on 4 cores)
-npm run still -- arrow-of-time --t 70 --t 213 --grid    # two frames, tiled into one PNG
-npm run render -- arrow-of-time --preset draft          # half resolution, fast
-npm run render -- arrow-of-time                         # final 1080p
+npm run audio                             # the score (a minute or two)
+npm run still -- --t 70 --t 213 --grid    # two frames, tiled into one PNG
+npm run render -- --preset draft          # half resolution, fast
+npm run render                            # final 1080p
 ```
 
-Outputs go to `out/<id>/` (`audio/`, `stills/`, `renders/`), which git ignores.
+Outputs go to `out/` (`audio/`, `stills/`, `renders/`), which git ignores.
 
 ## Troubleshooting
 
 - **"ffmpeg not found".** Install ffmpeg and make sure it is on your `PATH`.
 - **"Executable doesn't exist ... chromium".** Playwright's Chromium is not installed (its
   installer can hang while unzipping). Run `npx playwright install chromium` again, or render
-  with the Chrome you have: `MOVIES_BROWSER=chrome npm run still -- <id> --t 10`.
-- **The render is silent.** Run `npm run audio -- <id>` first; the renderer warns when the score
-  is missing.
+  with the Chrome you have: `MOVIES_BROWSER=chrome npm run still -- --t 10`.
+- **The render is silent.** Run `npm run audio` first; the renderer warns when the score is
+  missing.
 - **"Framebuffer incomplete" or a black frame on Linux without a GPU.** Install
   `libegl1 libgl1-mesa-dri`, or try `--gl swiftshader` (slower, but always available).
 - **The first frame of a shot is slow.** Big shaders are compiled on first use (seconds on a
   CPU); later frames are fast. Benchmarks with `--bench` render each frame twice for this reason.
 - **Interrupted render.** Run the same command again with `--resume`; finished segments are
-  kept in `out/<id>/segments/`.
+  kept in `out/segments/`.
 - **Python errors in `npm run audio`.** Recreate the venv: `rm -rf .venv && npm run setup`.
 
-Next: [Making a film](making-a-film.md).
+Next: [the making-of](making-of.md), or [Working on the film](working-on-the-film.md) to change it.

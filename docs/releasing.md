@@ -1,54 +1,43 @@
-# Releasing a film
+# Releasing
 
-Finished films are published as **GitHub Releases**, never committed to the repository.
-
-## Why Releases, not Git LFS
-
-The first two cuts of *The Arrow of Time* were committed with Git LFS. That doesn't scale:
-
-- Personal accounts include 10 GiB of LFS storage and 10 GiB of LFS bandwidth a month, and each
-  cut of this film adds about 350 MB. Every clone or CI checkout that pulls the videos spends
-  bandwidth.
-- LFS storage never shrinks. Deleting a file keeps its LFS object; GitHub's documented way to
-  purge objects is to delete and recreate the repository, or to ask GitHub Support.
-- Release assets have no total-size or bandwidth limit. Each file must be under 2 GiB, and a
-  release can have up to 1000 files.
-
-Cut v0.2 now lives on the Releases page. Its LFS objects (and v0.1's), about 0.7 GB, still count
-toward LFS storage. That is well within the free quota. If you want a clean history before
-making the repository public, recreate it or contact GitHub Support.
+The film is published as **GitHub Releases**: video is never committed to the repository.
 
 ## Versions
 
-Tags are `<project>-v<major>.<minor>`, for example `arrow-of-time-v0.3`.
+Releases are tagged `v<major>.<minor>`: `v1.0` is the first finished film, and later versions
+are new cuts of it. The working cuts before it were pre-releases tagged `arrow-of-time-v0.2` to
+`arrow-of-time-v0.4`, and stay on the Releases page.
 
-- Working cuts are **pre-releases** at 1080p, with a 720p preview.
-- The finished film is a full release, rendered in 4K (`--scale 2`) with a 2160p variant.
+- A new version is a full release at 1080p with a 720p preview and a poster.
+- A cut you want feedback on before it is finished can go out as a pre-release.
+- A 4K version renders with `--scale 2` and adds a 2160p file.
 
-Each film can keep a `projects/<id>/CHANGELOG.md`; its newest section becomes the "What's new"
-part of the release notes.
+The newest section of [`CHANGELOG.md`](../CHANGELOG.md) becomes the "What's new" part of the
+release notes.
 
 ## What a release contains
 
 | File | Encode |
 | --- | --- |
-| `<id>-2160p.mp4` | 4K cuts only: two-pass x264 at 40 Mbps (`--mbps-2160`), about 1.6 GB for five and a half minutes. Above about 6.5 minutes at 40 Mbps a file passes the 2 GiB asset limit, so lower the bitrate. |
-| `<id>-1080p.mp4` | Two-pass x264 at 8 Mbps (`--mbps`), AAC 256 kbit/s |
-| `<id>-720p.mp4` | Preview sized to fit 28 MB (`--preview-mb`), light denoise |
+| `the-arrow-of-time-2160p.mp4` | 4K only: two-pass x264 at 40 Mbps (`--mbps-2160`), about 1.9 GB for 6:12. Much above six and a half minutes at 40 Mbps a file passes GitHub's 2 GiB asset limit, so lower the bitrate. |
+| `the-arrow-of-time-1080p.mp4` | Two-pass x264 at 8 Mbps (`--mbps`), AAC 256 kbit/s |
+| `the-arrow-of-time-720p.mp4` | Preview sized to fit 28 MB (`--preview-mb`), light denoise |
 | `poster.jpg` | Frame at the timeline's `poster` time (`--poster`) |
 | `info.json`, `SHA256SUMS` | Sizes, checksums and the commit it was rendered from |
 
 ## Checklist
 
-1. Render the score and the master: `npm run audio -- <id>` then `npm run render -- <id>`, or
-   use Modal.
-2. Check sync: `.venv/bin/python tools/check_sync.py <master> projects/<id>/timeline.json`.
+1. Render the score and the master: `npm run audio`, then `npm run render` (or render on
+   [Modal](modal.md)).
+2. Check sync: `.venv/bin/python tools/check_sync.py out/renders/the-arrow-of-time-final-latest.mp4`.
    Hits should agree within a frame (42 ms at 24 fps).
-3. Check loudness and the mix: `.venv/bin/python audio/analyze.py <wav> --timeline ...` should
-   report about -14 LUFS integrated and a true peak at or below -1 dBTP.
+3. Check loudness and the mix: `.venv/bin/python audio/analyze.py out/audio/score.wav --timeline
+   film/timeline.json --onsets bang theia asteroidImpact launch --cut now` should report about
+   -14 LUFS integrated, a true peak at or below -1 dBTP, and every check `ok`.
 4. Look at a contact sheet of the whole film:
-   `npm run still -- <id> --sheet --from 0 --to <duration> --n 80 --cols 10`.
-5. Update the film's `CHANGELOG.md` and credits.
+   `npm run still -- --sheet --from 0 --to 372 --n 80 --cols 10`.
+5. Update `CHANGELOG.md`, the credits in `film/timeline.json` if the film borrows something new,
+   and `THIRD_PARTY_NOTICES.md` to match.
 6. Publish (next section).
 
 ## Publishing
@@ -59,12 +48,22 @@ part of the release notes.
 **By hand**, from a local render:
 
 ```bash
-npm run release -- arrow-of-time                  # -> out/arrow-of-time/release/
-python3 tools/release_notes.py arrow-of-time --tag arrow-of-time-v0.3 > notes.md
-gh release create arrow-of-time-v0.3 out/arrow-of-time/release/* --prerelease \
-  --title "$(python3 tools/release_notes.py arrow-of-time --tag arrow-of-time-v0.3 --title)" \
-  --notes-file notes.md
+npm run release                                    # -> out/release/
+python3 tools/release_notes.py --tag v1.1 > notes.md
+gh release create v1.1 out/release/* \
+  --title "$(python3 tools/release_notes.py --tag v1.1 --title)" --notes-file notes.md
 ```
 
-Link to the Releases page from READMEs, not to a single file: download URLs change with every
-cut.
+Link to the Releases page (or `releases/latest`) rather than to a single file: download URLs
+change with every version.
+
+## Why Releases, not Git LFS
+
+The first two cuts were committed with Git LFS, which doesn't scale: a personal account includes
+10 GiB of LFS storage and bandwidth a month, each cut adds hundreds of megabytes, and LFS storage
+never shrinks (deleting a file keeps its object). Release assets have no total-size or bandwidth
+limit; each file must be under 2 GiB, and a release can hold up to 1000 files.
+
+Those two cuts' encodes (about 0.7 GB) are still LFS objects in the history. A normal clone of
+`main` doesn't download them, but checking out one of those old commits does, and counts against
+the owner's LFS bandwidth.

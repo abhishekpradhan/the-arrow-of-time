@@ -1,16 +1,23 @@
 # Contributing
 
-Thanks for helping! Fixes, engine features, new films and re-cuts of existing ones are all
-welcome. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Thanks for helping make *The Arrow of Time* better. Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Ways to contribute
 
-- **Report a bug or give film feedback** with the [issue forms](https://github.com/abhishekpradhan/movies/issues/new/choose).
-  For a film, the timestamp and what you noticed are enough; for a scientific detail, a source helps.
-- **Improve the engine, tools or audio studio.** Anything a second film could use belongs in
-  `engine/` or `audio/studio/`, not copied into a film.
-- **Make a film**, or re-cut an existing one (see [Making a film](docs/making-a-film.md)).
+- **Give feedback on the film** with the
+  [issue forms](https://github.com/abhishekpradhan/the-arrow-of-time/issues/new/choose): the
+  timestamp and what you noticed are enough. For a scientific or historical point, a source helps.
+- **Report a bug** in building, previewing or rendering the film.
+- **Improve the engine, the tools or the synthesizer.** Keep the engine general: anything that
+  isn't specific to one scene belongs in `engine/` or `audio/studio/`, not in `film/`.
+- **Improve a scene, a caption or the score**, with stills (and for the score, an analysis) that
+  show the difference.
 - **Improve the docs.** If something confused you, it will confuse the next person.
+
+Re-cuts, translations and remixes of the film don't need to come back here: the film is
+CC BY 4.0 and the code is MIT, so you can make your own and publish it, with credit
+([how](film/LICENSE.md)).
 
 ## Development setup
 
@@ -20,57 +27,49 @@ npm run setup          # Python venv, Playwright's Chromium, ffmpeg check
 npm run dev            # preview at http://localhost:5173
 ```
 
-See [Getting started](docs/getting-started.md) for platform notes.
+See [Getting started](docs/getting-started.md) for platform notes and
+[Working on the film](docs/working-on-the-film.md) for how the film is put together.
 
 ## Workflow
 
 1. Create a branch from `main`.
 2. Make the change, and keep it focused: one topic per pull request.
-3. Review what you changed visually and, for the score, by analysis (below).
+3. Review what you changed by eye and, for the score, by analysis (below).
 4. Run the checks, update the docs and `CHANGELOG.md` where it matters, and open a pull request
    using the template.
 
 ### Checks
 
 ```bash
-npm run typecheck                                              # CI runs this on every push
-npm run still -- <id> --t 12 --t 30 --grid --scale 0.25        # the shots you touched
-npm run still -- <id> --sheet --from 0 --to 80 --n 40 --cols 8 # continuity across a range
-npm run audio -- <id> --from 180 --to 220                      # a window of the score
-.venv/bin/python audio/analyze.py out/<id>/audio/score.wav --timeline projects/<id>/timeline.json
+npm run typecheck                                          # CI runs this on every push
+npm run still -- --t 12 --t 30 --grid --scale 0.25         # the shots you touched
+npm run still -- --sheet --from 0 --to 80 --n 40 --cols 8  # continuity across a range
+npm run audio -- --from 180 --to 220                       # a window of the score
+.venv/bin/python audio/analyze.py out/audio/score.wav --timeline film/timeline.json
 ```
 
-CI type-checks the engine, tools and films, compiles the Python tools, and scaffolds and scores a
-film from the template.
+CI type-checks the engine, the film and the tools, compiles the Python, synthesizes the whole
+score and checks its hits and cuts against the timeline.
 
 ### Conventions
 
-[CLAUDE.md](CLAUDE.md) lists the conventions and every pitfall this codebase has hit. The short
+[CLAUDE.md](CLAUDE.md) lists the conventions and every pitfall this code has hit. The short
 version:
 
-- Timing belongs in `timeline.json`, never in shot code or the score.
+- Timing belongs in `film/timeline.json`, never in shot code or the score.
 - Shots render HDR, linear light and own their whole frame; dissolve by overlapping shots.
 - Never put a backtick in GLSL inside a JavaScript template string; guard `pow()` and `exp()`.
 - Draw animated text with `drawText`/`drawGlyph`, never raw `fillText`.
-- Engine changes affect every film: render stills of every shot that uses what you touched.
-- Don't commit rendered media: films are published as GitHub Releases
+- Engine changes affect the whole film: render stills of every shot that uses what you touched.
+- Don't commit rendered media: the film is published as GitHub Releases
   ([docs/releasing.md](docs/releasing.md)).
 
 ## Licensing of contributions
 
-- Changes to the studio code (`engine/`, `tools/`, `audio/`, `templates/`, ...) are contributed
-  under the [Apache License 2.0](LICENSE), as its section 5 describes.
-- Changes to a film (`projects/<id>/` and its released videos) are contributed under that film's
-  license (CC BY 4.0 for *The Arrow of Time*; see its `LICENSE.md`).
-- Please sign off your commits (`git commit -s`) to certify the
-  [Developer Certificate of Origin](https://developercertificate.org/): that you wrote the
-  change, or otherwise have the right to submit it under these licenses.
-- Don't paste code you can't license this way. Shadertoy's default license (CC BY-NC-SA 3.0) and
-  most tutorial code are **not** compatible. If you adapt permissively licensed code, keep its
-  notice and add it to [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+By contributing, you agree that your contribution is licensed like the rest of the repository:
+code under the [MIT License](LICENSE), and changes to the film itself (its captions and other
+words, and what it shows and sounds like) under [CC BY 4.0](film/LICENSE.md).
 
-## Making your own film
-
-`npm run new -- <id> --title "My Film"` scaffolds a film from `templates/starter`. What you write
-for your film is yours to license as you like. The scaffold it starts from and the studio code it
-runs on are Apache-2.0, so keep `LICENSE` and `NOTICE` when you redistribute them.
+Don't paste code you can't license this way. Shadertoy's default license (CC BY-NC-SA 3.0) and
+most tutorial code are **not** compatible. If you adapt permissively licensed code, keep its
+copyright notice in a comment and add it to [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

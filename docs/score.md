@@ -1,8 +1,11 @@
-# The Arrow of Time: score brief
+# The score
 
-The score is synthesized entirely in code (`score.py`, using the shared `audio/studio`
-library) and is timed from `timeline.json`, the same file that times the visuals. Change
-a cue there and both picture and music follow.
+The score of *The Arrow of Time* is synthesized entirely in code
+([`film/score.py`](../film/score.py), on the [`audio/studio`](../audio/README.md) synthesizer)
+and is timed from [`film/timeline.json`](../film/timeline.json), the same file that times the
+picture. Change a cue there and both picture and music follow. The one recorded sound is NASA's
+Apollo 11 air-to-ground loop, placed on a cue like any other. `npm run audio` renders it to
+`out/audio/score.wav`.
 
 ## Concept: "Clockwork Cosmos"
 
@@ -52,7 +55,7 @@ Mix: long convolution reverb (4–8 s hall/cathedral) on organ/strings/choir/bel
 room on clock and drums. Master bus: gentle glue compression, true-peak limiter, **−14 LUFS
 integrated, −1 dBTP**. 48 kHz stereo.
 
-## Cue sheet (times come from `timeline.json`; values below are current)
+## Cue sheet (times come from `timeline.json`; the values below are v1.0's)
 
 | Time | Beat | Music |
 |---|---|---|

@@ -1,22 +1,29 @@
 # CLAUDE.md
 
-Guidance for working in this repository: a code-driven film studio (WebGL2 engine, Python
-score synthesis, headless rendering). Read `README.md` for the overview and commands.
+Guidance for working in this repository: *The Arrow of Time*, a film made entirely in code
+(a WebGL2 engine, a Python-synthesized score, headless rendering). Read `README.md` for the
+overview and commands.
 
 ## Layout
 
-- `engine/`: reusable film engine (TypeScript, browser). Public API: `@engine` (`engine/index.ts`).
-- `audio/studio/`: reusable Python synthesizer and mastering (`audio/README.md`).
-- `tools/`: Node CLIs (`render`, `still`, `audio`, `release`, `new-project`), `tools/assets/`
-  builders, and the Modal pipeline (`tools/modal/studio.py`).
-- `docs/`: guides (getting started, making a film, engine, rendering, Modal, releasing).
-- `projects/<id>/`: one film per folder. `timeline.json` + `project.ts` + `shots/` + `score.py`.
-- `templates/starter/`: copied by `npm run new -- <id>`.
-- `assets/`: data the films load (Earth maps; the giant-impact SPH simulation, whose recipe is in
+- `film/`: the film. `timeline.json` (script, captions, cues) + `project.ts` + `shots/` +
+  `shaders/` + `text.ts` (captions) + `score.py`.
+- `engine/`: the film engine (TypeScript, browser), kept general. Public API: `@engine`
+  (`engine/index.ts`); the runtime loads `film/project.ts`.
+- `audio/studio/`: the Python synthesizer and mastering the score is written with (`audio/README.md`).
+- `tools/`: Node CLIs (`render`, `still`, `audio`, `release`), `check_sync.py`, `retime.py`,
+  `release_notes.py`, the `tools/assets/` builders, and the Modal pipeline (`tools/modal/studio.py`).
+- `docs/`: the making-of, the score (`score.md`, with the cue sheet), and guides (getting started,
+  working on the film, engine, rendering, Modal, releasing).
+- `assets/`: data the film loads (Earth maps; the giant-impact SPH simulation, whose recipe is in
   `tools/assets/giant_impact/`; NASA's Apollo 11 audio). Each folder has a README and a builder
   in `tools/assets/`.
-- `out/`: all generated media (git-ignored). Finished films are published as GitHub Releases,
-  never committed (`docs/releasing.md`).
+- `out/`: all generated media (git-ignored): `renders/`, `audio/`, `stills/`, `release/`. The
+  film is published as GitHub Releases (tags `v1.0`, `v1.1`, ...), never committed
+  (`docs/releasing.md`).
+- Licensing: all code is MIT (`LICENSE`); the film as a work (video, soundtrack, stills, the
+  words in `timeline.json`) is CC BY 4.0 (`film/LICENSE.md`). Anything borrowed goes in
+  `THIRD_PARTY_NOTICES.md` and, if the film shows or plays it, in the `credits` of `timeline.json`.
 
 ## Workflow and conventions
 
@@ -25,9 +32,9 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   make room, `tools/retime.py <timeline> --at <s> --by <s> [--extend <beat>]` shifts everything
   after a point. `spline(t, knots)` remaps time smoothly (slow motion through an event).
 - **Shots are shots.** Each shot owns its whole frame (background included) and renders HDR,
-  linear light into `c.target`. Overlap shots with `fadeIn`/`fadeOut` to dissolve. In
-  `projects/arrow-of-time`, `span(id, { dIn, dOut })` centres dissolves on beat boundaries and
-  `bt(c, id)` gives time since a beat began.
+  linear light into `c.target`. Overlap shots with `fadeIn`/`fadeOut` to dissolve. In `film/lib.ts`,
+  `span(id, { dIn, dOut })` centres dissolves on beat boundaries and `bt(c, id)` gives time
+  since a beat began.
 - **Full-screen shaders**: `c.fullscreen(c.e.program(SRC, 'name'), uniforms)`. Standard uniforms
   are `uRes` (the bound target's size), `uTime` (shot-local), `uDur`, `uProg`, `uGTime`
   (global), `uAspect` and `uScale`. Use `centered(vUv, uAspect)`: y spans [-0.5, 0.5]. With the
@@ -39,10 +46,10 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `walkPose`/`runPose`/`sitPose`/`haulPose`..., `sdBeast` and species such as `sdHorse`);
   `illustration` paints the light: `paintSky`/`skyTone` from the sun's elevation (night to
   midday), `airAt` and `inkIn` for silhouettes that fade into the haze, `rimLight`, `stratus`
-  clouds, `mistBand`, `smokeColumn`. For
-  film-specific chunks, call `registerChunks(import.meta.glob('./shaders/*.glsl', { query: '?raw',
-  import: 'default', eager: true }), '<id>/')` in a module the shots import, then
-  `#include <<id>/name>`. Big shaders read better as `.glsl` files (no backtick hazard); a chunk
+  clouds, `mistBand`, `smokeColumn`. The film's own chunks are `film/shaders/*.glsl`, registered by
+  `registerChunks(import.meta.glob('../shaders/*.glsl', { query: '?raw', import: 'default',
+  eager: true }), 'arrow-of-time/')` (in `film/shots/civilization.ts`) and included as
+  `#include <arrow-of-time/name>`. Big shaders read better as `.glsl` files (no backtick hazard); a chunk
   can serve two passes with `#ifdef` (a terrain chunk can bake its height field with a define
   and march the texture in the same source).
 - **Bake what never changes.** A ray-marched shot whose terrain or data is static should render
@@ -53,8 +60,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `paintSky` with one clear light source, then layers back to front, each moved by parallax and
   inked with `inkIn(airAt(...), fog, INK)` so distant layers take on the air's colour. Backlit
   figures get `rimLight` from a finite-difference gradient; daylit buildings get two tones (a lit
-  face and a shadow face) rather than shading. In `projects/arrow-of-time`, the civilization is
-  one shot (`shots/civilization.ts`) through ten such tableaux (`shaders/civ-<id>.glsl`, sharing
+  face and a shadow face) rather than shading. The civilization is one shot
+  (`film/shots/civilization.ts`) through ten such tableaux (`film/shaders/civ-<name>.glsl`, sharing
   `civ-common.glsl`: `L(p, k)` for parallax, `uSun`/`uElev` for the day's light): a `Tableau`
   entry gives its sun, drift, wipe object and uniforms. Between tableaux an object sweeps past
   the lens (`civ-wipe.glsl`) and the two are drawn clipped at its centre line, so the seam is
@@ -65,8 +72,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   defined before the include. `motionBlur: N` also anti-aliases: each sample shifts `camRay` by
   a sub-pixel jitter (`uJitter`), so 2 samples clean up crisp silhouettes. Crude primitives read
   as crude CGI next to painted scenes: prefer the painted language for people and buildings on
-  Earth. In `projects/arrow-of-time` the space race is 3D and photographic (`shots/ascent.ts`,
-  `shots/sputnik.ts`, `shots/apollo.ts`): planet-sized things are traced in kilometres from the
+  Earth. The space race is 3D and photographic (`film/shots/ascent.ts`,
+  `film/shots/sputnik.ts`, `film/shots/apollo.ts`): planet-sized things are traced in kilometres from the
   camera's position relative to the planet's centre (`uCamP`, `uCamAlt`) and small ones (the
   R-7, Sputnik) in metres relative to the camera, each only inside its bounding sphere; the
   Moon landing marches a baked two-level height field (`lunar.glsl`) and the lander (`lm.glsl`)
@@ -80,8 +87,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   and limb from single scattering: `...atmo.uniforms(c)` bakes its transmittance table on first
   use; `atmoSegment` integrates a stretch of ray (composite the air in front of a cloud layer,
   then behind it), `atmoLight` gives sunlight's colour at a point (red near the horizon, zero in
-  the planet's shadow). Promote anything a second film could use into the engine rather than
-  copying it.
+  the planet's shadow). Keep the engine general: anything that isn't specific to one scene of the
+  film belongs in the engine rather than in `film/`.
 - **Captions** sit in each shot's negative space: set `layout` on a beat in `timeline.json`
   (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or `{ "at":
   ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first (`captionUntil` takes
@@ -99,14 +106,17 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `{ sky: true }`. The `animate`/`shade` GLSL hooks run per sprite and per fragment.
 - **Uniforms** are typed by reflection (`Program.set`). Arrays: pass flat JS arrays. Unknown
   names are ignored silently, so a misspelt uniform just does nothing.
-- **CI** (`.github/workflows/ci.yml`) typechecks everything and scaffolds and scores a film
-  from the template. Keep `npm run typecheck` clean: the engine is shared by every film.
+- **CI** (`.github/workflows/ci.yml`) typechecks everything, compiles the Python, synthesizes
+  the whole score and checks its hits and cuts against the timeline (`audio/analyze.py`). Keep
+  `npm run typecheck` clean, and when a cue moves, keep the onsets CI checks in step.
 
 ## Pitfalls (all have bitten this repo)
 
 - Licensing: code must be original or permissively licensed. Never paste Shadertoy code under
-  its default CC BY-NC-SA or tutorial code (LearnOpenGL is CC BY-NC). When adapting MIT or
-  Apache code, keep a source comment and add it to `THIRD_PARTY_NOTICES.md`.
+  its default CC BY-NC-SA or tutorial code (LearnOpenGL is CC BY-NC). When adapting permissively
+  licensed code (MIT, BSD, zlib), keep its copyright notice in a source comment and add it to
+  `THIRD_PARTY_NOTICES.md`. Avoid Apache-2.0 code where you can: it brings NOTICE obligations
+  that the rest of the repository doesn't have.
 
 - Shaders live in JS template strings: **never put a backtick in GLSL, even in a comment**,
   and remember `${...}` interpolates.
@@ -121,7 +131,7 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   text drawn with it jitters letter by letter. Draw text with `drawText`/`drawGlyph`: glyphs
   come from a cache rasterized at 4 sub-pixel phases and blurred in JS. Never blur with
   `ctx.filter` (seconds per frame) or `drawImage` + `shadowBlur` (~60x slower than fillText).
-  Check typography with `npm run still -- <id> --textonly`.
+  Check typography with `npm run still -- --t 10 --textonly`.
 - Text shadow/glow colours apply their alpha once (`rgba(0,0,0,0.5)` is a 50% shadow).
 - The first frame that uses a big shader pays a one-time LLVM compile (seconds). Benchmarks
   must render a second frame of the same shot.
@@ -186,8 +196,9 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 
 ## Audio
 
-- Scores are Python (`projects/<id>/score.py`) using `audio/studio` (read `audio/README.md`).
-  Run with `npm run audio -- <id>`; `--from/--to` renders a window in seconds for fast iteration.
+- The score is Python (`film/score.py`) using `audio/studio` (read `audio/README.md`; its design
+  and cue sheet are in `docs/score.md`, keep that in step). Run with `npm run audio`; `--from/--to`
+  renders a window in seconds for fast iteration.
 - A recurring theme ties a long score together: *The Arrow of Time* states its theme (`THEME`,
   played with `theme_line`) at the main title, the Milky Way, the oceans, the mammals, the launch,
   Mars and the epilogue, in different orchestrations and keys.
@@ -210,9 +221,9 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
 ## Review loop (do this constantly)
 
 ```bash
-npm run still -- <id> --t 12 --t 30 --grid --scale 0.25        # quick look at moments
-npm run still -- <id> --sheet --from 0 --to 80 --n 40 --cols 8   # continuity across a range
-npm run still -- <id> --t 12 --bench --scale 1                   # cost per 1080p frame
+npm run still -- --t 12 --t 30 --grid --scale 0.25        # quick look at moments
+npm run still -- --sheet --from 0 --to 80 --n 40 --cols 8   # continuity across a range
+npm run still -- --t 12 --bench --scale 1                   # cost per 1080p frame
 npm run typecheck
 ```
 
@@ -221,12 +232,13 @@ over the image, letterbox framing, and transitions between shots.
 
 ## Rendering
 
-- `npm run render -- <id> --preset draft`: half resolution in about 25 min for 5 minutes of film on a 4-core CPU.
-- `npm run render -- <id>`: final 1080p, x264 CRF 17 `slow`, Rec.709, AAC 320k. Outputs
-  `out/<id>/renders/<id>-final-<stamp>.mp4` and `...-final-latest.mp4`. The Arrow of Time
-  (5:18 cut) took 1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on); the master
-  is about 1 GB because film grain is expensive to encode.
-- `npm run release -- <id>` makes the distribution encodes in `out/<id>/release/` (1080p, 720p
+- `npm run render -- --preset draft`: half resolution, no motion blur (about 16 min for the 6:12
+  film at 720p with motion blur on a Mac's GPU; hours on a 4-core CPU).
+- `npm run render`: final 1080p, x264 CRF 17 `slow`, Rec.709, AAC 320k. Outputs
+  `out/renders/the-arrow-of-time-final-<stamp>.mp4` and `...-final-latest.mp4`. The 5:18 cut took
+  1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on), before the ray-marched space
+  race; the master is about 1 GB because film grain is expensive to encode.
+- `npm run release` makes the distribution encodes in `out/release/` (1080p, 720p
   preview, poster, checksums; `--variants 2160p,...` from a 4K master). Check sync on the master
   first with `tools/check_sync.py`. Publish them as a GitHub Release; never commit video.
 - Modal (`tools/modal/studio.py`, `docs/modal.md`) renders slices of the film in parallel CPU
@@ -236,8 +248,8 @@ over the image, letterbox framing, and transitions between shots.
   egress proxy does not relay): trigger the workflow with the GitHub tools, and fetch its 720p
   preview with `download_workflow_run_artifact` (release assets of a private repo are not
   downloadable from the session).
-- Run `npm run audio -- <id>` first or the render is silent (a warning is printed).
-- Long renders: segments are written to `out/<id>/segments/`. If the container restarts, re-run
+- Run `npm run audio` first or the render is silent (a warning is printed).
+- Long renders: segments are written to `out/segments/`. If the container restarts, re-run
   the same command with `--resume` to continue. If only the score changed, don't re-render:
   re-mux the audio with ffmpeg (`-map 0:v -map 1:a -c:v copy -c:a aac -b:a 320k`).
 - Container note: there is no GPU; `--gl auto` picks Mesa llvmpipe via EGL (needs `libegl1`

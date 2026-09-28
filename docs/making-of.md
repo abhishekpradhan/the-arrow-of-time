@@ -1,47 +1,41 @@
-# The Arrow of Time
+# The making of *The Arrow of Time*
 
-*The history and future of everything, from the first instant to the last.* 6:12, 1920×1080,
-24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
+*The Arrow of Time* runs 6:12 at 1920×1080 and 24 fps, in a 2.39:1 letterbox that opens to full
+frame for its biggest moments. Nothing in it was filmed, drawn by hand or sampled. This page goes
+through how it is made, scene by scene, and the science and history it rests on. To change it,
+see [Working on the film](working-on-the-film.md).
 
-![Frames from the film](poster.jpg)
+## The idea
 
-Watch: the latest cut is on the [Releases page](https://github.com/abhishekpradhan/movies/releases)
-(1080p, a 720p preview and a poster).
-Rendering on a 4-core CPU without a GPU (Mesa llvmpipe) takes a couple of hours; on
-[Modal](../../docs/modal.md) it takes minutes. Cut history: [CHANGELOG.md](CHANGELOG.md).
+Time has one direction. The film follows it from the Big Bang to the heat death of the universe
+and is paced by a ticking clock. The clock falls silent in the Big Bang, accelerates through human
+history, stops dead at **Now**, then resumes and slows as the stars die, until the last tick.
+After it the universe, and the audience, has one brief moment to look at itself. The score is
+built on the same clock ([the score](score.md)).
 
-```bash
-npm run audio -- arrow-of-time      # score  -> out/arrow-of-time/audio/score.wav
-npm run render -- arrow-of-time     # film   -> out/arrow-of-time/renders/arrow-of-time-final-latest.mp4
+## How a frame is made
+
+```text
+timeline.json ──► project.ts ──► shots (GLSL, sprites, ray marching) ──► HDR composite ──► post ──► frame
+      │                 └──────► captions (glyph cache, per-beat layout) ─────────────────────┘
+      └──────────────► score.py ──► audio/studio synth ──► mix ──► master ──► score.wav ──┐
+                                                                                          ▼
+                      headless Chromium ──► raw RGBA ──► ffmpeg (x264) ──────────────► film.mp4
 ```
 
-## Concept
+Each shot is a span of time and a function that draws linear, HDR light into the frame; shots
+overlap to dissolve. The post chain adds bloom, anamorphic streaks, light shafts, tonemapping,
+grading, grain and the letterbox, all animated over the film by `project.ts`. Captions are drawn
+last, from a sub-pixel glyph cache, in each shot's negative space. The score reads the same
+timeline, so a hit in the picture and in the music is the same number. The engine behind all this
+is described in [The engine](engine.md).
 
-Time has one direction. The film follows it from the Big Bang to the heat death of the
-universe and is paced by a ticking clock. The clock falls silent in the Big Bang, accelerates
-through human history, stops dead at **NOW**, and resumes and slows down as the stars die
-until the last tick. After it, the universe (and the audience) has one brief moment to look
-at itself. See `MUSIC.md` for the score design.
+The film changes style on purpose. The universe and the far future are rendered: plasma, particle
+fields, ray-marched volumes and a black hole's lensing. Life and people, from the Cambrian seas to
+the savanna and twelve thousand years of civilization, are painted: layered silhouettes against
+skies lit by one clear source. The space race is photographic 3D, built for scale.
 
-## Structure
-
-| Time | Act | Beats |
-|---|---|---|
-| 0:00 | Prologue | "Everything that has ever happened…", a single point of light gathering energy |
-| 0:20 | The Universe | Big Bang and title, inflation, first elements (3 min), first light / CMB (380,000 yr) |
-| 0:50 | Cosmic Dawn | dark ages, first stars igniting on the score's bell notes, galaxies, the Milky Way |
-| 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
-| 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
-| 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
-| 3:06 | Civilization | twelve thousand years as one day, dawn to night: the first harvest, Uruk, a scribe writing cuneiform, Giza, the Acropolis, Gutenberg's press, a mill town and its railway, the Wright Flyer, Trinity |
-| 3:30 | The Space Race | the R-7 launching Sputnik: up through the clouds and across the Moon, the boosters falling away, Sputnik released into an orbital sunrise; Apollo 11 landing on the Sea of Tranquility, Armstrong's own voice from Tranquility Base, and a look up to the Earth; Earth at night |
-| 4:12 | Now | the pale blue dot, and silence |
-| 4:20 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
-| 5:06 | The End | the last stars, the black hole era, evaporation, the end of time |
-| 6:02 | Credits | made entirely in code; NASA's Apollo 11 audio, Natural Earth, Hipparcos, SWIFT |
-| 5:33 | Epilogue | "That moment is now." |
-
-## Visual techniques
+## Scene by scene
 
 - **Big Bang, inflation, first light**: domain-warped fbm plasma with a fire colour ramp, a
   log-scale infinite zoom with radially streaking quantum fluctuations, a bokeh particle field,
@@ -51,10 +45,10 @@ at itself. See `MUSIC.md` for the score design.
 - **Milky Way**: about 170k sprites (sparkle stars, a smooth glow layer, HII knots, a bulge)
   following a barred four-arm logarithmic spiral with 19° pitch, with absorbing dust lanes and
   differential rotation.
-- **The Moon-forming impact** (`shots/moon.ts`): a real smoothed-particle hydrodynamics
+- **The Moon-forming impact** (`film/shots/moon.ts`): a real smoothed-particle hydrodynamics
   simulation, not an animation. Theia (0.13 Earth masses) strikes the proto-Earth at 45° and the
   mutual escape speed, run with SWIFT on 61,139 particles for the first day after contact
-  ([how](../../tools/assets/giant_impact/README.md)). The film plays back 20,000 of them:
+  ([how](../tools/assets/giant_impact/README.md)). The film plays back 20,000 of them:
   every particle thrown clear of the Earth and a thinned sample of the rest. Each one glows at its
   simulated temperature and absorbs what lies behind it. The shot is continuous from the molten
   Earth: the camera pulls back as Theia, another rendered planet, falls in on the orbit the
@@ -71,10 +65,10 @@ at itself. See `MUSIC.md` for the score design.
   coordinates that each daughter carries away); animated signed-distance silhouettes
   (Anomalocaris, trilobites, jellyfish, Tiktaalik, sauropods, T. rex, pterosaurs, mammals,
   people) over painted-light skies; underwater god rays and caustics; the first people at dusk
-  on the savanna (`shaders/humans.glsl`), a band round a fire on a granite kopje while giraffes
+  on the savanna (`film/shaders/humans.glsl`), a band round a fire on a granite kopje while giraffes
   cross under the acacias and a meteor, drawn as the streak it covers in each exposure so it
   never strobes, crosses the first stars; a bump-mapped cave wall lit by a moving torch.
-- **Civilization** (`shots/civilization.ts`, `shaders/civ-*.glsl`): twelve thousand years
+- **Civilization** (`film/shots/civilization.ts`, `film/shaders/civ-*.glsl`): twelve thousand years
   painted as a single day in the film's silhouette style, one tracking shot through ten
   tableaux, each with its own parallax layers and figures posed from joints (the engine's
   `figures` chunk): wild wheat at sunrise, backlit, a woman reaping with a flint sickle; Uruk in
@@ -89,7 +83,7 @@ at itself. See `MUSIC.md` for the score design.
   through each tableau and sweeps on to the next behind something passing close to the lens (a
   palm, a city wall, a column, a chimney, a telegraph pole...), with more motion-blur samples
   during the sweep.
-- **The space race** (`shots/ascent.ts`, `shots/sputnik.ts`, `shots/apollo.ts`), with the letterbox
+- **The space race** (`film/shots/ascent.ts`, `film/shots/sputnik.ts`, `film/shots/apollo.ts`), with the letterbox
   open to full frame throughout. The camera cranes up after the painted R-7 into the cloud over the
   pad, and the cloud dissolves into the ray-marched sky above it: the rocket bursts out of a moonlit
   stratocumulus deck (a height field of rounded cells, lit through the engine's physically based
@@ -112,6 +106,9 @@ at itself. See `MUSIC.md` for the score design.
 - **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
   nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
   friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.
+- **The end**: the last stars go out one by one, the black holes evaporate in a final flash, and
+  an epilogue over the stars comes back to the beginning: "That moment is now." The closing credits
+  follow in silence.
 
 ## Science notes
 
@@ -134,3 +131,25 @@ The captions follow current mainstream estimates and hedge where science does:
   A 2025 study (Sawala et al.) puts the chance of a Milky Way–Andromeda merger within
   10 Gyr at about 50%, hence "may merge". The last stars fade at about 10¹⁴ years; black holes dominate
   after about 10⁴⁰ years (if protons decay); the largest evaporate by about 10¹⁰⁰ years.
+
+## History notes
+
+The civilization's cards and the space race follow the record:
+
+- **Farming**, about 10,000 BCE, in the Fertile Crescent; **cities**, by 4000 BCE (Uruk);
+  **writing**, by 3200 BCE (cuneiform on clay). The cards read **2500 BCE** for the pyramids of Giza
+  (by then all three stood, in their white limestone casing), **500 BCE** for Athens,
+  **1450** for Gutenberg's press in Mainz, **1830** for the railway age, **1903** for the Wright
+  Flyer and **1945** for Trinity.
+- **1957**: the rocket is the R-7 that carried Sputnik 1 into orbit on 4 October 1957. It rises
+  from its "tulip" launch structure at Baikonur, and the Moon it climbs across is gibbous, as it was
+  that night. Sputnik's beeps follow its signal: pulses about 0.3 seconds long with gaps of the same
+  length.
+- **1969**: Apollo 11's lunar module Eagle landed on the Sea of Tranquility on 20 July 1969, with
+  the Sun about ten degrees above the eastern horizon; the film lights the plain the same way.
+  Houston's Quindar tones (2525 Hz to open a call, 2475 Hz to close it) mark its radio calls, and
+  the voice after touchdown is NASA's own recording of Neil Armstrong: "Houston, Tranquility Base
+  here. The Eagle has landed."
+- One liberty: from Tranquility Base the Earth stood high in the western sky. The film brings it
+  down to 16 degrees above the northern horizon so it can share the frame with the lander, and
+  keeps the phase it showed that day (about two thirds lit).

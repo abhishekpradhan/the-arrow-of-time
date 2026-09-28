@@ -9,7 +9,7 @@ export type FrameHandler = (worker: string, frame: number, data: Buffer) => Prom
 
 function frameSink(getHandler: () => FrameHandler): Plugin {
   return {
-    name: 'movies-frame-sink',
+    name: 'frame-sink',
     configureServer(server) {
       server.middlewares.use('/__frame', (req, res) => {
         const url = new URL(req.url ?? '/', 'http://local');

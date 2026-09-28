@@ -1,7 +1,7 @@
 # Rendering on Modal
 
-A local render of a five-minute film takes about two hours on a 4-core CPU. On
-[Modal](https://modal.com) the same film renders in minutes: the timeline is cut into short
+A local render of the film takes several hours on a 4-core CPU. On [Modal](https://modal.com)
+it renders in minutes: the timeline is cut into short
 slices, dozens of CPU containers render them at once, and one container joins the slices and
 adds the score. Each slice is rendered by the same headless Chromium and software rasterizer
 (Mesa llvmpipe) as `npm run render`, so a Modal render matches a local one frame for frame.
@@ -10,7 +10,7 @@ adds the score. Each slice is rendered by the same headless Chromium and softwar
  timeline ─► 40 slices ─► render_slice × 40 (8 cores each, in parallel) ─┐
          └─► score (synthesize the soundtrack) ──────────────────────────┤
                                                                           ▼
-                              assemble (join, mux, sync check) ─► release_variant × N ─► out/<id>/
+                              assemble (join, mux, sync check) ─► release_variant × N ─► out/
 ```
 
 Everything is in [`tools/modal/studio.py`](../tools/modal/studio.py). The
@@ -31,31 +31,30 @@ publish the result as a GitHub Release.
    .venv/bin/modal setup
    ```
 
-4. Optional, but a good idea if you use Modal for other work: keep the studio in its own
+4. Optional, but a good idea if you use Modal for other work: keep these renders in their own
    [Modal environment](https://modal.com/docs/guide/environments). Create it with
-   `modal environment create movies`, then set `MODAL_ENVIRONMENT=movies` locally, or set a
-   repository **variable** (not a secret) called `MODAL_ENVIRONMENT` for the workflow.
+   `modal environment create arrow-of-time`, then set `MODAL_ENVIRONMENT=arrow-of-time` locally, or
+   set a repository **variable** (not a secret) called `MODAL_ENVIRONMENT` for the workflow.
 
 ## Rendering
 
 From GitHub: *Actions → Render on Modal → Run workflow*. The inputs mirror the command-line
 flags below. Leave `tag` empty to only render: the 720p preview is attached to the run as an
-artifact for a week. Set a tag such as `arrow-of-time-v0.3` to publish a GitHub Release (see
+artifact for a week. Set a tag such as `v1.1` to publish a GitHub Release (see
 [releasing.md](releasing.md)).
 
-From your machine (outputs land in `out/<id>/`):
+From your machine (outputs land in `out/`):
 
 ```bash
-modal run tools/modal/studio.py --project arrow-of-time                      # 1080p master
-modal run tools/modal/studio.py --project arrow-of-time --preset draft       # half resolution, no motion blur
-modal run tools/modal/studio.py --project arrow-of-time --window 182-216     # re-render one sequence
-modal run tools/modal/studio.py --project arrow-of-time --release            # + 1080p, 720p, poster
-modal run tools/modal/studio.py --project arrow-of-time --scale 2 --release --variants 2160p,1080p,poster   # 4K
+modal run tools/modal/studio.py                            # 1080p master
+modal run tools/modal/studio.py --preset draft             # half resolution, no motion blur
+modal run tools/modal/studio.py --window 182-216           # re-render one sequence
+modal run tools/modal/studio.py --release                  # + 1080p, 720p, poster
+modal run tools/modal/studio.py --scale 2 --release --variants 2160p,1080p,poster   # 4K
 ```
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `--project` | `arrow-of-time` | Folder in `projects/` |
 | `--preset` | `final` | `final` (full resolution, motion blur) or `draft` (half resolution) |
 | `--scale` | preset's | Resolution multiplier; `2` renders 3840×2160 |
 | `--window A-B` | whole film | Re-render only the slices that touch seconds A to B and reuse the rest from the last render with the same preset and scale |
@@ -68,12 +67,13 @@ modal run tools/modal/studio.py --project arrow-of-time --scale 2 --release --va
 
 ## Caching
 
-Slices, soundtracks and outputs live in one Modal Volume (default `movies-studio`), under keys
+Slices, soundtracks and outputs live in one Modal Volume (default `arrow-of-time`), under keys
 hashed from the files that can change them:
 
-- **Video**: the engine, the project's code, shaders, timeline and assets, the render tools and
-  the lockfile. A project's Markdown, `score.py` and `poster.jpg` don't count.
-- **Audio**: `audio/studio/`, the project's `score.py` and `timeline.json`, and `requirements.txt`.
+- **Video**: the engine, the film's code, shaders and timeline, the assets, the render tools and
+  the lockfile. The film's Markdown and `score.py` don't count.
+- **Audio**: `audio/studio/`, the film's `score.py` and `timeline.json`, the Apollo 11 recording,
+  and `requirements.txt`.
 
 So a run with nothing changed renders nothing, a score-only change re-synthesizes the audio and
 re-muxes, and `--window` re-renders one sequence after you edit its shot. `--window` trusts you:
@@ -88,8 +88,8 @@ publishing.
   that name already exists without the marker, the run stops rather than write into it.
 - Render containers are capped (`STUDIO_MODAL_MAX_CONTAINERS`, default 40), so a render never
   takes all of your workspace's concurrency.
-- Names are configurable: `STUDIO_MODAL_APP` (default `movies-studio`) and
-  `STUDIO_MODAL_VOLUME` (default `movies-studio`).
+- Names are configurable: `STUDIO_MODAL_APP` (default `arrow-of-time`) and
+  `STUDIO_MODAL_VOLUME` (default `arrow-of-time`).
 
 ## Cost and time
 
@@ -101,11 +101,11 @@ actually spent.
 Measured on *The Arrow of Time* v0.4 (5:38, 8,112 frames, 1080p with motion blur): its 43
 slices rendered in 9 minutes on 43 containers at once, for about $1.00, and joining them plus the
 1080p, 720p and poster encodes took another 5 minutes and $0.10. The slowest slice sets the pace:
-most finished within 5 minutes, but the ray-marched Moon landing takes about 8 s a frame (v0.3,
-without the ray-marched scenes, rendered in 4 minutes for $0.85). From v0.6 the space race
-(3:30 to 4:00) is the heaviest stretch, 8 to 12 s a frame on a software renderer, so its slices
-set the pace: `--slice-seconds 4` halves the wait for about the same cost. Rough numbers for a
-five-minute film:
+most finished within 5 minutes, but the ray-marched Moon landing took about 8 s a frame (v0.3,
+without the ray-marched scenes, rendered in 4 minutes for $0.85). Since v1.0 the space race
+(3:31 to 4:06) is the heaviest stretch, 8 to 12 s a frame on a software renderer, so its slices
+set the pace: `--slice-seconds 4` halves the wait for about the same cost. Rough numbers for the
+film:
 
 | Render | Compute | Wall-clock time |
 | --- | --- | --- |
@@ -136,10 +136,12 @@ slices waste money.
 Old slices and renders accumulate in the volume. List and delete them with the Modal CLI:
 
 ```bash
-modal volume ls movies-studio arrow-of-time
-modal volume rm movies-studio arrow-of-time/final-x1/slices --recursive
-modal volume delete movies-studio        # everything (the next run recreates it)
+modal volume ls arrow-of-time
+modal volume rm arrow-of-time final-x1/slices --recursive
+modal volume delete arrow-of-time        # everything (the next run recreates it)
 ```
+
+Renders made before v1.0 used a volume called `movies-studio`; it can be deleted the same way.
 
 ## Troubleshooting
 
