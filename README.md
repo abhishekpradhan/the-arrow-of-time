@@ -79,8 +79,8 @@ npm run audio        # synthesize the score -> out/audio/score.wav
 npm run render       # render the film      -> out/renders/the-arrow-of-time-final-latest.mp4
 ```
 
-With a GPU the film renders in well under an hour; on a CPU alone it takes several hours, which is
-what [Modal](docs/modal.md) is for.
+With a GPU the final 1080p render takes about half an hour; on a CPU alone it takes several
+hours, which is what [Modal](docs/modal.md) is for.
 
 | Command | What it does |
 | --- | --- |

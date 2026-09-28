@@ -235,9 +235,10 @@ over the image, letterbox framing, and transitions between shots.
 - `npm run render -- --preset draft`: half resolution, no motion blur (about 16 min for the 6:12
   film at 720p with motion blur on a Mac's GPU; hours on a 4-core CPU).
 - `npm run render`: final 1080p, x264 CRF 17 `slow`, Rec.709, AAC 320k. Outputs
-  `out/renders/the-arrow-of-time-final-<stamp>.mp4` and `...-final-latest.mp4`. The 5:18 cut took
-  1 h 23 min with `--workers 2` on a 4-core CPU (motion blur on), before the ray-marched space
-  race; the master is about 1 GB because film grain is expensive to encode.
+  `out/renders/the-arrow-of-time-final-<stamp>.mp4` and `...-final-latest.mp4`. The v1.0 master
+  (6:12) took 31 min with `--workers 2` on a Mac's GPU (`MOVIES_BROWSER=chrome`) and is 1.6 GB,
+  because film grain is expensive to encode; the 5:18 cut took 1 h 23 min on a 4-core CPU, before
+  the ray-marched space race.
 - `npm run release` makes the distribution encodes in `out/release/` (1080p, 720p
   preview, poster, checksums; `--variants 2160p,...` from a 4K master). Check sync on the master
   first with `tools/check_sync.py`. Publish them as a GitHub Release; never commit video.
