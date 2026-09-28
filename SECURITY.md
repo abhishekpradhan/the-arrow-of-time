@@ -21,4 +21,6 @@ reproduce it, and its impact. You should get a first response within a week.
   ephemeral app and cache volume. Keep tokens in `modal setup`'s config, environment variables or
   GitHub Actions secrets, never in the repository.
 - Workflows use the repository's `GITHUB_TOKEN` with the least permissions they need
-  (`contents: write` only for publishing releases).
+  (`contents: write` only for publishing releases). The *Render on Modal* workflow runs only
+  when the repository's owner starts it by hand; CI, which runs on pull requests, uses no
+  secrets.

@@ -22,7 +22,10 @@ publish the result as a GitHub Release.
 1. Create a Modal token in the [Modal dashboard](https://modal.com/settings/tokens) (or run
    `modal token new`).
 2. **To render from GitHub** (recommended), add two repository secrets under *Settings → Secrets
-   and variables → Actions*: `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`.
+   and variables → Actions*: `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`. The workflow runs only
+   when the repository's owner starts it by hand, and GitHub never passes the secrets to forks or
+   pull requests, so no one else can spend your Modal credits. In a fork, it runs on the fork
+   owner's account with the fork's own secrets.
 3. **To render from your machine**, install the client into the project's virtual environment
    and log in once:
 

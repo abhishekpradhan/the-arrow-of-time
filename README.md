@@ -10,6 +10,7 @@ engine, and every note of the score is synthesized in Python.
 [![CI](https://github.com/abhishekpradhan/the-arrow-of-time/actions/workflows/ci.yml/badge.svg)](https://github.com/abhishekpradhan/the-arrow-of-time/actions/workflows/ci.yml)
 [![Film: CC BY 4.0](https://img.shields.io/badge/film-CC%20BY%204.0-lightgrey.svg)](film/LICENSE.md)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/abhishekpradhan)
 
 ![Frames from The Arrow of Time](docs/frames.jpg)
 
@@ -138,7 +139,8 @@ translations and remixes of the film under its license. See [CONTRIBUTING.md](CO
 
 ## Credits and license
 
-*The Arrow of Time* is by Abhishek Pradhan.
+*The Arrow of Time* is by Abhishek Pradhan. If it moved you, you can
+[buy me a coffee](https://buymeacoffee.com/abhishekpradhan).
 
 - **The film** (the video and its soundtrack, stills, and the words it speaks) is licensed under
   [CC BY 4.0](film/LICENSE.md). Share it, re-cut it, translate it, remix it, commercially too,
