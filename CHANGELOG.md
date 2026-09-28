@@ -6,6 +6,15 @@ it. Releases start with v1.0 and are published on the
 here becomes the release notes. The working cuts before it (v0.1 to v0.4) are recorded below. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### The repository
+
+- `AGENTS.md` holds the conventions and pitfalls, for people and coding agents alike; `CLAUDE.md`
+  is a symlink to it, for agents that look for that name.
+- The *Render on Modal* workflow runs only when the repository's owner starts it.
+- A Buy Me a Coffee link (`.github/FUNDING.yml` and the README).
+
 ## [v1.0] - 2026-09-28
 
 The finished film: 6:12, from the Big Bang to the end of time, and the repository becomes the

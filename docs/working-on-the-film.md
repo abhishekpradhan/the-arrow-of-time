@@ -1,7 +1,7 @@
 # Working on the film
 
 Everything that makes *The Arrow of Time* is in [`film/`](../film/). This guide explains each part
-and how to change it without breaking the rest. [CLAUDE.md](../CLAUDE.md) has the conventions in
+and how to change it without breaking the rest. [AGENTS.md](../AGENTS.md) has the conventions in
 full, with every pitfall the film has hit.
 
 ```text

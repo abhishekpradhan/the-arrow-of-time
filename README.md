@@ -125,7 +125,7 @@ timeline.json ──► project.ts ──► shots (GLSL, sprites, ray marching)
 | [Rendering](docs/rendering.md) | Presets, GPU and CPU rendering, performance, 4K |
 | [Rendering on Modal](docs/modal.md) | Parallel cloud renders, caching, costs, the GitHub workflow |
 | [Releasing](docs/releasing.md) | Distribution encodes and GitHub Releases |
-| [CLAUDE.md](CLAUDE.md) | Conventions and hard-won pitfalls, for people and AI assistants alike |
+| [AGENTS.md](AGENTS.md) | Conventions and hard-won pitfalls, for people and coding agents alike (`CLAUDE.md` links to it) |
 
 ## Contributing
 

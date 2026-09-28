@@ -53,7 +53,7 @@ score and checks its hits and cuts against the timeline.
 
 ### Conventions
 
-[CLAUDE.md](CLAUDE.md) lists the conventions and every pitfall this code has hit. The short
+[AGENTS.md](AGENTS.md) lists the conventions and every pitfall this code has hit. The short
 version:
 
 - Timing belongs in `film/timeline.json`, never in shot code or the score.
