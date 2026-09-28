@@ -24,8 +24,9 @@ const IMAX: [number, number, number, number][] = [
   [cues.bang - 0.02, cues.bang + 0.5, beat('bigbang').end, beat('bigbang').end + 2.5],
   [cues.milkyWayReveal - 0.8, cues.milkyWayReveal + 1.0, cues.supernova - 1.8, cues.supernova + 0.2],
   [cues.asteroidImpact - 0.1, cues.asteroidImpact + 0.4, cues.asteroidImpact + 3.0, cues.asteroidImpact + 5.0],
-  // Space: the frame opens as the rocket climbs out of the clouds and stays open to the Moon.
-  [cues.clouds + 0.1, cues.clouds + 1.0, beat('nightearth').start - 0.6, beat('nightearth').start + 0.8],
+  // Space: the frame opens as the rocket climbs out of the clouds and stays open to the Moon,
+  // closing through the slow dissolve home to night Earth.
+  [cues.clouds + 0.1, cues.clouds + 1.0, beat('nightearth').start - 1.2, beat('nightearth').start + 1.4],
   [cues.redGiantSwell - 0.5, cues.redGiantSwell + 1.5, cues.redGiantSwell + 7.2, cues.redGiantSwell + 9.2],
   [beat('blackholes').start - 0.5, beat('blackholes').start + 1.5, cues.lastFlash + 2.1, cues.lastFlash + 4.1],
 ];
@@ -43,11 +44,11 @@ function letterbox(t: number) {
 function scrimAt(t: number): Pick<Look, 'scrim' | 'scrimCenter' | 'scrimRadius'> {
   let best = { scrim: 0, scrimCenter: [0.5, 1.0] as [number, number], scrimRadius: [1.1, 0.42] as [number, number] };
   type Card = { t: number; until?: number; layout?: LayoutSpec };
-  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec; captionDelay?: number; montage?: Card[] }[]) {
+  for (const b of T.beats as { start: number; end: number; card: string; layout?: LayoutSpec; captionDelay?: number; captionUntil?: number; montage?: Card[] }[]) {
     if (b.card !== 'chapter' && b.card !== 'montage') continue;
     const s0 = b.start + (b.captionDelay ?? 0);
-    // A montage's last card may leave before its beat ends (the space sequence plays on without text).
-    const e0 = b.montage?.[b.montage.length - 1].until ?? b.end;
+    // A card may leave before its beat ends (the space sequence and the Moon play on without text).
+    const e0 = b.captionUntil ?? b.montage?.[b.montage.length - 1].until ?? b.end;
     const s = keys(t, [[s0, 0], [s0 + 1.0, 1, 'inOutSine'], [e0 - 1.0, 1], [e0, 0, 'inOutSine']]);
     if (s * 0.8 > best.scrim) {
       // A montage card may sit somewhere else than its beat's layout: follow the current card.

@@ -1,5 +1,5 @@
 // Typography for The Arrow of Time: every caption is generated from timeline.json.
-import { drawText, ease, lifeOf, type TextItem, type TextStyle } from '@engine';
+import { drawText, ease, fontString, lifeOf, type TextItem, type TextStyle } from '@engine';
 import T from './timeline.json';
 
 export const STYLE = {
@@ -63,6 +63,11 @@ type Beat = (typeof T.beats)[number] & {
   layout?: LayoutSpec;
   /** Seconds to hold the card back (let an event play before the text arrives). */
   captionDelay?: number;
+  /** When the card leaves, if before its beat ends (film seconds). */
+  captionUntil?: number;
+  /** A line with line breaks arrives a line at a time, this many seconds apart (a quotation read
+   * at the pace it was spoken). */
+  lineStagger?: number;
   /** Fast cards; each may override the beat's `layout` to sit clear of its scene. */
   montage?: { t: number; until?: number; year?: number; era: string; title: string; layout?: LayoutSpec }[];
 };
@@ -110,12 +115,15 @@ export function scrimFor(p: Place): { center: [number, number]; radius: [number,
  */
 function chapter(b: Beat): TextItem {
   const start = b.start + 0.5 + (b.captionDelay ?? 0);
-  const end = b.end - 0.25;
+  const end = b.captionUntil ?? b.end - 0.25;
   const place = placeOf(b.layout);
   const lines: { text: string; style: TextStyle; delay: number; gap: number; mode: 'blur' | 'letters' | 'fade' }[] = [];
   if (b.era) lines.push({ text: b.era, style: STYLE.era, delay: 0, gap: 0, mode: 'blur' });
   if (b.title) lines.push({ text: b.title, style: STYLE.title, delay: b.era ? 0.35 : 0, gap: b.era ? 66 : 0, mode: 'letters' });
-  if (b.line) lines.push({ text: b.line, style: STYLE.line, delay: b.title ? 1.1 : 0.6, gap: b.title ? 58 : b.era ? 54 : 0, mode: 'blur' });
+  b.line?.split('\n').forEach((text, i) => {
+    const gap = i > 0 ? 46 : b.title ? 58 : b.era ? 54 : 0;
+    lines.push({ text, style: STYLE.line, delay: (b.title ? 1.1 : 0.6) + i * (b.lineStagger ?? 1.2), gap, mode: 'blur' });
+  });
   // Baselines relative to the first line, and the block's ink extent (design px).
   const baselines: number[] = [];
   lines.reduce((y, l) => (baselines.push(y + l.gap), y + l.gap), 0);
@@ -136,7 +144,14 @@ function chapter(b: Beat): TextItem {
         if (t < s0) return;
         const y = y0 + baselines[i] * L.s;
         const life = lifeOf(t, s0, end, l.mode === 'letters' ? 1.6 : 1.1, 0.9);
-        drawText(ctx, l.text, x, y, l.style, L.s, place.align, {
+        // Hanging punctuation: a quotation's opening mark sits out in the margin, so the words of
+        // every line (and the era above) share one left edge.
+        let hang = 0;
+        if (place.align === 'left' && /^[\u201c\u2018]/.test(l.text)) {
+          ctx.font = fontString(l.style, L.s);
+          hang = ctx.measureText(l.text[0]).width + (l.style.tracking ?? 0) * l.style.size * L.s;
+        }
+        drawText(ctx, l.text, x - hang, y, l.style, L.s, place.align, {
           inP: life.inP,
           outP: life.outP,
           lifeP: life.lifeP,

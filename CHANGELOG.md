@@ -30,7 +30,8 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
   ground, sunrise arcs from orbit, the colour of sunlight at any point
   ([docs/engine.md](docs/engine.md#atmosphere)).
 - The Arrow of Time v0.6: the space race in 3D, from the R-7 climbing out of the clouds to Sputnik
-  in an orbital sunrise and Apollo 11's landing and first step.
+  in an orbital sunrise and Apollo 11's landing, held in silence under Armstrong's call before a
+  slow dissolve home to the Earth of today.
 
 ### Changed
 

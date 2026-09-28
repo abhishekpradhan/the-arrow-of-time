@@ -124,6 +124,30 @@ def quindar(f: float) -> np.ndarray:
     return flt.HP(300)(flt.LP(3400)(x, 0.0), 0.0)
 
 
+def radio(dur: float, seed: int = 0) -> np.ndarray:
+    """A voice loop from the Moon as Houston heard it, without the voice (the caption carries the
+    words): the squelch opens with a click and a burst of noise, the carrier hisses under the
+    words (band-limited like the radio, fluttering, crackling now and then) and the squelch closes
+    with a longer burst."""
+    from studio.core import fade, tvec
+    r = rng('radio', seed)
+    n = ns(dur)
+    t = tvec(n)
+    flutter = 1.0 + 0.3 * np.sin(2 * np.pi * 0.9 * t + r.uniform(0.0, 6.3)) * np.sin(2 * np.pi * 0.31 * t + 1.0)
+    x = r.standard_normal(n).astype(F32) * flutter.astype(F32) * 0.09
+    pops = r.integers(0, n, size=int(dur * 12))
+    x[pops] += r.uniform(-0.5, 0.5, size=pops.shape[0]).astype(F32)
+    for at, length, amp in ((0.0, 0.07, 0.5), (dur - 0.17, 0.17, 0.45)):
+        a, m = ns(at), ns(length)
+        k = np.linspace(0.0, 1.0, m, dtype=np.float64)
+        env = (1.0 - k) ** 2 if at == 0.0 else np.minimum(1.0, k * 12.0) * (1.0 - k) ** 1.5
+        x[a:a + m] += (r.standard_normal(m) * env * amp).astype(F32)
+    for at in (0.0, dur - 0.012):
+        x[ns(at):ns(at) + 24] += np.hanning(24).astype(F32) * 0.8
+    x = fade(x, 0.002, 0.01)
+    return flt.HP(300)(flt.LP(3000)(x, 0.0), 0.0)
+
+
 def theme_line(score, track, bars, start, beat, synth, gain_db=0.0, shape=None, legato=0.15):
     """Play theme bars with ``synth(note, dur, k)`` (k = index), notes overlapping slightly."""
     for k, (t, note, d) in enumerate(theme_events(bars, start, beat)):
@@ -162,7 +186,7 @@ class Score:
         # the clock must read through the loudest passages: carve room for each tick there
         self.sched = self.tick_schedule()
         loud = {k for k, (boost, _) in TICK_BOOST.items() if boost >= 7.0}
-        carve_times = [t for t, *_ in self.sched if (tl.beat_at(t) and tl.beat_at(t).id in loud)]
+        carve_times = [t for t, _, _, far, _ in self.sched if not far and (tl.beat_at(t) and tl.beat_at(t).id in loud)]
         carve = lambda: fx.Carve(carve_times, depth_db=6.0)  # noqa: E731
         self.clock = T('clock', gain_db=-8, fx=[flt.HP(250)], sends={'room': -10, 'hall': -22}, group='clock')
         self.clock_far = T('clock_far', gain_db=-8, fx=[flt.HP(250)], sends={'room': -10, 'hall': -10, 'cathedral': -16},
@@ -287,10 +311,17 @@ class Score:
             u1 = np.clip((t - a0) / (top - a0), 0, 1)
             u2 = np.clip((t - top) / (now - top), 0, 1)
             return np.where(t <= top, r1 ** u1, r1 * (r2 / r1) ** u2)
-        # silent from the clouds (the ascent above them, orbit, the Moon) until night Earth
-        quiet = (c('clouds') - 0.05, B('nightearth').start - 0.05)
+        # silent from the clouds (the ascent above them, orbit, the Moon) until the dissolve from
+        # the Moon to night Earth (shots/apollo.ts), where it comes back from far away
+        ne0 = B('nightearth').start
+        back = ne0 - 1.2
+        quiet = (c('clouds') - 0.05, back - 0.05)
         self.accel_ticks = [t for t in pulses(a0, now, rate) if t < now - 0.03 and not quiet[0] <= t < quiet[1]]
-        runs.append([(t, 0.5 + 0.4 * (t - a0) / (now - a0), False) for t in self.accel_ticks])
+        def vel(t):
+            v = 0.5 + 0.4 * (t - a0) / (now - a0)
+            u = min(1.0, max(0.0, (t - back) / (ne0 + 1.5 - back)))
+            return v * (0.2 + 0.8 * u * u) if t >= back else v
+        runs.append([(t, vel(t), back <= t < ne0) for t in self.accel_ticks])
         res, Ls, last = c('resumeTick'), B('laststars'), c('lastTick')
         runs.append([(res, 0.5, True)])
         steady = pulses(res + 1.5, Ls.start, 1.0)
@@ -872,9 +903,11 @@ class Score:
         mechanical string ostinato with anvil clangs, a steam whistle and chuffing (industry,
         flight), then Trinity: a deep thud and a hush, rebuilt by a riser through the countdown.
         The crescendo runs straight into the ignition (no pause), where :meth:`space` takes over
-        until night Earth, the peak, which rushes on into the hard cut at NOW."""
+        until night Earth: out of the Moon's stillness the clock comes back from far away, and
+        the whole orchestra with it, building from the reflection's A minor to the peak, which
+        rushes on into the hard cut at NOW."""
         civ, ml, ne = self.B('civilization'), self.B('moonlanding'), self.B('nightearth')
-        a0, step, now, launch = self.cue('accelStart'), self.cue('moonStep'), self.cue('now'), self.cue('launch')
+        a0, now, launch = self.cue('accelStart'), self.cue('now'), self.cue('launch')
         if not self.want(a0, now):
             return
         self.sec('ascent')
@@ -896,8 +929,9 @@ class Score:
         # a long crescendo, hushed for a moment by the Trinity flash, running straight into the
         # ignition
         cres = [(a0, -12), (pyramids, -7), (industry, -4), (atom - 0.05, -3), (atom + 0.35, -10), (mont[-1], -6),
-                (launch - 0.1, -1), (launch + 0.6, 1), (staging - 0.3, 1), (staging + 0.5, -16), (ne.start - 0.5, -8),
-                (ne.start, 0), (now, 1)]
+                (launch - 0.1, -1), (launch + 0.6, 1), (staging - 0.3, 1), (staging + 0.5, -16)]
+        # night Earth grows out of the reflection on the Moon (see space()) to the peak at NOW
+        nres = [(ne.start - 0.5, -16), (ne.start + 1.5, -8), (ne.start + 4.5, -1), (now, 1)]
         # organ: soft (farming) -> principal (pyramids on) -> full from the launch
         o_steps = [(t, *CORE[ch]) for t, ch in plan]
         self.organ_prog([st for st in o_steps if st[0] < pyramids], pyramids + 0.2, 'soft', attack=0.4, release=0.6,
@@ -908,15 +942,16 @@ class Score:
         self.organ_prog([(t, b, u + up(u[-1:])) for t, b, u in o_steps if launch <= t < ne.start], staging + 0.3,
                         'full', attack=0.05, release=1.2, shape=cres, pedal='pedal', seed=415)
         self.organ_prog([(t, b, u + up(u[-1:])) for t, b, u in o_steps if t >= ne.start], now + 0.5, 'full',
-                        attack=0.05, release=0.4, shape=cres, pedal='pedal', seed=416)
+                        attack=0.4, release=0.4, shape=nres, pedal='pedal', seed=416)
         # sustained strings and choir from Philosophy (the same split)
-        for part, end in (([st for st in plan if mont[4] <= st[0] < ne.start], staging + 0.3), (night, now + 0.5)):
-            self.string_prog([(t, None, up(CORE[ch][1])) for t, ch in part], end, attack=0.3, release=0.5, shape=cres,
+        for part, end, shp in (([st for st in plan if mont[4] <= st[0] < ne.start], staging + 0.3, cres),
+                               (night, now + 0.5, nres)):
+            self.string_prog([(t, None, up(CORE[ch][1])) for t, ch in part], end, attack=0.3, release=0.5, shape=shp,
                              gain_db=-5, bright=4200, seed=420)
             c_steps = [(t, up(CORE[ch][1])) for t, ch in part]
             for (t, notes), nxt in zip(c_steps, [st[0] for st in c_steps[1:]] + [end - 0.2]):
                 self.put(self.choir, t, ins.choir(notes + [CORE[chord_at(t)][0]], nxt - t, 'a', attack=0.15, release=0.4,
-                                                  voices=4, seed=int(t * 10)), -4, shape=cres)
+                                                  voices=4, seed=int(t * 10)), -4, shape=shp)
 
         # farming to writing: pastoral plucked arpeggios (16ths) and hand drums on the clock
         arp_of = {'Am': 'Am', 'F': 'F', 'C': 'C', 'G': 'G/B'}
@@ -927,8 +962,13 @@ class Score:
             vel = round((0.42 + 0.2 * u) * (1.0 if j % 4 == 0 else 0.72), 2)
             x = self.cached(('carp', note, vel), lambda: ins.pluck(note, 1.2, vel, bright=0.6, seed=j % 3))
             self.put(self.pluck, t, x, -4, pan=-0.3 if j % 2 else 0.3)
-        # ticks: hand drums early, taiko toms later, a heavier pulse from the landing
+        # ticks: hand drums early, taiko toms later; after space, the clock comes back alone
+        # through the dissolve from the Moon, its drums from night Earth on (growing, with a
+        # heavier pulse from the second chord)
+        full = ne.start + 1.5
         for i, t in enumerate(ticks):
+            if ml.start <= t < ne.start:
+                continue
             u = (t - a0) / span
             vt = round(min(0.95, 0.3 + 0.6 * u), 2)
             if t < pyramids:
@@ -940,8 +980,8 @@ class Score:
                 f = 95.0 if i % 2 else 120.0
                 x = self.cached(('ctom', f, vt), lambda: ins.drum(f, vt, decay=0.3, drop=0.35, noise=0.15,
                                                                    noise_lp=1500.0, seed=2))
-                self.put(self.perc, t, x, -10 + 4 * u, pan=-0.25 if i % 2 else 0.25)
-            if t >= ml.start and i % 2 == 0:
+                self.put(self.perc, t, x, -10 + 4 * u - 10.0 * max(0.0, (full - t) / 1.5), pan=-0.25 if i % 2 else 0.25)
+            if t >= full and i % 2 == 0:
                 self.put(self.perc, t, self.cached(('ctaiko', vt), lambda: ins.taiko(vt, 1.0, seed=5)), -6)
 
         # an accent on every age: taiko (+ low taiko once monumental), boom, brass and string stabs
@@ -963,8 +1003,8 @@ class Score:
             if t < printing:
                 continue
             nxt = ticks[i + 1] if i + 1 < len(ticks) else now
-            if nxt - t > 1.0:
-                continue   # the clock's silence in space
+            if nxt - t > 1.0 or ml.start <= t < full:
+                continue   # the clock's silence in space, and its return
             u = (t - a0) / span
             offs = [0.5, 0.75] if nxt - t > 0.52 else [0.5]
             for h, frac in enumerate(offs):
@@ -1020,13 +1060,14 @@ class Score:
         self.put(self.sfx, launch - 1.5, ins.reverse_swell(1.5, 1.2, 0.9, seed=73), -10)
         self.roll(launch - 2.0, launch - 0.08, 'A2', 0.15, 0.9, gain_db=-4, seed=7)
 
-        # night Earth: brass on every change, a riser into the cut
-        for k in range(4):
+        # night Earth: brass on every change after the first (the A minor grows out of the Moon's
+        # reflection), louder each time, and a riser into the cut
+        for k in range(1, 4):
             t = ne.start + 1.5 * k
             ch = CYCLE[k % 4]
             self.put(self.brass, t, ins.brass(TRIAD[ch] + up(TRIAD[ch][:1]), 1.5, attack=0.06, release=0.3, vel=1.0,
-                                              bright=1.2, seed=90 + k), 0)
-            self.put(self.perc, t, ins.taiko(1.0, 1.4, seed=30 + k), -2)
+                                              bright=1.2, seed=90 + k), [-7, -3, 0][k - 1])
+            self.put(self.perc, t, ins.taiko(1.0, 1.4, seed=30 + k), [-8, -5, -2][k - 1])
         self.put(self.sfx, ne.start + 2.0, ins.riser(now - ne.start - 2.0, 200.0, 9000.0, q=1.4, vel=1.0, seed=6), -9)
         self.put(self.sfx, ne.start + 2.0, ins.shepard(now - ne.start - 2.0, 0.4, 1.6, vel=1.0, seed=2), -9)
 
@@ -1038,11 +1079,14 @@ class Score:
         holding bar 4's D over them as the limb pales, and the sunrise (orbitalDawn) breaks in C
         major with bar 5 as the camera swings round the blazing satellite; bar 6's high A arrives
         with the Moon. The descent: a low pulse, Houston's Quindar tones, the engine and the dust,
-        all rising until eagleLands, where everything stops dead (a cut in the mix). A breath of
-        silence, a quiet chord, a horn's held D; and the first step (moonStep): bar 3 in full over
-        C major, its D passing into night Earth."""
+        all rising until eagleLands, where everything stops dead (a cut in the mix). Silence; the
+        pads settle; Armstrong's call (tranquilityBase) is the hiss of the voice loop under its
+        caption. Then the reflection (cue reflection): the theme's first two bars on a far piano,
+        slow, over Fmaj7 and G6, as the camera looks up from the lander to the Earth; their last
+        note, A, becomes the A minor of night Earth."""
         launch, clouds, staging = self.cue('launch'), self.cue('clouds'), self.cue('staging')
-        sput, dawn, lands, step = self.cue('sputnik'), self.cue('orbitalDawn'), self.cue('eagleLands'), self.cue('moonStep')
+        sput, dawn, lands = self.cue('sputnik'), self.cue('orbitalDawn'), self.cue('eagleLands')
+        call, rf = self.cue('tranquilityBase'), self.cue('reflection')
         ml, ne = self.B('moonlanding'), self.B('nightearth')
         if not self.want(launch, ne.start):
             return
@@ -1160,40 +1204,27 @@ class Score:
             self.put(self.sfx, a, self.cached(('quindar', 0), lambda: quindar(2525.0)), -16)
             self.put(self.sfx, b, self.cached(('quindar', 1), lambda: quindar(2475.0)), -16)
 
-        # ---- landed: a breath of silence, a quiet chord, a horn's held D; then the first step
-        calm = lands + 0.55
-        self.put(self.strings, calm, ins.strings(['C3', 'G3', 'D4', 'E4', 'G4'], step - calm + 0.3, attack=1.2,
-                                                 release=0.5, voices=6, vibrato=9, bright=3000, seed=118), -9,
-                 shape=[(calm, -6), (step - 0.2, 0)])
-        self.put(self.brass, calm + 0.7, ins.brass(['D4'], step - calm - 0.7, attack=0.8, release=0.3, vel=0.6,
-                                                   bright=0.7, seed=119), -9)
-        self.roll(step - 1.0, step - 0.04, 'G2', 0.1, 0.85, gain_db=-4, seed=120)
-        self.put(self.sfx, step - 1.3, ins.reverse_swell(1.3, 1.2, 1.0, seed=121), -9)
-        # the step: bar 3 in full over C major; its closing D, over G, passes into night Earth
-        b4 = step + 4 * q
-        self.put(self.perc, step, ins.timpani('C3', 1.0, seed=122), -1)
-        self.put(self.boom, step, ins.sub_boom(4.0, 70.0, 33.0, 0.3, 1.2, 0.6, click=0.3, seed=80), -4)
-        self.put(self.sfx, step, ins.noise_burst(3.5, 16000.0, 3000.0, 1.2, 0.8, 0.35, seed=81), -13)
-        self.put(self.brass, step, ins.brass(['C3', 'G3', 'C4', 'E4', 'G4'], b4 - step, attack=0.12, release=0.6, vel=1.0,
-                                             bright=1.0, seed=9), -1)
-        self.put(self.brass, b4, ins.brass(['B2', 'D3', 'G3', 'B3', 'D4'], ne.start - b4 + 0.3, attack=0.2, release=0.5,
-                                           vel=0.95, bright=1.0, seed=10), -2)
-        self.put(self.choir, step, ins.choir(['C3', 'G3', 'C4', 'E4', 'G4'], b4 - step + 0.2, 'a', attack=0.1, release=1.0,
-                                             voices=5, seed=123), -2)
-        self.put(self.choir, b4, ins.choir(['G2', 'D3', 'G3', 'B3', 'D4'], ne.start - b4 + 0.4, 'a', attack=0.2,
-                                           release=0.6, voices=5, seed=124), -3)
-        self.organ_prog([(step, 'C2', ['G3', 'C4', 'E4', 'G4']), (b4, 'G1', ['G3', 'B3', 'D4', 'G4'])], ne.start + 0.2,
-                        'full', attack=0.05, release=0.4, gain_db=-3, pedal='pedal', seed=125)
-        theme_line(self, self.brass, [3], step, q,
-                   lambda n, d, k: ins.brass([up([n], -1)[0], n], d, attack=0.06, release=0.4, vel=1.0, bright=1.15,
-                                             seed=380 + k), 0)
-        theme_line(self, self.lead, [3], step, q,
-                   lambda n, d, k: ins.strings([n, up([n])[0]], d, attack=0.08, release=0.5, voices=7, vibrato=16,
-                                               bright=6200, seed=390 + k), -2)
-        self.put(self.brass, b4, ins.brass(['D4', 'D5'], ne.start - b4 + 0.35, attack=0.06, release=0.4, vel=1.0,
-                                           bright=1.15, seed=384), 0)
-        self.put(self.lead, b4, ins.strings(['D5', 'D6'], ne.start - b4 + 0.35, attack=0.08, release=0.5, voices=7,
-                                            vibrato=16, bright=6200, seed=394), -2)
+        # ---- landed: silence (the cut); the pads settle; Armstrong calls Houston over the hiss of
+        # the loop, his words in the caption
+        settle = lands + math.sqrt(1 / 1.62) / 2.2       # the lander drops onto its pads (apollo.ts)
+        self.put(self.boom, settle, ins.sub_boom(1.4, 58.0, 36.0, 0.05, 0.4, 0.3, click=0.15, seed=118), -14)
+        self.put(self.sfx, call + 0.4, radio(rf - 0.2 - call - 0.4, seed=1), -4)
+        # ---- the reflection: the theme's first two bars, slow, on a far piano, the camera looking
+        # up from the lander to the Earth; bar 2 comes with the Earth, over G6, and its last note
+        # (A) is the root of night Earth's A minor
+        rq = (ne.start - rf) / 8.0
+        b2 = rf + 4 * rq
+        vels = [0.45, 0.38, 0.42, 0.46, 0.4]
+        theme_line(self, self.piano_far, [1, 2], rf, rq,
+                   lambda n, d, k: ins.piano(n, d + 1.4, vel=vels[k], tone=0.6, seed=120 + k), -5)
+        self.string_prog([(rf + 0.15, 'F2', ['C3', 'A3', 'E4']), (b2, 'G2', ['D3', 'B3', 'E4'])], ne.start + 0.5,
+                         attack=1.8, release=1.2, gain_db=-10, bright=2600, voices=6, vibrato=7, seed=121,
+                         shape=[(rf, -4), (b2, -2), (ne.start, 0)])
+        self.put(self.choir, b2, ins.choir(['G3', 'B3', 'E4'], ne.start - b2 + 0.8, 'u', attack=1.6, release=1.0,
+                                           voices=4, seed=122), -13, shape=[(b2, -12), (ne.start, 0)])
+        # the E held high over it all (the pedal of the core progression), as the Earth appears
+        self.put(self.glass, b2 - 0.5, ins.glass('E6', ne.start - b2 + 1.6, attack=1.5, release=1.0, vel=0.4,
+                                                 seed=123), -11)
 
     def now(self):
         """NOW: silence after the hard cut; single piano notes with long reverb at

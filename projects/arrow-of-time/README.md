@@ -1,6 +1,6 @@
 # The Arrow of Time
 
-*The history and future of everything, from the first instant to the last.* 5:55, 1920×1080,
+*The history and future of everything, from the first instant to the last.* 5:59, 1920×1080,
 24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
 
 ![Frames from the film](poster.jpg)
@@ -34,10 +34,10 @@ at itself. See `MUSIC.md` for the score design.
 | 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
 | 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
 | 3:06 | Civilization | twelve thousand years as one day, dawn to night: the first harvest, Uruk, a scribe writing cuneiform, Giza, the Acropolis, Gutenberg's press, a mill town and its railway, the Wright Flyer, Trinity |
-| 3:30 | The Space Race | the R-7 launching Sputnik: up through the clouds and across the Moon, the boosters falling away, Sputnik released into an orbital sunrise; Apollo 11 landing on the Sea of Tranquility and the first step; Earth at night |
-| 4:05 | Now | the pale blue dot, and silence |
-| 4:13 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
-| 4:59 | The End | the last stars, the black hole era, evaporation, the end of time |
+| 3:30 | The Space Race | the R-7 launching Sputnik: up through the clouds and across the Moon, the boosters falling away, Sputnik released into an orbital sunrise; Apollo 11 landing on the Sea of Tranquility, a silence under Armstrong's call, and a look up to the Earth; Earth at night |
+| 4:09 | Now | the pale blue dot, and silence |
+| 4:17 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
+| 5:03 | The End | the last stars, the black hole era, evaporation, the end of time |
 | 5:33 | Epilogue | "That moment is now." |
 
 ## Visual techniques
@@ -103,9 +103,10 @@ at itself. See `MUSIC.md` for the score design.
   of craters of every size and scattered stones, the regolith lit with Lommel-Seeliger
   scattering and the opposition surge by a Sun 10 degrees up, as it was that morning; its
   exhaust tears a radial sheet of dust off the plain until the engine stops and the dust is
-  simply gone. The astronaut (an A7L suit with its backpack and gold visor, posed from joints by
-  two-bone IK) climbs down the ladder, hops onto the footpad and steps off, and the camera rises
-  to find him by the lander, the real Earth in the black sky.
+  simply gone. Then the film holds still on the lander in the silence while Armstrong's call
+  comes in over the radio's hiss (his words arrive in the caption a line at a time), and the
+  camera drifts round and looks up to the real Earth in the black sky, gibbous as it was that
+  day, and closes in on it as it dissolves into the Earth of today.
 - **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
   nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
   friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.

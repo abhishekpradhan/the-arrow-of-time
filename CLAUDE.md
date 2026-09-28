@@ -68,9 +68,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `shots/sputnik.ts`, `shots/apollo.ts`): planet-sized things are traced in kilometres from the
   camera's position relative to the planet's centre (`uCamP`, `uCamAlt`) and small ones (the
   R-7, Sputnik) in metres relative to the camera, each only inside its bounding sphere; the
-  Moon landing marches a baked two-level height field (`lunar.glsl`), the lander (`lm.glsl`) and
-  an astronaut posed from joints by two-bone IK (`astronaut.glsl`), over a `Planet` Earth drawn
-  first (premultiplied alpha).
+  Moon landing marches a baked two-level height field (`lunar.glsl`) and the lander (`lm.glsl`)
+  over a `Planet` Earth drawn first (premultiplied alpha).
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
   documented on `PlanetParams`; `opacity` fades one out). Colliding or overlapping planets need `depthTest: true`;
@@ -84,7 +83,8 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   copying it.
 - **Captions** sit in each shot's negative space: set `layout` on a beat in `timeline.json`
   (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or
-  `{ "at": ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first. The
+  `{ "at": ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first (`captionUntil` takes it away early; a `line`
+  with `\n` in it arrives a line at a time, `lineStagger` seconds apart). The
   scrim follows the card (`Look.scrimCenter/scrimRadius`). If a card collides with the subject,
   reframe the shot (`Camera.pan`, target offsets) rather than squeezing the text. Review
   layouts with a sheet of one frame per beat.

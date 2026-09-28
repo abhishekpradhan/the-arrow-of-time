@@ -200,7 +200,7 @@ function arcData() {
 
 function nightEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites; arcs: Sprites }> {
   return {
-    ...span('nightearth', { dIn: 1.0, dOut: 0 }),
+    ...span('nightearth', { dIn: 3.0, dOut: 0 }),
     async setup(e) {
       const maps = await loadEarth(e);
       return {
@@ -222,7 +222,8 @@ function nightEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites; arcs: S
     render(c, s) {
       const t = c.time - beat('nightearth').start;
       const yaw = (-30 * Math.PI) / 180 - t * 0.012;
-      s.cam.set({ pos: [0.2, 0.9, keys(t, [[-1, 2.9], [7, 2.55, 'inOutSine']])], target: [0.05, 0.38, 0] });
+      // Coming in from the Moon's Earth through the dissolve, then settling.
+      s.cam.set({ pos: [0.2, 0.9, keys(t, [[-1.5, 3.3], [7, 2.55, 'outSine']])], target: [0.05, 0.38, 0] });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       const tilt = 0.0;
       const rot: Mat4 = m4.mul(m4.rotateZ(tilt), m4.rotateY(yaw));

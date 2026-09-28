@@ -9,7 +9,8 @@ a cue there and both picture and music follow.
 A ticking clock is the heartbeat of the film. The tempo of the clock *is* the pace of
 events. It ticks calmly before the Big Bang and falls silent in the blast. It returns as the
 universe organizes, then **accelerates** through human history up to NOW, where it cuts dead
-(it falls silent above the clouds as the rocket leaves the Earth, and comes back at night Earth).
+(it falls silent above the clouds as the rocket leaves the Earth, and comes back from far away as
+the Moon dissolves into night Earth).
 It resumes for the future and **slows down** as the stars die, until the last tick at the
 heat death. After a long silence, one final soft tick ends the film.
 
@@ -26,7 +27,7 @@ cinematic, emotional and uncluttered.
   It is the thread through the film, in a different voice each time: horns and violins for the
   main title, violins over the Milky Way, a distant piano over the young oceans, violins at the
   mammals' dawn, solo piano for the first humans, the full orchestra from the rocket launch
-  through Sputnik's sunrise to the first step on the Moon, a
+  through Sputnik's sunrise, a far, slow piano as the camera looks up from the Moon to the Earth, a
   Lydian (major) variation over Mars, violins at the galaxy merger, and piano into the final
   Picardy chord.
 - **Ending**: a Picardy third. The final chord is **A major** (C sharp), which lands on "That moment is now."
@@ -89,22 +90,23 @@ integrated, −1 dBTP**. 48 kHz stereo.
 | **221.6** | `sputnik` | orbit: near silence, the fairing's muffled thump; Sputnik's beeps (a 0.3 s tone every 0.6 s, thin as a shortwave signal) until the Moon; a glass harmonica holds bar 4's D; strings, a riser and a timpani roll build to the dawn |
 | **224.2** | `orbitalDawn` | the Sun breaks over the limb in **C major** (choir, organ, strings, brass, timpani, a shimmer): **theme bar 5** as the camera swings round the blazing Sputnik, **bar 6**'s high A on F major as the Moon arrives (227), then fading |
 | 229.6–232.2 | moonlanding | the descent: a low pulse on the quarter (timpani and string stabs), a tense string cluster, Houston's Quindar tones (2525 Hz in, 2475 Hz out), the engine's rumble and the hiss of the dust, a riser and growling brass, all rising into |
-| **232.2** | `eagleLands` | **HARD CUT TO SILENCE** as the engine stops; half a second later a quiet C chord and a horn's held D |
-| **235.2** | `moonStep` | the first step: **theme bar 3** in full over C major (brass, violins, choir, organ, timpani, boom); its closing D, over G, passes into night Earth |
-| 239–245 | nightearth | the clock returns; peak intensity: brass on every chord change, riser into the cut |
-| **245.0** | `now` | **HARD CUT TO SILENCE** |
-| 246–253 | now | single soft piano notes with long reverb: A4 at `blueDot` (246), E5 at 249 |
-| 253.5 | `resumeTick` | one tick; tick-tock resumes slowly |
-| 257–271 | mars, drift | hopeful A major with a Lydian D sharp, slow arpeggios, and the **theme turned major** |
-| 271–277 | hotearth | tension: warm low drone, creeping dissonance (added b6) |
-| 277–285 | redgiant | **huge, heavy, dark**: low brass and organ pedal, swell from `redGiantSwell` |
-| 285–291 | whitedwarf | delicate crystalline bells and a soft pad |
-| 291–299 | merger | the last grand swell: strings and choir, **theme bars 5–6** in the violins |
-| 299–307 | laststars | thinning; **one fading, descending bell per `starDeaths` time**; ticks slowing (60 → 30 BPM) |
-| 307–315 | blackholes | deep sub drone, eerie low detuned choir |
-| 315–323 | evaporation | faint rising shimmer; **bright bell and choir flash plus soft boom at `lastFlash`** |
-| 323–333 | heatdeath | near silence; ticks at ever-longer intervals; **last tick at `lastTick`** |
-| 333–346 | epilogue | soft organ Am returns, strings enter; **theme bars 1–3** on piano |
-| **346.4** | `picardy` | **A major** blooms (strings, organ, choir): "That moment is now." |
-| 350.4–354 | `finalTitle` | the final chord sustains and fades |
-| 354.2 | `finalTick` | one final, soft tick |
+| **232.2** | `eagleLands` | **HARD CUT TO SILENCE** as the engine stops; a soft, low thud as the lander drops onto its pads |
+| 233.4 | `tranquilityBase` | Armstrong's call (in the caption): the squelch of the voice loop opens, its hiss runs under his words, and it closes |
+| **236.6** | `reflection` | a moment of reflection as the camera looks up from the lander to the Earth: **theme bars 1–2** on a far piano, slowed to fill the time to night Earth, over Fmaj7 and then G6 in soft strings; a choir and a glass harmonica's high E enter with bar 2 as the Earth appears; its last note, A, becomes night Earth's A minor |
+| 241.8–249 | nightearth | the clock comes back from far away through the dissolve from the Moon, its drums from the A minor on; the orchestra builds out of the reflection to peak intensity: brass on every chord change after the first, louder each time, riser into the cut |
+| **249.0** | `now` | **HARD CUT TO SILENCE** |
+| 250–257 | now | single soft piano notes with long reverb: A4 at `blueDot` (250), E5 at 253 |
+| 257.5 | `resumeTick` | one tick; tick-tock resumes slowly |
+| 261–275 | mars, drift | hopeful A major with a Lydian D sharp, slow arpeggios, and the **theme turned major** |
+| 275–281 | hotearth | tension: warm low drone, creeping dissonance (added b6) |
+| 281–289 | redgiant | **huge, heavy, dark**: low brass and organ pedal, swell from `redGiantSwell` |
+| 289–295 | whitedwarf | delicate crystalline bells and a soft pad |
+| 295–303 | merger | the last grand swell: strings and choir, **theme bars 5–6** in the violins |
+| 303–311 | laststars | thinning; **one fading, descending bell per `starDeaths` time**; ticks slowing (60 → 30 BPM) |
+| 311–319 | blackholes | deep sub drone, eerie low detuned choir |
+| 319–327 | evaporation | faint rising shimmer; **bright bell and choir flash plus soft boom at `lastFlash`** |
+| 327–337 | heatdeath | near silence; ticks at ever-longer intervals; **last tick at `lastTick`** |
+| 337–350 | epilogue | soft organ Am returns, strings enter; **theme bars 1–3** on piano |
+| **350.4** | `picardy` | **A major** blooms (strings, organ, choir): "That moment is now." |
+| 354.4–358 | `finalTitle` | the final chord sustains and fades |
+| 358.2 | `finalTick` | one final, soft tick |

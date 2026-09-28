@@ -1,9 +1,8 @@
 // The Moon, 1969 (shots/apollo.ts): Eagle comes down on the Sea of Tranquility in the low
 // morning Sun, its exhaust tearing a sheet of dust off the surface that streams away in straight
-// lines (no air to hold it up); at cue eagleLands the engine stops and the dust is simply gone.
-// Then the first step (cue moonStep): a boot on the footpad, the step down into the powder, and
-// the camera rising to find the astronaut by the lander, the Earth in the black sky. The Earth is
-// drawn beforehand (the Planet component); this pass leaves the sky transparent.
+// lines (no air to hold it up); at cue eagleLands the engine stops and the dust is simply gone,
+// and the lander stands alone on the plain, the Earth in the black sky above. The Earth is drawn
+// beforehand (the Planet component); this pass leaves the sky transparent.
 // Metres, the landing site at the origin, y up.
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime;
@@ -11,13 +10,11 @@ uniform vec2 uRes; uniform float uAspect, uGTime;
 #include <color>
 #include <arrow-of-time/lunar>
 #include <arrow-of-time/lm>
-#include <arrow-of-time/astronaut>
 
 uniform vec3 uLmPos;        // the lander's frame origin in the world
 uniform mat3 uLmRot;        // world -> the lander's frame
 uniform vec4 uDust;         // the dust sheet: centre (x, z), strength, film seconds since it began
 uniform float uSunE;        // sunlight (irradiance)
-uniform float uAstroOn;     // 1 when the astronaut is in the scene
 
 const vec3 SUN_C = vec3(1.0, 0.97, 0.92);
 
@@ -27,11 +24,6 @@ float objects(vec3 p, out float mat, out int id) {
   float d = lmMap(uLmRot * (p - uLmPos), m);
   mat = m;
   id = 1;
-  if (uAstroOn > 0.5) {
-    float ma;
-    float da = astroMap(p, ma);
-    if (da < d) { d = da; mat = ma; id = 2; }
-  }
   return d;
 }
 float objectsD(vec3 p) { float m; int id; return objects(p, m, id); }
@@ -41,15 +33,14 @@ vec3 objNormal(vec3 p, float e) {
   return normalize(k.xyy * objectsD(p + k.xyy * e) + k.yyx * objectsD(p + k.yyx * e) + k.yxy * objectsD(p + k.yxy * e) + k.xxx * objectsD(p + k.xxx * e));
 }
 
-// Shadow of the lander and the astronaut on anything (a hard-edged sun, a narrow penumbra), with
-// Inigo Quilez's improved soft shadow (MIT License), free of the simple estimate's terraces.
+// Shadow of the lander on anything (a hard-edged sun, a narrow penumbra), with Inigo Quilez's
+// improved soft shadow (MIT License), free of the simple estimate's terraces.
 float objShadow(vec3 p, vec3 l) {
-  // Only rays that pass near the lander or the astronaut need marching.
+  // Only rays that pass near the lander need marching.
   vec2 b = raySphere(p, l, uLmPos + vec3(0.0, 3.2, 0.0), 7.0);
-  vec2 b2 = uAstroOn > 0.5 ? raySphere(p, l, uAstroBase + vec3(0.0, 1.0, 0.0), 1.3) : vec2(-1.0);
-  if (b.y < 0.0 && b2.y < 0.0) return 1.0;
+  if (b.y < 0.0) return 1.0;
   float res = 1.0, t = 0.02, ph = 1e10;
-  float tmax = max(b.y, b2.y);
+  float tmax = b.y;
   for (int i = 0; i < 64; i++) {
     float h = objectsD(p + l * t);
     float y = h * h / (2.0 * ph);
@@ -143,7 +134,7 @@ vec3 shadeGround(vec3 p, vec3 rd, float dist) {
   return col;
 }
 
-// ------------------------------------------------------------------ the lander and astronaut
+// ------------------------------------------------------------------ the lander
 // Crinkled foil: flat facets a few centimetres across, each tilted its own way (Voronoi cells in
 // the surface), so the sunlight breaks into glints; broad soft wrinkles over them.
 vec3 foilNormal(vec3 n, vec3 p, float scale) {
@@ -223,17 +214,14 @@ vec3 shadeObject(vec3 p, vec3 rd, float mat, int id, float dist, float pix) {
       spec = 0.4;
     }
   }
-  vec3 extra = vec3(0.0);
-  if (id == 2) astroMaterial(p, n, rd, mat, alb, spec, rough, specC, extra);
   float ndl = max(dot(n, l), 0.0);
   vec3 h = normalize(l + v);
-  float ao = id == 2 ? astroAO(p, n) : 1.0;
   vec3 col = alb * SUN_C * uSunE * ndl * sh;
   col += specC * SUN_C * uSunE * sh * spec * pow(max(dot(n, h), 0.0), rough) * (rough + 8.0) / 60.0;
   // Fill from the sunlit ground below (the Moon reflects about an eighth of the light), and
   // from nothing above (the sky is black).
-  col += alb * vec3(0.1, 0.098, 0.094) * uSunE * saturate(-n.y * 0.6 + 0.45) * ao;
-  return col + extra * uSunE;
+  col += alb * vec3(0.1, 0.098, 0.094) * uSunE * saturate(-n.y * 0.6 + 0.45);
+  return col;
 }
 
 // ------------------------------------------------------------------ the dust sheet
@@ -285,56 +273,19 @@ vec4 dustSheet(vec3 ro, vec3 rd, float tmax) {
   return vec4(sum, 1.0 - trans);
 }
 
-// ------------------------------------------------------------------ the step's dust
-// Kicked up where the boot comes down: grains flung out on clean parabolas that fall straight
-// back (no air to hold them), gone within a second.
-uniform float uStepT;       // seconds since the boot touched down (< 0 before)
-uniform vec3 uStepAt;       // where it came down
-
-vec4 stepDust(vec3 ro, vec3 rd, float tmax, float pix) {
-  if (uStepT < 0.0 || uStepT > 1.4) return vec4(0.0);
-  vec3 acc = vec3(0.0);
-  float cover = 0.0;
-  for (int i = 0; i < 160; i++) {
-    vec3 h = hash31(float(i) * 7.13 + 1.7);
-    // Mostly thrown forward and out to the sides of the boot, low.
-    float ang = h.x * TAU;
-    float v = 0.25 + 0.9 * h.y * h.y;
-    float el = 0.15 + 0.6 * h.z;
-    vec3 vel = vec3(cos(ang) * cos(el), sin(el), sin(ang) * cos(el)) * v;
-    float t = uStepT * (0.85 + 0.3 * fract(h.x * 13.0));
-    vec3 pos = uStepAt + vec3(cos(ang), 0.0, sin(ang)) * 0.1 + vel * t - vec3(0.0, 0.81 * t * t, 0.0);
-    if (pos.y < uStepAt.y - 0.02) continue;
-    vec2 cp = rayPointDist(ro, rd, pos);
-    if (cp.y > tmax) continue;
-    // Each grain is far below a pixel: spread it over the pixel it falls in (flux conserved), with
-    // a faint halo of the finer powder travelling with it.
-    float r = max(0.003, pix * cp.y * 0.8);
-    float a = exp(-cp.x * cp.x / (r * r)) * min(1.0, 0.004 / r) * 0.9;
-    a += exp(-cp.x * cp.x / 0.0015) * 0.055;
-    a = min(a, 0.8) * smoothstep(1.4, 0.9, uStepT);
-    acc += (1.0 - cover) * a * vec3(0.2, 0.195, 0.185) * SUN_C * uSunE;
-    cover += (1.0 - cover) * a;
-  }
-  return vec4(acc, cover);
-}
-
 void main() {
   vec2 p = centered(vUv, uAspect);
   vec3 rd = camRay(p);
   vec3 ro = uCamPos;
   float pix = pixelAngle(uRes.y);
 
-  // The objects: march within the lander's (and astronaut's) bounds.
+  // The lander: march within its bounds.
   float tObj = -1.0, mat = 0.0;
   int id = 0;
   vec2 bl = raySphere(ro, rd, uLmPos + vec3(0.0, 3.2, 0.0), 6.8);
-  vec2 ba = uAstroOn > 0.5 ? raySphere(ro, rd, uAstroBase + vec3(0.0, 1.0, 0.0), 1.3) : vec2(-1.0);
-  float oa = 1e9, ob = -1e9;
-  if (bl.y > 0.0) { oa = min(oa, bl.x); ob = max(ob, bl.y); }
-  if (ba.y > 0.0) { oa = min(oa, ba.x); ob = max(ob, ba.y); }
+  float ob = bl.y;
   if (ob > 0.0) {
-    float t = max(oa, 0.0);
+    float t = max(bl.x, 0.0);
     for (int i = 0; i < 140; i++) {
       float m; int k;
       float d = objects(ro + rd * t, m, k);
@@ -359,8 +310,5 @@ void main() {
   vec4 dust = dustSheet(ro, rd, tHit);
   col = col * (1.0 - dust.a) + dust.rgb;
   alpha = max(alpha, dust.a);
-  vec4 kick = stepDust(ro, rd, tHit, pix);
-  col = col * (1.0 - kick.a) + kick.rgb;
-  alpha = max(alpha, kick.a);
   fragColor = vec4(col, alpha);
 }
