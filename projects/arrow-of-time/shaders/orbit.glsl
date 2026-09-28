@@ -169,6 +169,19 @@ float hardware(vec3 p, out int id, out float mat) {
 }
 float hardwareD(vec3 p) { int id; float m; return hardware(p, id, m); }
 
+// The same without Sputnik's ball, for shadow rays: a smooth sphere shades itself through n.l,
+// and marching it against itself only draws bands at its terminator. Its antennas still cast.
+float shadowD(vec3 p) {
+  vec3 q = uSatRot * (p - uSat);
+  float m;
+  float ant = sputnikD(q, m);
+  ant = m > 0.5 ? ant : max(ant, BALL + 0.002 - length(q));
+  float d = max(ant, 0.0005 - (length(q) - BALL));
+  d = min(d, r7Core(uStageRot * (p - uStage), 1.0));
+  for (int i = 0; i < 2; i++) d = min(d, fairingHalf(uFairRot[i] * (p - uFair[i])));
+  return d;
+}
+
 vec3 hwNormal(vec3 p, float e) {
   const vec2 k = vec2(1.0, -1.0);
   return normalize(k.xyy * hardwareD(p + k.xyy * e) + k.yyx * hardwareD(p + k.yyx * e) + k.yxy * hardwareD(p + k.yxy * e) + k.xxx * hardwareD(p + k.xxx * e));
@@ -181,7 +194,7 @@ vec3 hwNormal(vec3 p, float e) {
 float hwShadow(vec3 p, vec3 l) {
   float res = 1.0, t = 0.04, ph = 1e10;
   for (int i = 0; i < 48; i++) {
-    float h = hardwareD(p + l * t);
+    float h = shadowD(p + l * t);
     float y = h * h / (2.0 * ph);
     float d = sqrt(max(h * h - y * y, 0.0));
     res = min(res, 30.0 * d / max(0.0, t - y));
@@ -209,13 +222,18 @@ vec3 shadeHardware(vec3 p, vec3 rd, int id, float mat, float dist, float pix) {
   vec3 P = uCamP + p * 0.001;
   vec3 sunC = uSunE * atmoLight(P, uSunDir);
   vec3 moonC = uMoonE * atmoLight(P, uMoonDir);
-  float shS = dot(n, uSunDir) > 0.0 && dot(sunC, sunC) > 1e-6 ? hwShadow(p + n * 0.03, uSunDir) : 0.0;
-  float shM = dot(n, uMoonDir) > 0.0 ? hwShadow(p + n * 0.03, uMoonDir) : 0.0;
+  bool ball = id == 0 && mat < 0.5;
+  float shS = dot(n, uSunDir) > 0.0 && dot(sunC, sunC) > 1e-6 && !ball ? hwShadow(p + n * 0.03, uSunDir) : 0.0;
+  float shM = dot(n, uMoonDir) > 0.0 && !ball ? hwShadow(p + n * 0.03, uMoonDir) : 0.0;
   // Light from the Earth below: moonlit cloud at night, and at dawn a little sunlit haze.
   vec3 down = -normalize(uCamP);
   float fromEarth = saturate(dot(n, down) * 0.5 + 0.5);
   vec3 earthshine = (uMoonE * 0.35 + uSunE * 0.04 * smoothstep(-0.3, -0.2, dot(normalize(uCamP), uSunDir))) * fromEarth;
   if (id == 0 && mat < 0.5) {
+    // (The ball takes no shadows: the stage is gone by sunrise, and the antennas' thin shadows
+    // across a curved mirror read as streaks, not as shadows.)
+    shS = step(0.0, dot(n, uSunDir));
+    shM = step(0.0, dot(n, uMoonDir));
     // Polished aluminium: a mirror of the Earth and the sky, with a little haze from the
     // machining (a broad lobe round the reflection) that lights a crescent on the side facing a
     // low Sun, where a perfect mirror would show a glint too small to see.

@@ -189,7 +189,9 @@ export function sputnik(): Shot<{ cam: Camera; sky: Sprites; maps: EarthMaps; at
       // (The spent stage falls behind; once the camera turns away from it, it is gone.)
       const stageTail = v3.add(v3.sub(L.top, v3.scale(L.axis, 24.5)), [0, time > cues.orbitalDawn - 0.4 ? 1e4 : 0, 0]);
       const camP: Vec3 = [cam.pos[0] / 1000, R + ALT + cam.pos[1] / 1000, cam.pos[2] / 1000];
-      s.sky.draw(s.cam, time, {}, { sky: true });
+      // The stars fade as the Sun comes up: an exposure for sunlit metal cannot hold them.
+      const stars = keys(time, [[cues.orbitalDawn - 0.2, 1], [cues.orbitalDawn + 0.6, 0.12, 'inOutSine'], [T_SWING + 0.3, 0.12], [T_MOON - 0.4, 0.5, 'inOutSine']]);
+      s.sky.draw(s.cam, time, {}, { sky: true, brightness: stars });
       c.gl.enable(c.gl.BLEND);
       c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
       c.fullscreen(c.e.program('#include <arrow-of-time/orbit>', 'orbit'), {
