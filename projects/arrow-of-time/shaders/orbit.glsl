@@ -125,12 +125,14 @@ vec3 skyAndEarth(vec3 rd, bool full, float pix, out vec3 trans) {
 // A fairing half in its own frame: a thin conical shell on the core's top ring (y = 0 at the
 // ring, the tip 4.6 m up), the half with z > 0.
 float fairingHalf(vec3 p) {
+  // (Seated just outside the stage's top ring and clipped at its base, so the two surfaces
+  // never overlap.)
   vec2 q = vec2(length(p.xz), p.y);
-  vec2 a = vec2(1.14, 0.0), b = vec2(0.1, 4.6);
+  vec2 a = vec2(1.19, 0.02), b = vec2(0.1, 4.6);
   vec2 e = b - a, w = q - a;
   vec2 k = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
-  float shell = length(k) - 0.035;
-  return max(shell, -p.z);
+  float shell = length(k) - 0.03;
+  return max(max(shell, -p.z), 0.02 - p.y);
 }
 
 // Sputnik: the sphere (with the seam of its two halves and the antenna mounts) and the four
@@ -169,17 +171,12 @@ float hardware(vec3 p, out int id, out float mat) {
 }
 float hardwareD(vec3 p) { int id; float m; return hardware(p, id, m); }
 
-// The same without Sputnik's ball, for shadow rays: a smooth sphere shades itself through n.l,
-// and marching it against itself only draws bands at its terminator. Its antennas still cast.
+// What casts shadows: Sputnik alone (on the stage beside it). The stage's and the fairing's
+// thin shells only add ragged penumbrae in the dim moonlight, and the ball takes none itself.
+uniform float uSatShadow;   // 1 once Sputnik is out in the open
 float shadowD(vec3 p) {
-  vec3 q = uSatRot * (p - uSat);
   float m;
-  float ant = sputnikD(q, m);
-  ant = m > 0.5 ? ant : max(ant, BALL + 0.002 - length(q));
-  float d = max(ant, 0.0005 - (length(q) - BALL));
-  d = min(d, r7Core(uStageRot * (p - uStage), 1.0));
-  for (int i = 0; i < 2; i++) d = min(d, fairingHalf(uFairRot[i] * (p - uFair[i])));
-  return d;
+  return uSatShadow > 0.5 ? sputnikD(uSatRot * (p - uSat), m) : 1e3;
 }
 
 vec3 hwNormal(vec3 p, float e) {

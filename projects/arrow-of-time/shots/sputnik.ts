@@ -107,7 +107,7 @@ function turn(d: Vec3, az: number, el: number): Vec3 {
 }
 
 /** The swing round Sputnik ends, and the camera turns up to the Moon. */
-const T_SWING = cues.orbitalDawn + 2.2;
+const T_SWING = cues.orbitalDawn + 1.9;
 const T_MOON = beat('moonlanding').start + 0.2;
 
 /**
@@ -125,7 +125,7 @@ function cameraAt(time: number, top: Vec3): { pos: Vec3; target: Vec3; fov: numb
   const around = (t: number) => {
     const sun = sunAt(t);
     const st = layout(t).sat;
-    const az = keys(t, [[cues.sputnik + 1.4, -30], [cues.orbitalDawn + 0.2, -18, 'inOutSine'], [T_SWING, -158, 'inOutSine']]) * DEG;
+    const az = keys(t, [[cues.sputnik + 1.4, -30], [cues.orbitalDawn + 0.2, -18, 'inOutSine'], [T_SWING, -142, 'inOutSine']]) * DEG;
     const el = keys(t, [[cues.orbitalDawn + 0.2, 7], [T_SWING, -9, 'inOutSine']]) * DEG;
     const view = turn(sun, az, el);
     const pos = v3.sub(st, v3.scale(view, 2.5));
@@ -137,12 +137,12 @@ function cameraAt(time: number, top: Vec3): { pos: Vec3; target: Vec3; fov: numb
   const k3Tgt = v3.add(k2.pos, v3.scale(MOON, 2.5));
   const w1 = keys(time, [[cues.sputnik - 0.2, 0], [cues.sputnik + 1.6, 1, 'inOutSine']]);
   const w2 = keys(time, [[cues.sputnik + 1.5, 0], [cues.orbitalDawn - 0.4, 1, 'inOutSine']]);
-  const w3 = keys(time, [[T_SWING - 0.1, 0], [T_MOON - 0.5, 1, 'inOutSine']]);
+  const w3 = keys(time, [[T_SWING - 0.35, 0], [T_MOON - 0.35, 1, 'inOutSine']]);
   let pos = v3.lerp(k0Pos, k1Pos, w1), tgt = v3.lerp(k0Tgt, k1Tgt, w1);
   pos = v3.lerp(pos, k2.pos, w2);
   tgt = v3.lerp(tgt, k2.target, w2);
   tgt = v3.lerp(tgt, k3Tgt, w3);
-  const fov = Math.exp(keys(time, [[cues.sputnik - 0.2, Math.log(42)], [cues.sputnik + 1.6, Math.log(36), 'inOutSine'], [T_SWING, Math.log(36)], [T_MOON, Math.log(3.2), 'inOutCubic']]));
+  const fov = Math.exp(keys(time, [[cues.sputnik - 0.2, Math.log(42)], [cues.sputnik + 1.6, Math.log(36), 'inOutSine'], [T_SWING + 0.1, Math.log(36)], [T_MOON, Math.log(3.2), 'inOutCubic']]));
   return { pos, target: tgt, fov };
 }
 
@@ -169,7 +169,7 @@ export function sputnik(): Shot<{ cam: Camera; sky: Sprites; maps: EarthMaps; at
     end: beat('moonlanding').start + 0.4,
     fadeIn: 0.8,
     fadeOut: 0.8,
-    motionBlur: (time) => (time > cues.orbitalDawn + 0.2 && time < T_SWING + 0.2 ? 5 : 2),
+    motionBlur: (time) => (time > cues.orbitalDawn + 0.2 && time < T_MOON - 0.2 ? 5 : 2),
     async setup(e) {
       return {
         cam: new Camera({ fov: 42, near: 0.001, far: 1e5 }),
@@ -189,8 +189,9 @@ export function sputnik(): Shot<{ cam: Camera; sky: Sprites; maps: EarthMaps; at
       // (The spent stage falls behind; once the camera turns away from it, it is gone.)
       const stageTail = v3.add(v3.sub(L.top, v3.scale(L.axis, 24.5)), [0, time > cues.orbitalDawn - 0.4 ? 1e4 : 0, 0]);
       const camP: Vec3 = [cam.pos[0] / 1000, R + ALT + cam.pos[1] / 1000, cam.pos[2] / 1000];
-      // The stars fade as the Sun comes up: an exposure for sunlit metal cannot hold them.
-      const stars = keys(time, [[cues.orbitalDawn - 0.2, 1], [cues.orbitalDawn + 0.6, 0.12, 'inOutSine'], [T_SWING + 0.3, 0.12], [T_MOON - 0.4, 0.5, 'inOutSine']]);
+      // The stars fade as the Sun comes up: an exposure for sunlit metal (and then for the
+      // Moon) cannot hold them.
+      const stars = keys(time, [[cues.orbitalDawn - 0.2, 1], [cues.orbitalDawn + 0.6, 0.1, 'inOutSine']]);
       s.sky.draw(s.cam, time, {}, { sky: true, brightness: stars });
       c.gl.enable(c.gl.BLEND);
       c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
@@ -221,6 +222,7 @@ export function sputnik(): Shot<{ cam: Camera; sky: Sprites; maps: EarthMaps; at
         uSat: rel(L.sat),
         uSatRot: L.satRot,
         uSweep: L.sweep,
+        uSatShadow: time > cues.sputnik + 0.2 ? 1 : 0,
         uR7Boosters: 0,
       });
       c.gl.disable(c.gl.BLEND);
