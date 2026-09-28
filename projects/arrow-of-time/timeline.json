@@ -43,7 +43,7 @@
         { "t": 208.8, "year": 1945, "era": "1945", "title": "The Atom", "layout": "upper-left" },
         { "t": 210.3, "until": 214.2, "year": 1957, "era": "1957", "title": "Space", "layout": "upper-left" }
       ] },
-    { "id": "moonlanding", "act": "human", "start": 227, "end": 239, "card": "chapter", "layout": "upper-left", "captionDelay": 7.7, "era": "1969", "line": "We set foot on another world." },
+    { "id": "moonlanding", "act": "human", "start": 227, "end": 239, "card": "chapter", "layout": "upper-right", "captionDelay": 7.7, "era": "1969", "line": "We set foot on another world." },
     { "id": "nightearth", "act": "human", "start": 239, "end": 245, "card": "chapter", "layout": "upper-left", "era": "Today", "line": "Eight billion of us." },
     { "id": "now", "act": "now", "start": 245, "end": 253, "card": "chapter", "era": "Now", "line": "Everything you have ever known." },
     { "id": "turn", "act": "future", "start": 253, "end": 257, "card": "whisper", "layout": "lower", "line": "But the clock keeps ticking." },

@@ -121,15 +121,15 @@ float lmMap(vec3 p, out float mat) {
   mid = max(mid, dot(p - vec3(0.0, 5.4, -0.75), normalize(vec3(0.0, 1.0, -0.35))));
   float aft = sdBox(p - vec3(0.0, 4.45, -1.65), vec3(0.95, 0.5, 0.4));
   // Propellant tanks bulging from the flanks.
-  // (Flattened, faceted by their blankets.)
-  float tanks = min(sdEllipsoid(p - vec3(1.15, 3.8, -0.55), vec3(0.42, 0.5, 0.62)), sdEllipsoid(p - vec3(-1.15, 3.8, -0.55), vec3(0.42, 0.5, 0.62)));
+  // (Flattened, under their blankets.)
+  float tanks = min(sdEllipsoid(p - vec3(1.1, 3.75, -0.55), vec3(0.34, 0.44, 0.56)), sdEllipsoid(p - vec3(-1.1, 3.75, -0.55), vec3(0.34, 0.44, 0.56)));
   float as = min(min(cab, mid), min(aft, tanks));
   if (as < d) {
     d = as;
     mat = 3.0;
     // Black: the front face round the windows and hatch, the lower flanks, the tank blankets.
     if (cab <= as + 1e-4 && (p.z > 1.0 || p.y < 3.9)) mat = 2.0;
-    if (tanks <= as + 1e-4 || (p.y < 3.6 && abs(p.x) > 0.9)) mat = 2.0;
+    if (p.y < 3.6 && abs(p.x) > 0.9 && tanks > as + 1e-4) mat = 2.0;
   }
   // Windows (dark glass), inset triangles in the front face.
   vec3 f = p - vec3(0.0, 4.72, 1.28);
@@ -137,8 +137,11 @@ float lmMap(vec3 p, out float mat) {
   float win = max(sdTriangle(wq, vec2(-0.3, -0.2), vec2(0.28, -0.2), vec2(0.28, 0.25)), abs(f.z + 0.03 * f.y) - 0.06);
   if (win < d + 0.004 && win < 0.01) { mat = 6.0; }
   // The forward hatch, a square outline below the windows.
-  // Docking tunnel on top.
+  // Docking tunnel on top, with its drogue ring; the two VHF antennas.
   float tun = sdCylinder(p - vec3(0.0, 5.7, -0.25), 0.42, 0.28);
+  tun = min(tun, sdTorus(p - vec3(0.0, 5.99, -0.25), 0.36, 0.035));
+  tun = min(tun, sdCapsule(p, vec3(0.55, 5.35, -1.1), vec3(0.75, 6.35, -1.3), 0.013));
+  tun = min(tun, sdCapsule(p, vec3(-0.55, 5.35, 0.1), vec3(-0.8, 6.2, 0.25), 0.013));
   if (tun < d) { d = tun; mat = 3.0; }
   // Rendezvous radar: a dish on a post over the front; S-band: a dish on a boom at the back.
   vec3 rr = p - vec3(0.0, 6.05, 0.75);
@@ -159,6 +162,12 @@ float lmMap(vec3 p, out float mat) {
     quad = min(quad, sdCapsule(cq, vec3(-0.3 * s.x, 0.0, 0.0), vec3(0.3 * s.x, 0.0, 0.0), 0.045));
     quad = min(quad, sdCapsule(cq, vec3(-0.45 * s.x, 0.0, 0.0), vec3(0.0), 0.03));
     rcs = min(rcs, quad);
+  }
+  // The plume deflectors on the descent stage's top corners, under the quads.
+  for (int i = 0; i < 4; i++) {
+    vec2 s = vec2(i == 0 || i == 3 ? 1.0 : -1.0, i < 2 ? 1.0 : -1.0);
+    vec3 dq = p - vec3(s.x * 1.5, 3.3, s.y * 1.0 - 0.2);
+    rcs = min(rcs, sdBox(dq, vec3(0.2, 0.015, 0.25)) - 0.005);
   }
   if (rcs < d) { d = rcs; mat = 8.0; }
   return d;

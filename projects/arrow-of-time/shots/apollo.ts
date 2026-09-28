@@ -104,13 +104,14 @@ function ik2(root: Vec3, goal: Vec3, a: number, b: number, pole: Vec3): Vec3 {
 }
 
 const LADDER_FOOT: Vec3 = [0, 0.26, 4.45];   // top of the front footpad
-const STEP_TO: Vec3 = [-0.42, 0.02, 4.85];   // where the left boot comes down
+const STEP_TO: Vec3 = [-0.5, 0.02, 4.72];    // where the left boot comes down
 
 /** The astronaut's joints (world) at film time: down the ladder, onto the pad, the step. */
 function astronaut(time: number) {
   const s = time - cues.moonStep;
   // Facing the lander (north, -z) on the ladder, turning a little out towards the plain.
-  const turn = keys(s, [[-1.0, 0], [0.8, 35 * DEG, 'inOutSine'], [3.6, 120 * DEG, 'inOutSine']]);
+  // (He turns out towards the plain on the pad, so the step is seen from the side.)
+  const turn = keys(s, [[-0.9, 0], [-0.1, 65 * DEG, 'inOutSine'], [3.6, 125 * DEG, 'inOutSine']]);
   const fwd: Vec3 = [Math.sin(turn) * -1, 0, -Math.cos(turn)];
   const right: Vec3 = v3.cross(fwd, [0, 1, 0]);
   // The feet: down the last rungs (a foot at a time), a slow hop off the bottom rung onto the
@@ -184,13 +185,14 @@ function stepCamera(time: number): { pos: Vec3; target: Vec3; fov: number } {
   };
 }
 
-/** Where the Earth hangs: up and to the left of the final view (a unit direction), and its angular
+/** Where the Earth hangs: up and to the left of the final view, in the western sky away from the
+ * Sun, so that it shows gibbous as it did on 20 July 1969 (a unit direction); and its angular
  * radius (its real 0.95 degrees, drawn 1.6 times larger). */
 const EARTH_DIR: Vec3 = (() => {
   const f = v3.norm(v3.sub(STEP_FAR.target, STEP_FAR.pos));
   const r = v3.norm(v3.cross(f, [0, 1, 0]));
   const u = v3.cross(r, f);
-  return v3.norm(v3.add(f, v3.add(v3.scale(u, Math.tan(14 * DEG)), v3.scale(r, Math.tan(19 * DEG)))));
+  return v3.norm(v3.add(f, v3.add(v3.scale(u, Math.tan(15 * DEG)), v3.scale(r, -Math.tan(21 * DEG)))));
 })();
 const EARTH_ANG = 0.95 * DEG * 1.6;
 
@@ -241,6 +243,9 @@ export function moonLanding(): Shot<{ planet: Planet; cam: Camera }> {
         uAstroBase: a.base,
         uFootDirL: v3.add(a.fwd, [0.2, 0, 0]),
         uFootDirR: a.fwd,
+        uAstroDust: Math.min(1, Math.max(0, (time - cues.moonStep) / 0.4)),
+        uStepT: time - cues.moonStep,
+        uStepAt: STEP_TO,
       });
       c.gl.disable(c.gl.BLEND);
     },
