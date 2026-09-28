@@ -64,7 +64,7 @@ type Beat = (typeof T.beats)[number] & {
   /** Seconds to hold the card back (let an event play before the text arrives). */
   captionDelay?: number;
   /** Fast cards; each may override the beat's `layout` to sit clear of its scene. */
-  montage?: { t: number; year?: number; era: string; title: string; layout?: LayoutSpec }[];
+  montage?: { t: number; until?: number; year?: number; era: string; title: string; layout?: LayoutSpec }[];
 };
 
 export interface Place {
@@ -156,7 +156,7 @@ function montage(b: Beat): TextItem[] {
     const at = placeOf((it.layout ?? b.layout) as LayoutSpec | undefined);
     const next = i + 1 < m.length ? m[i + 1].t : b.end;
     const start = it.t;
-    const end = next - 0.02;
+    const end = it.until ?? next - 0.02;
     const inDur = Math.min(0.35, (end - start) * 0.3);
     const outDur = Math.min(0.3, (end - start) * 0.25);
     return {

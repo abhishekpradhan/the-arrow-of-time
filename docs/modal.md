@@ -102,7 +102,9 @@ Measured on *The Arrow of Time* v0.4 (5:38, 8,112 frames, 1080p with motion blur
 slices rendered in 9 minutes on 43 containers at once, for about $1.00, and joining them plus the
 1080p, 720p and poster encodes took another 5 minutes and $0.10. The slowest slice sets the pace:
 most finished within 5 minutes, but the ray-marched Moon landing takes about 8 s a frame (v0.3,
-without the ray-marched scenes, rendered in 4 minutes for $0.85). Rough numbers for a
+without the ray-marched scenes, rendered in 4 minutes for $0.85). From v0.6 the space race
+(3:30 to 4:00) is the heaviest stretch, 8 to 12 s a frame on a software renderer, so its slices
+set the pace: `--slice-seconds 4` halves the wait for about the same cost. Rough numbers for a
 five-minute film:
 
 | Render | Compute | Wall-clock time |

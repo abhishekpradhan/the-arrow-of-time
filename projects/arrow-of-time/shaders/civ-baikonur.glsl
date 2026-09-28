@@ -2,13 +2,16 @@
 // "tulip", held at the waist by four arms over the flame pit, white under the searchlights whose
 // beams cross in the cold air, liquid-oxygen frost smoking down its flanks. Engineers watch from
 // the bunker's mound. At ignition (cue launch) fire and steam burst out of the pit and roll
-// across the steppe, the tulip's arms swing open as the rocket lifts, and the camera tilts up
-// after it on its column of flame. The film cuts to orbit (cue sputnik).
+// across the steppe, the tulip's arms swing open as the rocket lifts, and the camera cranes up
+// after it on its column of flame, into the broken cloud overhead: the rocket's fire lights the
+// cloud from inside, the frame fills with glowing cloud, and the film dissolves to the ray-marched
+// ascent above the deck (cue clouds, shots/ascent.ts).
 #include <arrow-of-time/civ-common>
 
 const float HY = -0.12;
 const vec3 INK = vec3(0.008, 0.009, 0.014);
 const vec3 FIRE = vec3(1.0, 0.6, 0.25);
+const float CEIL = 0.62;   // the cloud's base (mid-ground layer)
 uniform float uIgnite;   // seconds since ignition (< 0 before)
 uniform float uLift;     // how far the rocket has risen (mid-ground units)
 
@@ -158,5 +161,28 @@ vec3 scene(vec2 p) {
     d = min(d, sdFigure((q - b) / s, fp, vec4(0.6, 0.0, 0.0, 1.0), 1.1) * s);
   }
   col = mix(col, INK + FIRE * burn * 0.03, cover(d, PX));
+
+  // ---- the cloud overhead: a ragged base, dark but for the searchlights and, as the rocket
+  // climbs into it, its fire, which lights it from inside until the whole frame glows.
+  q = L(p, 1.0);
+  float edge = CEIL + 0.03 * fbm(vec2(q.x * 4.0, 1.3), 4) + 0.012 * sin(q.x * 7.0 + 1.0);
+  float inCloud = smoothstep(-0.012, 0.035, q.y - edge);
+  if (inCloud > 0.0) {
+    float n = fbm(q * vec2(5.0, 11.0) + vec2(uGTime * 0.03, 0.0), 5);
+    float n2 = fbm(q * vec2(16.0, 30.0) - vec2(uGTime * 0.05, 0.0), 3);
+    vec3 cl = vec3(0.035, 0.04, 0.055) * (0.55 + 0.9 * n) * (0.8 + 0.4 * n2);
+    // Where the searchlights meet it.
+    cl += vec3(0.6, 0.7, 0.85) * 0.12 * exp(-pow((q.x - rb.x) / 0.25, 2.0)) * (1.0 - burn * 0.8) * smoothstep(0.1, 0.0, q.y - edge);
+    // The fire: first a glow on the underside above the rising rocket, then (the rocket inside)
+    // the cloud lit all round from within, brightest at the flame.
+    float nose = rb.y + 0.352;
+    float near = smoothstep(edge - 0.4, edge + 0.05, nose);
+    float inside = smoothstep(edge + 0.1, edge + 0.4, rb.y);
+    vec2 f = q - vec2(rb.x, max(rb.y, edge + 0.02));
+    float df = length(f * vec2(0.8, 1.4));
+    float glow = near * (exp(-df * 5.0) * 1.6 + exp(-df * 1.6) * 0.35) + inside * (0.35 + 0.9 * exp(-df * 3.0));
+    cl += FIRE * burn * glow * (0.5 + 0.7 * n) * 1.6;
+    col = mix(col, cl, inCloud);
+  }
   return col;
 }

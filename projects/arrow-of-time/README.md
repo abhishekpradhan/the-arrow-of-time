@@ -1,6 +1,6 @@
 # The Arrow of Time
 
-*The history and future of everything, from the first instant to the last.* 5:38, 1920×1080,
+*The history and future of everything, from the first instant to the last.* 5:55, 1920×1080,
 24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
 
 ![Frames from the film](poster.jpg)
@@ -33,11 +33,12 @@ at itself. See `MUSIC.md` for the score design.
 | 1:20 | The Sun and Earth | collapsing nebula, protoplanetary disk, molten Earth, Theia impact and the Moon, oceans |
 | 2:00 | Life | deep-sea vent and the first cells, Great Oxidation, Snowball Earth, Cambrian seas, onto land, dinosaurs, the asteroid |
 | 2:46 | Humanity | mammals at dawn, the first people under the Milky Way, hand stencils |
-| 3:06 | Civilization | twelve thousand years as one day, dawn to night: the first harvest, Uruk, a scribe writing cuneiform, Giza, the Acropolis, Gutenberg's press, a mill town and its railway, the Wright Flyer, Trinity, the R-7 launching Sputnik; Sputnik in orbit; the first step on the Moon; Earth at night |
-| 3:48 | Now | the pale blue dot, and silence |
-| 3:56 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
-| 4:42 | The End | the last stars, the black hole era, evaporation, the end of time |
-| 5:16 | Epilogue | "That moment is now." |
+| 3:06 | Civilization | twelve thousand years as one day, dawn to night: the first harvest, Uruk, a scribe writing cuneiform, Giza, the Acropolis, Gutenberg's press, a mill town and its railway, the Wright Flyer, Trinity |
+| 3:30 | The Space Race | the R-7 launching Sputnik: up through the clouds and across the Moon, the boosters falling away, Sputnik released into an orbital sunrise; Apollo 11 landing on the Sea of Tranquility and the first step; Earth at night |
+| 4:05 | Now | the pale blue dot, and silence |
+| 4:13 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
+| 4:59 | The End | the last stars, the black hole era, evaporation, the end of time |
+| 5:33 | Epilogue | "That moment is now." |
 
 ## Visual techniques
 
@@ -83,15 +84,28 @@ at itself. See `MUSIC.md` for the score design.
   Gutenberg's window over the town; a mill town at dusk, a train crossing the viaduct while a
   horse still tows a narrowboat below; the Wright Flyer against the last of the light (a small
   3D model projected obliquely so its span and bracing read in silhouette); Trinity, cut in on
-  its flash; and the R-7 lifting off from its "tulip" at Baikonur as the camera tilts up after
-  it. The camera drifts right through each tableau and sweeps on to the next behind something
-  passing close to the lens (a palm, a city wall, a column, a chimney, a telegraph pole...),
-  with more motion-blur samples during the sweep. Then Sputnik tumbles over the daylit Earth
-  (`shots/sputnik.ts`: the polished sphere mirrors the Planet below it).
-- **The Moon landing** (`shots/apollo.ts`, `shaders/moonstep.glsl`): painted like the
-  civilization: the lunar module in hard, low sunlight, its gold foil a mosaic of facets; the
-  astronaut backing down the ladder and setting his boot on the regolith on the beat, dust flying
-  on ballistic arcs; the real Earth (the Planet component) in the black sky.
+  its flash; and the R-7 lifting off from its "tulip" at Baikonur. The camera drifts right
+  through each tableau and sweeps on to the next behind something passing close to the lens (a
+  palm, a city wall, a column, a chimney, a telegraph pole...), with more motion-blur samples
+  during the sweep.
+- **The space race** (`shots/ascent.ts`, `shots/sputnik.ts`, `shots/apollo.ts`), with the
+  letterbox open to full frame throughout. The camera cranes up after the painted R-7 into the
+  cloud over the pad, and the cloud dissolves into the ray-marched sky above it: the rocket
+  bursts out of a moonlit stratocumulus deck (a height field of rounded cells, lit through the
+  engine's physically based `Atmosphere`, its fire glowing inside the cloud), climbs across the
+  face of the gibbous Moon on a long lens (the Moon really was ten days old that night), and at
+  45 km, in slow motion, its four boosters peel away in the "Korolev cross" over the curve of the
+  Earth. In orbit over the night side (the real maps, moonlit cloud, the thin green airglow over
+  the limb) the fairing splits, Sputnik springs off with its antennas swinging out, and the Sun
+  breaks over the limb through a dawn arc of red and blue that comes out of single scattering;
+  the camera swings round the polished sphere until it blazes against the night, then turns up to
+  the Moon and closes in. 1969: Eagle comes down on the Sea of Tranquility, a baked height field
+  of craters of every size and scattered stones, the regolith lit with Lommel-Seeliger
+  scattering and the opposition surge by a Sun 10 degrees up, as it was that morning; its
+  exhaust tears a radial sheet of dust off the plain until the engine stops and the dust is
+  simply gone. The astronaut (an A7L suit with its backpack and gold visor, posed from joints by
+  two-bone IK) climbs down the ladder, hops onto the footpad and steps off, and the camera rises
+  to find him by the lander, the real Earth in the black sky.
 - **The far future**: a boiling red giant engulfing the inner planets, a ray-marched ring
   nebula, a restricted N-body galaxy merger (36k test particles, two cores with dynamical
   friction), and a Schwarzschild lensing ray tracer for the black hole and its accretion disk.

@@ -63,15 +63,24 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   `applyFog`. Tune with `MARCH_STEPS`, `SHADOW_STEPS`, `MARCH_RELAX` and `SHADOW_MIN_STEP`
   defined before the include. `motionBlur: N` also anti-aliases: each sample shifts `camRay` by
   a sub-pixel jitter (`uJitter`), so 2 samples clean up crisp silhouettes. Crude primitives read
-  as crude CGI next to painted scenes: prefer the painted language for people and buildings.
-  Sputnik (`shots/sputnik.ts`) marches a small object in its bounding sphere over a `Planet`;
-  the Moon landing (`shots/apollo.ts`) paints over a `Planet` with premultiplied alpha.
+  as crude CGI next to painted scenes: prefer the painted language for people and buildings on
+  Earth. In `projects/arrow-of-time` the space race is 3D and photographic (`shots/ascent.ts`,
+  `shots/sputnik.ts`, `shots/apollo.ts`): planet-sized things are traced in kilometres from the
+  camera's position relative to the planet's centre (`uCamP`, `uCamAlt`) and small ones (the
+  R-7, Sputnik) in metres relative to the camera, each only inside its bounding sphere; the
+  Moon landing marches a baked two-level height field (`lunar.glsl`), the lander (`lm.glsl`) and
+  an astronaut posed from joints by two-bone IK (`astronaut.glsl`), over a `Planet` Earth drawn
+  first (premultiplied alpha).
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
   documented on `PlanetParams`; `opacity` fades one out). Colliding or overlapping planets need `depthTest: true`;
   `impacts` scars scale with the length of their vector (1 = crater, ~10 = planet-scale), and
   `planetLocal()` converts a world direction for them. `Galaxy` (or raw `galaxyData`) is a
-  rotating sprite spiral. Promote anything a second film could use into the engine rather than
+  rotating sprite spiral. `Atmosphere` (with `#include <atmosphere>`) is a physically based sky
+  and limb from single scattering: `...atmo.uniforms(c)` bakes its transmittance table on first
+  use; `atmoSegment` integrates a stretch of ray (composite the air in front of a cloud layer,
+  then behind it), `atmoLight` gives sunlight's colour at a point (red near the horizon, zero in
+  the planet's shadow). Promote anything a second film could use into the engine rather than
   copying it.
 - **Captions** sit in each shot's negative space: set `layout` on a beat in `timeline.json`
   (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or
@@ -148,6 +157,21 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   slopes; derive them from a smooth measure over a wide range.
 - Chromatic aberration fringes thousands of tiny bright lights red and blue (city lights read
   pink): keep `aberration` low in those shots.
+- Soft shadows of curved surfaces (a rocket's tank, a fairing) come out terraced with the
+  simple estimate `min(k * h / t)`; use the closest approach between successive steps (the
+  improved soft shadow in `orbit.glsl` and `moonlanding.glsl`).
+- A mirror's image of the Sun is far smaller than a pixel: spread its light over the angle one
+  pixel sees after the reflection (`2 * distance * pixelAngle / radius` for a sphere), or it
+  flickers; seen against the Sun it sits on the silhouette and vanishes, so give polished metal a
+  rough lobe too (the lit crescent a real sphere shows).
+- A camera that turns fast (a long lens tracking a fast subject) with two motion-blur samples
+  draws everything in the background twice. Lock a long lens and let the subject cross it, or
+  give the shot more samples for the move.
+- Cloud cover from orbit: fbm normalised over many octaves varies little at the scale you see,
+  so a view a few hundred kilometres wide can land in one clear patch. Give the cover a band of
+  octaves at the scale on screen, not only continental ones.
+- Height-field marching is dominated by what each step evaluates: bake the large ground (near
+  and far bakes) and add small craters and stones only within half a metre of the surface.
 - Joining MP4s by stream copy (the concat demuxer) can leave timestamp gaps at the seams,
   depending on the ffmpeg version. A gap makes players stutter and kills a two-pass encode with
   "Incomplete MB-tree stats file" (ffmpeg fills gaps for MP4 in pass 2 but not for the null
@@ -163,7 +187,9 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   Mars and the epilogue, in different orchestrations and keys.
 - A big hit needs a clean onset: `mix.cut(cue - BREATH)` stops everything (tails included) a
   moment before the hit, as for the asteroid. Don't cut where the music should carry through:
-  the launch ignition swells out of the montage and rolls on into the Moon landing.
+  the launch ignition swells out of the montage. A cut can also be the event itself: at
+  `eagleLands` the music stops dead with the descent engine. Nothing placed after a cut is cut:
+  check that a cue list (the Quindar tones) does not run past it.
 - Take every time from `Timeline.load(.../timeline.json)` (`tl.cue()`, `tl.beat()`); express
   extra times as offsets from cues. Use `mix.cut(t)` for hard cuts (it stops reverb tails too).
 - Master to -14 LUFS / -1 dBTP with `master.master()`. Verify with
@@ -206,8 +232,11 @@ over the image, letterbox framing, and transitions between shots.
   re-mux the audio with ffmpeg (`-map 0:v -map 1:a -c:v copy -c:a aac -b:a 320k`).
 - Container note: there is no GPU; `--gl auto` picks Mesa llvmpipe via EGL (needs `libegl1`
   and `mesa-vulkan-drivers`/`libgl1-mesa-dri`). Install ffmpeg with apt if it is missing.
-- The painted civilization and Moon landing cost about 10 to 20 ms per 1080p frame on a GPU (the
-  ray-marched v0.4 scenes cost ten times as much); the civilization's wipes render 6 motion-blur
-  samples. The heaviest shots are now the cosmic web, the Moon-forming impact and the future.
+- The painted civilization costs about 10 to 20 ms per 1080p frame on a GPU; its wipes render
+  6 motion-blur samples. The space race is the heaviest part of the film: on a software
+  renderer (`--gl swiftshader` on a Mac) the ascent and orbit cost about 8 s and the Moon landing
+  about 12 s per 1080p frame with their motion-blur samples (the lunar terrain bakes, near and
+  far, take a few seconds once per page). Give its slices to more containers on Modal
+  (`--slice-seconds 4`).
 - `MOVIES_BROWSER=chrome` renders with the installed Chrome when Playwright's Chromium is missing
   (its installer has hung on macOS).

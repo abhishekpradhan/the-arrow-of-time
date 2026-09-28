@@ -25,16 +25,25 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
 - The Arrow of Time v0.5: the civilization and the Moon landing painted in the style of the life
   scenes, the R-7 and Sputnik under the 1957 card, Homo sapiens at dusk with a meteor that no
   longer strobes (see its [changelog](projects/arrow-of-time/CHANGELOG.md)).
+- `Atmosphere` component and `atmosphere` shader chunk: a planet's sky, limb and shadow from
+  single scattering (Rayleigh, Mie, ozone) over a baked transmittance table; skies from the
+  ground, sunrise arcs from orbit, the colour of sunlight at any point
+  ([docs/engine.md](docs/engine.md#atmosphere)).
+- The Arrow of Time v0.6: the space race in 3D, from the R-7 climbing out of the clouds to Sputnik
+  in an orbital sunrise and Apollo 11's landing and first step.
 
 ### Changed
 
 - `Planet`'s molten mode: cracks of uneven width, some choked with cooled crust, with heat
   bleeding into the plates beside them.
+- Anamorphic streaks: taps a texel and a half apart with bilinear filtering, so a point of light
+  (the Sun on a limb) draws a continuous line instead of a row of dots.
 
 ### Removed
 
 - The Arrow of Time's ray-marched civilization scenes (`age-*.glsl`, `shots/ages.ts`) and 3D Moon
-  landing (`apollo.glsl`), replaced by the painted ones.
+  landing (`apollo.glsl`), replaced by the painted ones; in v0.6 the painted Moon landing
+  (`moonstep.glsl`) and the old Sputnik pass (`sputnik.glsl`) gave way to the 3D space race.
 
 ## [0.4.0] - 2026-09-27
 

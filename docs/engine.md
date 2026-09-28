@@ -81,7 +81,7 @@ and `oratePose` are starting points; `dress` adds a robe, a tunic, long hair or 
 walks a four-legged animal from a `Build` (body, legs, neck, head, tail), with species built on it
 (`sdOx`, `sdDonkey`, `sdHorse`, `sdGiraffe`, `sdAntelope`, `sdGoat`, `sdDog`), and `sdBird` flaps.
 The civilization of *The Arrow of Time* (`projects/arrow-of-time/shots/civilization.ts`,
-`shaders/civ-*.glsl`) and its Homo sapiens and Moon landing scenes are worked examples.
+`shaders/civ-*.glsl`) and its Homo sapiens scene are worked examples.
 
 ## Ray-marched scenes
 
@@ -93,8 +93,19 @@ their distances). Tune it with defines before the include: `MARCH_STEPS`, `SHADO
 `MARCH_RELAX` (under-step distances that are only bounds, such as height fields) and
 `SHADOW_MIN_STEP` (below the thickness of thin parts, or they cast dotted shadows). A ray that
 runs out of steps counts as a hit: a ray creeping along terrain near the horizon has found it.
-*The Arrow of Time*'s Sputnik (`projects/arrow-of-time/shaders/sputnik.glsl`) marches a small
-object inside its bounding sphere and composites it over a `Planet`.
+Worked examples in *The Arrow of Time*'s space race: `shaders/ascent.glsl` marches the R-7
+(`shaders/r7.glsl`, a revolved polygon outline per stage) only inside a bounding sphere round it,
+in its own frame and in metres, while the Earth and its clouds are traced in kilometres from the
+camera's position relative to the planet's centre (no float precision trouble at 6371 km).
+`shaders/moonlanding.glsl` marches a baked lunar height field (a fine bake round the site and a
+coarse one out to the horizon, the small craters and stones added only close to the surface),
+a lander (`shaders/lm.glsl`) and an astronaut posed from joints (`shaders/astronaut.glsl`).
+
+Soft shadows of curved surfaces band into terraces with the simple estimate; the improved one
+(the closest approach between successive steps, as in `orbit.glsl`'s `hwShadow`) does not. A
+mirror's image of the Sun is far smaller than a pixel: spread its light over the angle a pixel
+sees (`sunGlint` in `orbit.glsl`), or it flickers and, near a silhouette, vanishes; a rough
+highlight lobe gives the crescent a real polished sphere shows a low Sun.
 
 ## The camera
 
@@ -125,6 +136,18 @@ and never flicker. `starSphere(rng, options)` makes a sky; draw it with `{ sky: 
   the whole planet (a body dissolving into a particle simulation of itself, for example).
 - **`Galaxy`** (or raw `galaxyData`) is a rotating barred spiral made of sprites: stars, a glow
   layer and dust lanes.
+- <a id="atmosphere"></a>**`Atmosphere`** (`engine/components/atmosphere.ts` with the
+  `atmosphere` chunk) is a planet's air from single scattering: Rayleigh and Mie scattering,
+  ozone absorption and the planet's shadow, with the transmittance to space baked once into a
+  small table (the parameterization of Bruneton and Neyret). `...atmo.uniforms(c)` supplies the
+  chunk's uniforms (call it while the shot's own target is bound: the first call bakes). In the
+  shader, kilometres and positions relative to the planet's centre: `atmoSegment(ro, rd, t0, t1,
+  l0, e0, l1, e1, trans)` returns the light scattered along a stretch of ray from two lights (a
+  Sun and a Moon) and multiplies `trans`, so the air in front of a cloud layer and behind it
+  composite in order; `atmoLight(p, l)` is the colour of sunlight reaching `p` (reddened near the
+  horizon, zero in the planet's shadow); `atmoGlow` is the night airglow layer. The sky from the
+  ground, the limb from orbit and a sunrise's red and blue arc all come out of it. The Earth
+  defaults can be overridden (radius, height, scattering, scale heights, ozone, the Sun's size).
 
 Promote anything a second film could use into the engine rather than copying it.
 

@@ -75,8 +75,11 @@ async function bibleLeaf(e: Engine) {
 /** How far the rocket has risen (mid-ground picture units): liftoff 1.3 s after ignition. */
 export const liftOf = (time: number) => {
   const s = time - cues.launch - 1.3;
-  return s > 0 ? 0.2 * s * s + 0.04 * s : 0;
+  return s > 0 ? 0.456 * s * s + 0.04 * s : 0;
 };
+
+/** The camera cranes up after the rocket, then on up into the cloud (cue clouds). */
+const craneOf = (time: number) => 0.75 * liftOf(time) + 0.5 * smoother((time - cues.clouds + 0.5) / 0.45);
 
 const TABLEAUX: Tableau[] = [
   // 10,000 BCE: wild wheat at sunrise in the hills of the Fertile Crescent.
@@ -107,8 +110,8 @@ const TABLEAUX: Tableau[] = [
       const time = CARDS[9].t + t;
       return { uIgnite: time - cues.launch, uLift: liftOf(time) };
     },
-    // The camera tilts up after the rocket as it climbs.
-    camY: (t) => 0.75 * liftOf(CARDS[9].t + t),
+    // The camera cranes up after the rocket as it climbs, and into the cloud.
+    camY: (t) => craneOf(CARDS[9].t + t),
   },
 ];
 
@@ -177,7 +180,7 @@ const toUv = (p: Vec2): Vec2 => [p[0] / (16 / 9) + 0.5, p[1] + 0.5];
 
 /** The post look the tableaux ask for: light shafts from their sun. */
 export function civilizationLook(time: number): Partial<Look> {
-  if (time < START || time >= cues.sputnik) return {};
+  if (time < START || time >= cues.clouds + 0.1) return {};
   const { parts, wipe } = onScreen(time);
   // During a wipe, the incoming tableau's shafts fade in as it takes over the frame.
   const [k0] = parts[0];
@@ -195,9 +198,9 @@ export function civilization(): Shot<{ fixed: Record<string, UniformValue>[] }> 
   return {
     id: 'civilization',
     start: START,
-    end: cues.sputnik,
+    end: cues.clouds + 0.1,
     fadeIn: 0.8,
-    fadeOut: 0,
+    fadeOut: 0.4,
     motionBlur: (time) => (whipping(time) ? 6 : time > cues.launch + 1.2 ? 3 : 1),
     async setup(e) {
       const fixed: Record<string, UniformValue>[] = [];

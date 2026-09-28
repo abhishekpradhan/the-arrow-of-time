@@ -1,9 +1,11 @@
-// Act V: mammals, the first people, cave art, civilization, the Moon landing, Earth at night, NOW.
+// Act V: mammals, the first people, cave art, civilization, the space race (the ascent, Sputnik in
+// orbit, the Moon landing), Earth at night, NOW.
 import { Camera, Sprites, allocSprites, keys, m4, prog, rng, starSphere, type Mat4, type Shot, type Vec3 } from '@engine';
 import { beat, cues, span, timeline } from '../lib';
 import { civilization } from './civilization';
 import { moonLanding } from './apollo';
 import { sputnik } from './sputnik';
+import { ascent } from './ascent';
 import { Planet, loadEarth, type EarthMaps } from '@engine';
 
 const latLon = (lat: number, lon: number): Vec3 => {
@@ -292,5 +294,5 @@ function now(): Shot<{ planet: Planet; cam: Camera; sky: Sprites; dot: Sprites }
 }
 
 export function humanShots(): Shot[] {
-  return [mammals(), humans(), caves(), civilization(), sputnik(), moonLanding(), nightEarth(), now()];
+  return [mammals(), humans(), caves(), civilization(), ascent(), sputnik(), moonLanding(), nightEarth(), now()];
 }

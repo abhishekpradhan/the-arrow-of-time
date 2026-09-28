@@ -3,6 +3,29 @@
 The newest section is used for the release notes. Cuts are published on the
 [Releases page](https://github.com/abhishekpradhan/movies/releases).
 
+## v0.6 (27 September 2026)
+
+- **The space race** is the new centrepiece: 29 seconds from Baikonur to the Sea of
+  Tranquility with the letterbox open to full frame, and the film runs 5:55. The camera cranes
+  up after the painted R-7 into the cloud over the pad and comes out above it in 3D: the rocket
+  bursts through a moonlit cloud deck, its fire glowing inside the cloud, and climbs across the
+  face of the gibbous Moon (it was ten days old that night) on a long lens. At 45 km, in slow
+  motion, the four boosters peel away in the Korolev cross over the curve of the Earth. In orbit
+  over the night side the fairing splits and Sputnik springs off, antennas swinging out, beeping;
+  the Sun breaks over the limb through a red and blue dawn arc, and the camera swings round the
+  polished sphere until it blazes like a star, then turns to the Moon and closes in.
+- **The Moon landing** is rebuilt in 3D, photographic rather than painted: Eagle, gold foil and
+  all, comes down over a cratered Sea of Tranquility in the low morning Sun, its exhaust tearing
+  a radial sheet of dust across the plain until the engine stops and the dust is gone. Then the
+  first step: down the ladder, a hop onto the footpad, a boot in the powder, and the camera rises
+  to the astronaut, the lander and the Earth in the black sky. The 1969 card lands on the step.
+- **Score**: the theme's first two bars carry the launch at the clock's own tempo so that bar 3
+  lands on the staging; the clock falls silent above the clouds; Sputnik's beeps over a held
+  glass-harmonica note; C major and theme bar 5 at the orbital sunrise, bar 6's high A on the
+  Moon; a pulse, Houston's Quindar tones and the engine's rumble through the descent, and a dead
+  cut to silence at touchdown; the full theme on the first step. New cues `clouds`, `staging`,
+  `orbitalDawn` and `eagleLands`.
+
 ## v0.5 (27 September 2026)
 
 - **Civilization** is rebuilt from the ground up in the painted, silhouette style of the life
