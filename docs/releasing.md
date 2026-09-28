@@ -5,8 +5,9 @@ The film is published as **GitHub Releases**: video is never committed to the re
 ## Versions
 
 Releases are tagged `v<major>.<minor>`: `v1.0` is the first finished film, and later versions
-are new cuts of it. The working cuts before it were pre-releases tagged `arrow-of-time-v0.2` to
-`arrow-of-time-v0.4`, and stay on the Releases page.
+are new cuts of it. The working cuts before it were tagged `arrow-of-time-v0.2` to
+`arrow-of-time-v0.4`; their tags remain (their pre-releases are no longer published), and
+[`CHANGELOG.md`](../CHANGELOG.md) describes every one.
 
 - A new version is a full release at 1080p with a 720p preview and a poster.
 - A cut you want feedback on before it is finished can go out as a pre-release.

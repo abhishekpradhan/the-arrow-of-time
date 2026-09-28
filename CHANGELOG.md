@@ -256,6 +256,6 @@ film's own.
 - `npm run new` and the starter template.
 
 [v1.0]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/v1.0
-[v0.4]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/arrow-of-time-v0.4
-[v0.3]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/arrow-of-time-v0.3
-[v0.2]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/arrow-of-time-v0.2
+[v0.4]: https://github.com/abhishekpradhan/the-arrow-of-time/tree/arrow-of-time-v0.4
+[v0.3]: https://github.com/abhishekpradhan/the-arrow-of-time/tree/arrow-of-time-v0.3
+[v0.2]: https://github.com/abhishekpradhan/the-arrow-of-time/tree/arrow-of-time-v0.2
