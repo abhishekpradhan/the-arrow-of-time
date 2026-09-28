@@ -1,6 +1,6 @@
 name: Render on Modal
 
-# Renders a film on Modal with tools/modal/studio.py (parallel CPU containers, cached slices) and
+# Renders the film on Modal with tools/modal/studio.py (parallel CPU containers, cached slices) and
 # optionally publishes it as a GitHub Release. Setup (docs/modal.md): add the repository secrets
 # MODAL_TOKEN_ID and MODAL_TOKEN_SECRET; optionally set the repository variable MODAL_ENVIRONMENT
 # to keep these runs in their own Modal environment.
@@ -8,10 +8,6 @@ name: Render on Modal
 on:
   workflow_dispatch:
     inputs:
-      project:
-        description: Project id (a folder in projects/)
-        required: true
-        default: arrow-of-time
       preset:
         description: final (full resolution, motion blur) or draft (half resolution)
         type: choice
@@ -27,18 +23,18 @@ on:
         description: Distribution encodes (2160p needs scale 2)
         default: 1080p,720p,poster
       tag:
-        description: Publish a GitHub Release with this tag, e.g. arrow-of-time-v0.3 (empty = no release)
+        description: Publish a GitHub Release with this tag, e.g. v1.1 (empty = no release)
         default: ''
       prerelease:
-        description: Mark the release as a pre-release
+        description: Mark the release as a pre-release (a work-in-progress cut)
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: render-${{ inputs.project }}
+  group: render
   cancel-in-progress: false
 
 jobs:
@@ -46,7 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      PROJECT: ${{ inputs.project }}
       PRESET: ${{ inputs.preset }}
       SCALE: ${{ inputs.scale }}
       WINDOW: ${{ inputs.window }}
@@ -73,15 +68,15 @@ jobs:
             exit 1
           fi
           if [ -n "$ENVIRONMENT" ]; then export MODAL_ENVIRONMENT="$ENVIRONMENT"; fi
-          args=(--project "$PROJECT" --preset "$PRESET" --scale "$SCALE" --release --variants "$VARIANTS" --download release)
+          args=(--preset "$PRESET" --scale "$SCALE" --release --variants "$VARIANTS" --download release)
           if [ -n "$WINDOW" ]; then args+=(--window "$WINDOW"); fi
           modal run tools/modal/studio.py "${args[@]}"
 
       - name: Keep the 720p preview for a week
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.project }}-preview
-          path: out/${{ inputs.project }}/release/*-720p.mp4
+          name: the-arrow-of-time-preview
+          path: out/release/*-720p.mp4
           retention-days: 7
           if-no-files-found: ignore
 
@@ -90,8 +85,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 tools/release_notes.py "$PROJECT" --tag "$TAG" > notes.md
+          python3 tools/release_notes.py --tag "$TAG" > notes.md
           flags=()
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
-          gh release create "$TAG" out/"$PROJECT"/release/* --target "$GITHUB_SHA" \
-            --title "$(python3 tools/release_notes.py "$PROJECT" --tag "$TAG" --title)" --notes-file notes.md "${flags[@]}"
+          gh release create "$TAG" out/release/* --target "$GITHUB_SHA" \
+            --title "$(python3 tools/release_notes.py --tag "$TAG" --title)" --notes-file notes.md "${flags[@]}"

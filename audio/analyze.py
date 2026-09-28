@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Verify a rendered soundtrack without listening to it.
 
-    python audio/analyze.py out/<project>/audio/score.wav \\
-        --timeline projects/<project>/timeline.json \\
-        --png out/<project>/audio/spectrogram.png \\
+    python audio/analyze.py out/audio/score.wav \\
+        --timeline film/timeline.json \\
+        --png out/audio/spectrogram.png \\
         --onsets bang theia asteroidImpact lastFlash --cut now
 
 Prints: format/duration, NaN/inf and clipping checks, DC offset, integrated

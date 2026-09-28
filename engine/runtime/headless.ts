@@ -4,7 +4,7 @@
 
 import { Engine } from '../core/engine';
 import { timecode } from '../text/captions';
-import { loadProject } from './projects';
+import { loadFilm } from './film';
 
 declare global {
   interface Window {
@@ -38,7 +38,7 @@ async function main() {
   const api: Partial<HeadlessApi> = { status: 'loading' };
   window.__movie = api as HeadlessApi;
   try {
-    let project = await loadProject(q.get('p') ?? '');
+    let project = await loadFilm();
     if (q.get('textonly') === '1') {
       // Typography checks: captions over black, with nothing that moves pixels by itself.
       const look = project.look;

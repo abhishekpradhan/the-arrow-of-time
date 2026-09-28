@@ -1,10 +1,10 @@
 // Render still frames or contact sheets for quick visual review.
 //
-//   npm run still -- <project> --t 12.5 [--t 30 ...]          single frames (PNG)
-//   npm run still -- <project> --shot bigbang [--n 6]           frames spread across a shot, as a sheet
-//   npm run still -- <project> --sheet [--from 0 --to 60] [--n 12] [--cols 4]
-//   npm run still -- <project> --t 10 --t 20 --t 30 --grid     several times as one sheet
-//   npm run still -- <project> --t 10 --t 20 --bench --scale 1     per-frame render cost
+//   npm run still -- --t 12.5 [--t 30 ...]          single frames (PNG)
+//   npm run still -- --shot bigbang [--n 6]           frames spread across a shot, as a sheet
+//   npm run still -- --sheet [--from 0 --to 60] [--n 12] [--cols 4]
+//   npm run still -- --t 10 --t 20 --t 30 --grid     several times as one sheet
+//   npm run still -- --t 10 --t 20 --bench --scale 1     per-frame render cost
 //   common: [--scale 0.5] [--debug] (burn in timecode) [--clean] (no timecode on sheets) [--out file.png] [--mb 0|1] [--gl ...]
 //           [--textonly] (captions over black, no grain/bloom: for typography checks)
 
@@ -12,19 +12,17 @@ import { writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { contactSheet, encodePNG } from './lib/png';
 import { pageInfo, startSession, type GlMode } from './lib/session';
-import { ROOT, list, num, outDir, parseArgs, projectDir, str } from './lib/util';
+import { ROOT, SLUG, list, num, outDir, parseArgs, str } from './lib/util';
 
 const args = parseArgs(process.argv.slice(2));
-const id = args._[0];
-if (!id) {
-  console.error('usage: npm run still -- <project> --t <sec> | --shot <id> | --sheet');
+if (args._.length || (args.t === undefined && args.shot === undefined && !args.sheet)) {
+  console.error('usage: npm run still -- --t <sec> | --shot <id> | --sheet');
   process.exit(1);
 }
-projectDir(id);
 
 const session = await startSession(str(args.gl, 'auto') as GlMode);
 try {
-  const first = await session.openRenderPage({ project: id, infoOnly: true });
+  const first = await session.openRenderPage({ infoOnly: true });
   const info = await pageInfo(first);
   await first.close();
 
@@ -55,7 +53,7 @@ try {
   const frames = times.map((t) => Math.min(info.frames - 1, Math.max(0, Math.round(t * fps))));
   if (args.bench) {
     // Per-frame render cost at this resolution (GPU + readback, no encode), for render planning.
-    const page = await session.openRenderPage({ project: id, width: W, height: H, motionBlur: str(args.mb, '1') !== '0' });
+    const page = await session.openRenderPage({ width: W, height: H, motionBlur: str(args.mb, '1') !== '0' });
     const ms = await page.evaluate(([fr]) => window.__movie.bench(fr as number[]), [frames]);
     const rows = frames.map((f, i) => {
       const shot = info.shots.filter((s) => f / fps >= s.start && f / fps < s.end).map((s) => s.id).join('+');
@@ -68,7 +66,6 @@ try {
   const got = new Map<number, Buffer>();
   session.setHandler((_w, f, data) => void got.set(f, data));
   const page = await session.openRenderPage({
-    project: id,
     width: W,
     height: H,
     debug: !args.clean && (!!args.debug || sheetMode),
@@ -77,7 +74,7 @@ try {
   });
   const t0 = Date.now();
   const ms = await page.evaluate(([fr]) => window.__movie.renderRange(0, 0, 'still', fr as number[]), [frames]);
-  const dir = outDir(id, 'stills');
+  const dir = outDir('stills');
   if (sheetMode) {
     const cols = num(args.cols, Math.min(frames.length, frames.length <= 4 ? 2 : 3));
     const sheet = contactSheet(frames.map((f) => new Uint8Array(got.get(f)!)), W, H, cols);
@@ -86,7 +83,8 @@ try {
     console.log(relative(ROOT, file));
   } else {
     for (const f of frames) {
-      const file = join(dir, `${id}-t${(f / fps).toFixed(2)}.png`);
+      // (--out names a single frame; several go to out/stills/.)
+      const file = args.out && frames.length === 1 ? resolve(ROOT, str(args.out, '')) : join(dir, `${SLUG}-t${(f / fps).toFixed(2)}.png`);
       writeFileSync(file, encodePNG(new Uint8Array(got.get(f)!), W, H));
       console.log(relative(ROOT, file));
     }

@@ -1,27 +1,25 @@
-// Render a project to video.
+// Render the film to video.
 //
-//   npm run render -- <project> [--preset final|draft] [--scale 1] [--from 0] [--to 30] [--frames a:b]
-//                              [--workers 1] [--crf 17] [--segment 20] [--resume]
-//                              [--gl auto|egl|vulkan|swiftshader|gpu] [--no-audio] [--mb 0|1] [--out path.mp4]
+//   npm run render [-- --preset final|draft] [--scale 1] [--from 0] [--to 30] [--frames a:b]
+//                     [--workers 1] [--crf 17] [--segment 20] [--resume]
+//                     [--gl auto|egl|vulkan|swiftshader|gpu] [--no-audio] [--mb 0|1] [--out path.mp4]
 //
 // Frames are rendered by headless Chromium (WebGL2) and streamed as raw RGBA into ffmpeg
 // (x264, Rec.709). The timeline is cut into short segments that workers pull from a queue;
 // finished segments are kept on disk, so an interrupted render continues with --resume.
-// Segments are then concatenated (stream copy) and muxed with the project's soundtrack.
+// Segments are then concatenated (stream copy) and muxed with the film's soundtrack.
 
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { Encoder, concatVideos, hasFfmpeg, muxAudio, probe } from './lib/ffmpeg';
 import { pageInfo, startSession, type GlMode } from './lib/session';
-import { ROOT, fmtTime, num, outDir, parseArgs, projectDir, stamp, str } from './lib/util';
+import { ROOT, SLUG, fmtTime, num, outDir, parseArgs, stamp, str } from './lib/util';
 
 const args = parseArgs(process.argv.slice(2));
-const id = args._[0];
-if (!id) {
-  console.error('usage: npm run render -- <project> [--preset final|draft] [--from s] [--to s] [--workers n] [--resume]');
+if (args._.length) {
+  console.error('usage: npm run render [-- --preset final|draft] [--from s] [--to s] [--workers n] [--resume]');
   process.exit(1);
 }
-projectDir(id);
 if (!hasFfmpeg()) {
   console.error('ffmpeg not found on PATH. Install it (e.g. `apt install ffmpeg` / `brew install ffmpeg`).');
   process.exit(1);
@@ -36,7 +34,7 @@ const motionBlur = args.mb === undefined ? !draft : str(args.mb, '1') !== '0';
 
 const session = await startSession(str(args.gl, 'auto') as GlMode);
 try {
-  const first = await session.openRenderPage({ project: id, infoOnly: true });
+  const first = await session.openRenderPage({ infoOnly: true });
   const info = await pageInfo(first);
   await first.close();
 
@@ -50,11 +48,11 @@ try {
   const f1 = Math.min(info.frames, range ? range[1] : Math.round(num(args.to, info.duration) * fps));
   if (f1 <= f0) throw new Error('empty frame range');
 
-  const renders = outDir(id, 'renders');
-  const name = str(args.out, join(renders, `${id}-${preset}-${stamp()}.mp4`));
+  const renders = outDir('renders');
+  const name = str(args.out, join(renders, `${SLUG}-${preset}-${stamp()}.mp4`));
 
   // Segments live in a folder keyed by the settings that change the pixels or the encode.
-  const segDir = join(ROOT, 'out', id, 'segments', `${preset}-${W}x${H}-crf${crf}${motionBlur ? '-mb' : ''}`);
+  const segDir = join(ROOT, 'out', 'segments', `${preset}-${W}x${H}-crf${crf}${motionBlur ? '-mb' : ''}`);
   if (!args.resume) rmSync(segDir, { recursive: true, force: true });
   mkdirSync(segDir, { recursive: true });
   const segFrames = Math.max(1, Math.round(num(args.segment, 20) * fps));
@@ -95,7 +93,7 @@ try {
     const queue = [...todo];
     const nPages = Math.min(workers, todo.length);
     const pages = await Promise.all(
-      Array.from({ length: nPages }, () => session.openRenderPage({ project: id, width: W, height: H, motionBlur })),
+      Array.from({ length: nPages }, () => session.openRenderPage({ width: W, height: H, motionBlur })),
     );
     const times: number[] = [];
     await Promise.all(
@@ -114,7 +112,7 @@ try {
     console.log(`[render] mean GPU time per frame: ${(times.reduce((x, y) => x + y, 0) / times.length).toFixed(0)} ms`);
   }
 
-  const tmp = outDir(id, 'tmp');
+  const tmp = outDir('tmp');
   const video = join(tmp, `video-${stamp()}.mp4`);
   if (segments.length === 1) copyFileSync(segments[0].file, video);
   else concatVideos(segments.map((s) => s.file), video, join(tmp, 'concat.txt'));
@@ -123,7 +121,7 @@ try {
   if (!args['no-audio'] && audioPath && existsSync(audioPath)) {
     muxAudio(video, audioPath, name, f0 / fps, (f1 - f0) / fps);
   } else {
-    if (info.audio && !args['no-audio']) console.warn(`[render] soundtrack ${info.audio} not found; run \`npm run audio -- ${id}\` first. Writing silent video.`);
+    if (info.audio && !args['no-audio']) console.warn(`[render] soundtrack ${info.audio} not found; run \`npm run audio\` first. Writing silent video.`);
     copyFileSync(video, name);
   }
   rmSync(video);
@@ -133,7 +131,7 @@ try {
   const mb = p ? (Number(p.format.size) / 1e6).toFixed(1) : '?';
   console.log(`[render] done in ${fmtTime((Date.now() - t0) / 1000)} -> ${relative(ROOT, name)} (${mb} MB)`);
   // Only complete renders to the default location become the project's "latest".
-  if (!args.out && f0 === 0 && f1 === info.frames) copyFileSync(name, join(renders, `${id}-${preset}-latest.mp4`));
+  if (!args.out && f0 === 0 && f1 === info.frames) copyFileSync(name, join(renders, `${SLUG}-${preset}-latest.mp4`));
 } finally {
   await session.close();
 }

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """The Arrow of Time: the score.
 
-Synthesizes the full soundtrack from code with the shared ``audio/studio``
-library, following MUSIC.md ("Clockwork Cosmos"). Every time comes from
+Synthesizes the full soundtrack from code with the ``audio/studio``
+library, following docs/score.md ("Clockwork Cosmos"). Every time comes from
 ``timeline.json`` (cues, beats, montage, starIgnitions, starDeaths), so
 retiming the film retimes the music. Offsets inside a section are musical
 (bars/beats at 60 BPM) and are always relative to a timeline anchor.
 
-    python projects/arrow-of-time/score.py                     # full render
-    python projects/arrow-of-time/score.py --from 180 --to 212 # quick partial render
-    python projects/arrow-of-time/score.py --stems out/arrow-of-time/audio/stems
+    python film/score.py                        # full render (or: npm run audio)
+    python film/score.py --from 180 --to 212    # quick partial render
+    python film/score.py --stems out/audio/stems
 
 Output: 48 kHz stereo 24-bit WAV, mastered to -14 LUFS integrated and at most
 -1 dBTP. A ``.json`` report is written next to the WAV (loudness, peaks, master
@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
+ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / 'audio'))
 
 import numpy as np  # noqa: E402
@@ -36,14 +36,13 @@ from studio.core import F32, Bounce, env_points, ns, rng  # noqa: E402
 from studio.theory import midi, name  # noqa: E402
 from studio.timeline import fit, grid, pulses, ramp  # noqa: E402
 
-PROJECT = HERE.name
-DEFAULT_OUT = ROOT / 'out' / PROJECT / 'audio' / 'score.wav'
+DEFAULT_OUT = ROOT / 'out' / 'audio' / 'score.wav'
 
 # ----------------------------------------------------------------------------
-# Musical material (MUSIC.md)
+# Musical material (docs/score.md)
 # ----------------------------------------------------------------------------
 
-GAP = 0.35      # silent gap before the Big Bang (MUSIC.md)
+GAP = 0.35      # silent gap before the Big Bang (docs/score.md)
 BREATH = 0.06   # the "suck": everything stops this long before the asteroid impact
 END_FADE = 0.5  # the file ends in silence (fades the last reverb tail)
 
@@ -209,7 +208,7 @@ class Score:
         self.boom = T('boom', gain_db=0, fx=[flt.HP(20)], sends={'hall': -20}, group='fx')
         self.sfx = T('sfx', gain_db=0, fx=[flt.HP(30)], sends={'hall': -13, 'cathedral': -18}, group='fx')
         self.amb = T('amb', gain_db=0, fx=[flt.HP(40)], sends={'hall': -16}, group='fx')
-        # hard cuts (MUSIC.md): the silent gap before the bang, NOW, and the asteroid impact. (The
+        # hard cuts (docs/score.md): the silent gap before the bang, NOW, and the asteroid impact. (The
         # launch has none: the civilization's crescendo runs straight into the ignition.)
         m.cut(self.cue('bang') - GAP)
         m.cut(self.cue('now'))
@@ -1462,7 +1461,7 @@ def main(argv=None):
     report_path = out.with_suffix('.json')
     full_report = DEFAULT_OUT.with_suffix('.json')
     T0 = time.time()
-    print(f'[score] {tl.data.get("title", PROJECT)}: rendering {args.t0:.2f}-{t1:.2f}s of {tl.duration:.2f}s')
+    print(f'[score] {tl.data.get("title", "The Arrow of Time")}: rendering {args.t0:.2f}-{t1:.2f}s of {tl.duration:.2f}s')
     sc = Score(tl, args.t0, t1)
     sc.compose()
     print(f'[score] composed in {time.time() - T0:.1f}s; mixing')

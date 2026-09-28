@@ -189,7 +189,7 @@ void main() {
   fragColor = vec4(saturate(col), 1.0);
 }`;
 
-const TONEMAP_ID = { aces: 0, neutral: 1, agx: 2 } as const;
+const TONEMAP_ID = { aces: 0, agx: 1 } as const;
 
 export class Post {
   gl: GL;

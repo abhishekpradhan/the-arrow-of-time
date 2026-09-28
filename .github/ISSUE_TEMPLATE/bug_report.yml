@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in the engine, the tools or the audio studio does not work.
+description: Building, previewing or rendering the film does not work, or the engine, the tools or the synthesizer misbehave.
 labels: [bug]
 body:
   - type: textarea
@@ -13,7 +13,7 @@ body:
     id: repro
     attributes:
       label: How to reproduce
-      description: The command you ran (for example `npm run render -- arrow-of-time --from 10 --to 12`) and any changes you made.
+      description: The command you ran (for example `npm run render -- --from 10 --to 12`) and any changes you made.
       render: shell
     validations:
       required: true

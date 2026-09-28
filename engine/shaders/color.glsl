@@ -42,24 +42,6 @@ vec3 tonemapACES(vec3 c) {
   return saturate(outM * (a / b));
 }
 
-// Khronos PBR Neutral tone mapper: preserves hue/saturation of bright colours.
-// Adapted from https://github.com/KhronosGroup/ToneMapping (Apache License 2.0, Copyright
-// The Khronos Group Inc.): renamed and given its constants inline. See THIRD_PARTY_NOTICES.md.
-vec3 tonemapNeutral(vec3 color) {
-  const float startCompression = 0.8 - 0.04;
-  const float desaturation = 0.15;
-  float x = min(color.r, min(color.g, color.b));
-  float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
-  color -= offset;
-  float peak = max(color.r, max(color.g, color.b));
-  if (peak < startCompression) return color;
-  const float d = 1.0 - startCompression;
-  float newPeak = 1.0 - d * d / (peak + d - startCompression);
-  color *= newPeak / peak;
-  float g = 1.0 - 1.0 / (desaturation * (peak - newPeak) + 1.0);
-  return mix(color, vec3(newPeak), g);
-}
-
 // AgX (Troy Sobotka), using Benjamin Wrensch's "Minimal AgX" matrices and polynomial fit
 // (https://iolite-engine.com/blog_posts/minimal_agx_implementation, MIT License, Copyright (c)
 // 2024 Missing Deadlines; see THIRD_PARTY_NOTICES.md). Output converted back to linear.
@@ -81,8 +63,7 @@ vec3 tonemapAgX(vec3 v) {
 }
 
 vec3 tonemap(vec3 c, int mode) {
-  if (mode == 1) return tonemapNeutral(c);
-  if (mode == 2) return tonemapAgX(c);
+  if (mode == 1) return tonemapAgX(c);
   return tonemapACES(c);
 }
 

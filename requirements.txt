@@ -1,4 +1,4 @@
-# Python dependencies for the audio pipeline (audio/studio, projects/*/score.py).
+# Python dependencies for the audio pipeline (audio/studio, film/score.py) and the asset builders.
 # Install: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 # Tested with numpy 2.4, scipy 1.17, pillow 12.3.
 numpy>=2.0

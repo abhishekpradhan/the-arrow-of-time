@@ -1,5 +1,5 @@
 name: Feature request
-description: An idea for the engine, the tools, the audio studio or a new film.
+description: An idea for the engine, the tools or the synthesizer (for the film itself, use Film feedback).
 labels: [enhancement]
 body:
   - type: textarea

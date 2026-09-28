@@ -13,7 +13,7 @@ master       BS.1770-4 loudness, true peak, limiter, mastering chain
 wav          24-bit / float WAV writer and reader
 analysis     spectrograms, onset / cut checks, section tables
 
-Typical use (see projects/*/score.py)::
+Typical use (see film/score.py)::
 
     from studio import Mix, SR, fx, instruments as ins, master, wav
     mix = Mix(60.0)

@@ -8,7 +8,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -21,12 +21,13 @@ jobs:
           cache: pip
       - run: npm ci
       - run: pip install -r requirements.txt
-      - name: Typecheck the engine, tools and every project
+      - name: Typecheck the engine, the film and the tools
         run: npm run typecheck
-      - name: Compile the Python tools (the Modal pipeline needs no Modal account to check)
-        run: python -m py_compile tools/*.py tools/modal/*.py tools/assets/*.py tools/assets/giant_impact/*.py
-      - name: Scaffold a film from the template and synthesize its score
+      - name: Compile the Python (the Modal pipeline needs no Modal account to check)
+        run: python -m py_compile film/score.py audio/*.py tools/*.py tools/modal/*.py tools/assets/*.py tools/assets/giant_impact/*.py
+      - name: Synthesize the score
+        run: npm run audio
+      - name: Check the score's hits and cuts against the timeline
         run: |
-          npm run new -- ci-smoke --title "CI Smoke"
-          npm run typecheck
-          npm run audio -- ci-smoke
+          python audio/analyze.py out/audio/score.wav --timeline film/timeline.json \
+            --onsets bang theia asteroidImpact launch staging orbitalDawn reflection blueDot --cut now

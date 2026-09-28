@@ -145,7 +145,7 @@ and a few Earth radii out.
   physically consistent realization of a canonical impact, not a converged prediction.
 - **Missing physics.** There is no material strength, radiative cooling, vapour condensation or
   disk viscosity. Hot vapour therefore stays hot, and the film tones its glow down
-  ([`shots/moon.ts`](../../../projects/arrow-of-time/shots/moon.ts) explains how). The
+  ([`film/shots/moon.ts`](../../../film/shots/moon.ts) explains how). The
   1000 km cap on the smoothing length coarsens the sparse outer disk.
 - **Gravity** is computed more loosely than in the demo (above).
 

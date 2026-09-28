@@ -15,7 +15,7 @@ layout:
 
 It holds 19,957 of the 61,139 particles: every particle thrown clear of the Earth, all of Theia,
 and a thinned sample of the Earth's interior. Positions are in Earth radii, centred on the
-proto-Earth's core, with the orbit in the x–y plane. [`projects/arrow-of-time/shots/moon.ts`](../../projects/arrow-of-time/shots/moon.ts)
+proto-Earth's core, with the orbit in the x–y plane. [`film/shots/moon.ts`](../../film/shots/moon.ts)
 decodes and renders it.
 
 Made with SWIFT, WoMa, SEAGen and the ANEOS equations of state; if you use this data, please cite

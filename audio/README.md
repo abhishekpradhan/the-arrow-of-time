@@ -1,16 +1,18 @@
 # audio/: code-synthesized film scores
 
 `studio/` is a small numpy/scipy toolkit for writing a film's soundtrack as code.
-Nothing is sampled: every instrument, room and effect is synthesized. A score is a
-Python script (`projects/<film>/score.py`) that reads the film's `timeline.json`,
-so moving a cue there moves the music with the picture.
+Nothing is sampled: every instrument, room and effect is synthesized (the one recording in
+*The Arrow of Time*, NASA's Apollo 11 loop, is placed on a cue like any other sound). The score
+is a Python script (`film/score.py`) that reads the film's `timeline.json`, so moving a cue
+there moves the music with the picture. Its design and cue sheet are in
+[`docs/score.md`](../docs/score.md).
 
 ```bash
-npm run audio -- arrow-of-time                      # full render -> out/arrow-of-time/audio/score.wav
-npm run audio -- arrow-of-time --from 180 --to 212  # quick partial render (score-180-212.wav)
-npm run audio -- arrow-of-time --stems out/arrow-of-time/audio/stems   # + pre-master stems
-.venv/bin/python audio/analyze.py out/arrow-of-time/audio/score.wav \
-    --timeline projects/arrow-of-time/timeline.json --png out/arrow-of-time/audio/spectrogram.png \
+npm run audio                                  # full render -> out/audio/score.wav
+npm run audio -- --from 180 --to 212           # quick partial render (score-180-212.wav)
+npm run audio -- --stems out/audio/stems       # + pre-master stems
+.venv/bin/python audio/analyze.py out/audio/score.wav \
+    --timeline film/timeline.json --png out/audio/spectrogram.png \
     --onsets bang theia asteroidImpact lastFlash --cut now
 ```
 
@@ -43,7 +45,7 @@ Setup: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 ```python
 from studio import Mix, Timeline, fx, filters as flt, instruments as ins, master, wav
 
-tl = Timeline.load('projects/film/timeline.json')
+tl = Timeline.load('film/timeline.json')
 mix = Mix(tl.duration)
 mix.reverb('hall', fx.reverb_ir('hall'), hp=180)          # send is high-passed: no muddy reverb
 organ = mix.track('organ', fx=[flt.HP(36)], sends={'hall': -7})

@@ -13,7 +13,7 @@
 // its remnant falls back and hits again (cue theiaReturn), flinging out a long arm that breaks
 // into clumps and a disk. Years later (cue moonBorn) the disk has become the Moon.
 import { Camera, Planet, Sprites, allocSprites, blackbody, hash1, keys, planetLocal, prog, rng, spline, starSphere, v3, type PlanetParams, type Shot, type ShotContext, type SpriteData, type Vec3 } from '@engine';
-import META from '../../../assets/giant-impact/impact.json';
+import META from '../../assets/giant-impact/impact.json';
 import { beat, cues, span } from '../lib';
 
 interface Impact {

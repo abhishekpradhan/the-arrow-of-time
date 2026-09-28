@@ -1,7 +1,7 @@
 // GLSL chunk registry and `#include <name>` resolution.
 //
 // Engine chunks live in engine/shaders/*.glsl and are registered automatically.
-// Projects can register their own chunks (e.g. projects/foo/shaders/*.glsl):
+// The film registers its own chunks (film/shaders/*.glsl):
 //
 //   registerChunks(import.meta.glob('./shaders/*.glsl', { query: '?raw', import: 'default', eager: true }));
 //

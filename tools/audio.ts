@@ -1,10 +1,10 @@
-// Render a project's soundtrack (Python synthesis; see audio/README.md).
+// Render the film's score (Python synthesis; see audio/README.md and docs/score.md).
 //
-//   npm run audio -- <project> [--from 180 --to 212] [--stems dir] [other score.py flags]
+//   npm run audio [-- --from 180 --to 212] [--stems dir] [other score.py flags]
 //
-// Runs projects/<project>/score.py with the repo's virtualenv Python (falling back
-// to python3 / python) and writes out/<project>/audio/score.wav (partial renders
-// with --from/--to go to score-<from>-<to>.wav so they never replace the full mix).
+// Runs film/score.py with the repo's virtualenv Python (falling back to python3 / python)
+// and writes out/audio/score.wav (partial renders with --from/--to go to
+// score-<from>-<to>.wav so they never replace the full mix).
 
 import { spawnSync } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
@@ -15,7 +15,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function usage(msg?: string): never {
   if (msg) console.error(msg);
-  console.error('usage: npm run audio -- <project> [--from s] [--to s] [--stems dir] [--out file.wav]');
+  console.error('usage: npm run audio [-- --from s] [--to s] [--stems dir] [--out file.wav]');
   process.exit(1);
 }
 
@@ -65,18 +65,17 @@ function wavInfo(file: string): { seconds: number; rate: number; channels: numbe
   }
 }
 
-const [id, ...rest] = process.argv.slice(2);
-if (!id || id.startsWith('--')) usage();
-const script = join(ROOT, 'projects', id, 'score.py');
-if (!existsSync(script)) usage(`No score at projects/${id}/score.py`);
+const args = process.argv.slice(2);
+if (args.length && !args[0].startsWith('--')) usage();
+const script = join(ROOT, 'film', 'score.py');
+if (!existsSync(script)) usage('No score at film/score.py');
 
-const args = [...rest];
 let out = flag(args, 'out');
 if (!out) {
   const from = flag(args, 'from');
   const to = flag(args, 'to');
   const name = from !== undefined || to !== undefined ? `score-${from ?? 0}-${to ?? 'end'}.wav` : 'score.wav';
-  out = join(ROOT, 'out', id, 'audio', name);
+  out = join(ROOT, 'out', 'audio', name);
   args.push('--out', out);
 }
 out = resolve(ROOT, out);

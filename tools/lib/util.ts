@@ -1,5 +1,5 @@
 // Shared helpers for the Node-side tools.
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,14 +40,14 @@ export function ensureDir(p: string) {
   return p;
 }
 
-export function projectDir(id: string) {
-  const d = join(ROOT, 'projects', id);
-  if (!existsSync(join(d, 'project.ts'))) throw new Error(`No project at projects/${id}/project.ts`);
-  return d;
-}
+/** The film's source: timeline, shots, shaders, captions and score. */
+export const FILM = join(ROOT, 'film');
+/** The stem of every rendered and released file name. */
+export const SLUG = 'the-arrow-of-time';
 
-export function outDir(id: string, ...sub: string[]) {
-  return ensureDir(join(ROOT, 'out', id, ...sub));
+/** A folder under out/ (git-ignored), created on demand. */
+export function outDir(...sub: string[]) {
+  return ensureDir(join(ROOT, 'out', ...sub));
 }
 
 export function stamp() {

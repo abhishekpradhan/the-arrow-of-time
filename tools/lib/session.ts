@@ -71,7 +71,6 @@ export interface Session {
   browser: Browser;
   setHandler(h: FrameHandler): void;
   openRenderPage(opts: {
-    project: string;
     width?: number;
     height?: number;
     motionBlur?: boolean;
@@ -117,7 +116,7 @@ export async function startSession(gl: GlMode = 'auto'): Promise<Session> {
         else if (process.env.MOVIES_VERBOSE) console.log(`[page] ${text}`);
       });
       page.on('pageerror', (e) => console.error(`[page:exception] ${e.message}`));
-      const q = new URLSearchParams({ p: o.project });
+      const q = new URLSearchParams();
       if (o.width) q.set('w', String(o.width));
       if (o.height) q.set('h', String(o.height));
       if (o.motionBlur === false) q.set('mb', '0');

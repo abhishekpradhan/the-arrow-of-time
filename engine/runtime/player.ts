@@ -1,11 +1,10 @@
 // Interactive preview (index.html): scrub, play with the soundtrack, step frames.
-//   ?p=<project>   choose project      ?s=0.5   render scale (1 = full res)
-//   ?mb=1          enable motion blur   #t=12.5  start time
+//   ?s=0.5   render scale (1 = full res)   ?mb=1   enable motion blur   #t=12.5   start time
 // Keys: Space play/pause · ←/→ ±1 frame · Shift+←/→ ±1 s · [ ] prev/next shot · M mute · F fullscreen
 
 import { Engine } from '../core/engine';
 import type { Project } from '../core/types';
-import { loadProject, projectIds } from './projects';
+import { loadFilm } from './film';
 
 const q = new URLSearchParams(location.search);
 
@@ -26,37 +25,10 @@ function fmt(t: number, fps: number) {
 
 async function main() {
   const app = document.getElementById('app')!;
-  const ids = projectIds();
-  if (!ids.length) {
-    app.textContent = 'No projects found in projects/. Create one with `npm run new -- <name>`.';
-    return;
-  }
-  let stored: string | null = null;
-  try {
-    stored = localStorage.getItem('movies.project');
-  } catch {
-    /* storage unavailable */
-  }
-  const id = q.get('p') ?? (stored && ids.includes(stored) ? stored : ids[0]);
-  try {
-    localStorage.setItem('movies.project', id);
-  } catch {
-    /* ignore */
-  }
   const scale = Number(q.get('s') ?? 0.5);
 
   const root = el('div', 'player', app);
   const header = el('header', '', root);
-  const sel = el('select', 'proj', header);
-  for (const p of ids) {
-    const o = el('option', '', sel, p);
-    o.value = p;
-    if (p === id) o.selected = true;
-  }
-  sel.onchange = () => {
-    q.set('p', sel.value);
-    location.search = q.toString();
-  };
   const titleEl = el('span', 'title', header);
   el('span', 'spacer', header);
   const shotEl = el('span', 'shot', header);
@@ -94,7 +66,7 @@ async function main() {
 
   let project: Project;
   try {
-    project = await loadProject(id);
+    project = await loadFilm();
   } catch (e) {
     loading.textContent = String(e);
     return;

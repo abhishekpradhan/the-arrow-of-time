@@ -1,27 +1,31 @@
 {
-  "name": "movies",
+  "name": "the-arrow-of-time",
   "private": true,
-  "version": "0.1.0",
-  "description": "A code-driven studio for cinematic, procedurally animated films (WebGL2 engine + Python score synthesis).",
-  "license": "Apache-2.0",
+  "version": "1.0.0",
+  "description": "The Arrow of Time: the history and future of everything in six minutes, made entirely in code (a WebGL2 film engine and a Python-synthesized score).",
+  "license": "MIT",
   "author": "Abhishek Pradhan",
-  "homepage": "https://github.com/abhishekpradhan/movies#readme",
+  "homepage": "https://github.com/abhishekpradhan/the-arrow-of-time#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/abhishekpradhan/movies.git"
+    "url": "https://github.com/abhishekpradhan/the-arrow-of-time.git"
   },
   "bugs": {
-    "url": "https://github.com/abhishekpradhan/movies/issues"
+    "url": "https://github.com/abhishekpradhan/the-arrow-of-time/issues"
   },
   "keywords": [
-    "webgl2",
     "film",
-    "animation",
-    "procedural",
+    "short-film",
+    "generative-art",
+    "creative-coding",
+    "webgl2",
     "glsl",
     "shader",
+    "ray-marching",
+    "procedural",
     "music-synthesis",
-    "generative"
+    "cosmology",
+    "big-history"
   ],
   "type": "module",
   "scripts": {
@@ -30,7 +34,6 @@
     "render": "tsx tools/render.ts",
     "still": "tsx tools/still.ts",
     "audio": "tsx tools/audio.ts",
-    "new": "tsx tools/new-project.ts",
     "setup": "tsx tools/setup.ts",
     "release": "tsx tools/release.ts"
   },

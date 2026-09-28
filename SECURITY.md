@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes go to the `main` branch. Films are released as media files and carry no code.
+Security fixes go to the `main` branch. The film itself is released as media files, which carry no code.
 
 ## Reporting a vulnerability
 

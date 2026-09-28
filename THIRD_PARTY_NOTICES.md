@@ -1,8 +1,8 @@
 # Third-party notices
 
-The studio and the films in this repository are original work, except for the snippets below,
-which are included under their own licenses. Each one is also credited in a comment where it
-appears in the source.
+*The Arrow of Time* and the code that makes it are original work (the code under the MIT
+License, the film under CC BY 4.0), except for the material below, which keeps its own terms.
+Each code snippet is also credited in a comment where it appears in the source.
 
 ## Code under the MIT License
 
@@ -10,7 +10,7 @@ appears in the source.
 |---|---|---|
 | `engine/shaders/common.glsl` (hash11 … hash43) | "Hash without Sine", Dave Hoskins ([Shadertoy 4djSRW](https://www.shadertoy.com/view/4djSRW)) | Copyright (c) 2014 David Hoskins |
 | `engine/shaders/noise.glsl` (`voronoiEdge`, fbm octave rotations, domain warp), `engine/shaders/sdf.glsl` (`sdBox`, `sdSegment`, `sdEllipse`, `sdTriangle`, `smin`), `engine/shaders/sdf3.glsl` (the 3D primitives), `engine/shaders/march.glsl` (`calcNormal`, `softShadow`, `calcAO`), `engine/shaders/color.glsl` (`palette`) | Inigo Quilez ([articles](https://iquilezles.org/articles/), [Voronoi – distances](https://www.shadertoy.com/view/ldl3W8)) | Copyright © 2013 Inigo Quilez (Voronoi); Copyright © Inigo Quilez (article snippets) |
-| `projects/arrow-of-time/shaders/r7.glsl` (`r7Edge`: polygon distance and winding), `orbit.glsl` (`hwShadow`) and `moonlanding.glsl` (`objShadow`): the improved soft shadow; `ascent.glsl` (`smoothCells`: smooth Voronoi) | Inigo Quilez ([2D distance functions](https://iquilezles.org/articles/distfunctions2d/), [soft shadows](https://iquilezles.org/articles/rmshadows/), [smooth Voronoi](https://iquilezles.org/articles/smoothvoronoi/)) | Copyright © Inigo Quilez (article snippets) |
+| `film/shaders/r7.glsl` (`r7Edge`: polygon distance and winding), `orbit.glsl` (`hwShadow`) and `moonlanding.glsl` (`objShadow`): the improved soft shadow; `ascent.glsl` (`smoothCells`: smooth Voronoi) | Inigo Quilez ([2D distance functions](https://iquilezles.org/articles/distfunctions2d/), [soft shadows](https://iquilezles.org/articles/rmshadows/), [smooth Voronoi](https://iquilezles.org/articles/smoothvoronoi/)) | Copyright © Inigo Quilez (article snippets) |
 | `engine/shaders/color.glsl` (`tonemapACES`) | Stephen Hill's ACES fit, as published in [BakingLab](https://github.com/TheRealMJP/BakingLab) | Copyright (c) 2016 MJP |
 | `engine/shaders/color.glsl` (`tonemapAgX`) | Benjamin Wrensch, ["Minimal AgX"](https://iolite-engine.com/blog_posts/minimal_agx_implementation) (AgX by Troy Sobotka) | Copyright (c) 2024 Missing Deadlines (Benjamin Wrensch) |
 | `engine/core/math.ts` (`m4.invert`) | [gl-matrix](https://github.com/toji/gl-matrix) `mat4.invert` | Copyright (c) 2015-2025, Brandon Jones, Colin MacKenzie IV |
@@ -38,19 +38,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Code under the Apache License 2.0
-
-- `engine/shaders/color.glsl` (`tonemapNeutral`): the Khronos PBR Neutral tone mapper,
-  `PBR_Neutral/pbrNeutral.glsl` from [KhronosGroup/ToneMapping](https://github.com/KhronosGroup/ToneMapping).
-  Copyright 2024 The Khronos Group, Inc. Licensed under the Apache License, Version 2.0
-  (full text in [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt)). Modified: renamed to
-  `tonemapNeutral` and integrated into this file.
-
 ## Data
 
 - **Earth maps** (`assets/earth/`): derived from [Natural Earth](https://www.naturalearthdata.com/)
   vector data, which is in the public domain.
-- **Big Dipper** (`projects/arrow-of-time/shots/future.ts`): positions, proper motions and
+- **Big Dipper** (`film/shots/future.ts`): positions, proper motions and
   magnitudes of seven stars from the Hipparcos catalogue (ESA).
 - **Vocal formants** (`audio/studio/instruments.py`): the formant table in the Csound manual.
 - **Apollo 11 audio** (`assets/apollo11/`): Neil Armstrong's "Houston, Tranquility Base here. The

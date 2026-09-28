@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Documentation
-    url: https://github.com/abhishekpradhan/movies/tree/main/docs
-    about: Guides for installing, making films, rendering and releasing.
+    url: https://github.com/abhishekpradhan/the-arrow-of-time/tree/main/docs
+    about: How the film is made, and how to build, preview, render and release it.
   - name: Security issues
-    url: https://github.com/abhishekpradhan/movies/security/advisories/new
+    url: https://github.com/abhishekpradhan/the-arrow-of-time/security/advisories/new
     about: Report vulnerabilities privately, not as issues.

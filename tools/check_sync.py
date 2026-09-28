@@ -1,8 +1,9 @@
 """Check audio/video sync of a rendered film at named cues.
 
-    .venv/bin/python tools/check_sync.py out/<id>/renders/<file>.mp4 projects/<id>/timeline.json [cue ...]
+    .venv/bin/python tools/check_sync.py out/renders/<file>.mp4 [timeline.json] [cue ...]
 
-Without cue names it checks the timeline's "syncCues" list, or every cue if there is none.
+The timeline defaults to film/timeline.json. Without cue names it checks the timeline's "syncCues"
+list, or every cue if there is none.
 
 For each cue it finds the biggest jump in audio level (RMS in dB, adjacent 20 ms windows, 5 ms
 steps) and the biggest frame-to-frame luma change within +-0.5 s, and prints both offsets
@@ -13,6 +14,7 @@ relative to the cue. Well-synced hits agree within about a frame. Cues whose nam
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import numpy as np
 
@@ -35,10 +37,11 @@ def frame_luma(path: str, fps: float, t0: float, t1: float, w: int = 64, h: int 
 
 
 def main() -> None:
-    video, timeline = sys.argv[1], sys.argv[2]
+    video, rest = sys.argv[1], sys.argv[2:]
+    timeline = rest.pop(0) if rest and rest[0].endswith(".json") else str(Path(__file__).resolve().parents[1] / "film" / "timeline.json")
     T = json.load(open(timeline))
     fps = T["fps"]
-    cues = sys.argv[3:] or T.get("syncCues") or sorted(T.get("cues", {}), key=lambda k: T["cues"][k])
+    cues = rest or T.get("syncCues") or sorted(T.get("cues", {}), key=lambda k: T["cues"][k])
     sr = 8000
     a = audio_env(video, sr)
     length = len(a) / sr

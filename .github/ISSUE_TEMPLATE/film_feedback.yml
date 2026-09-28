@@ -1,12 +1,13 @@
 name: Film feedback
-description: A note on a film itself (a shot, a caption, the music, a scientific detail).
+description: A note on the film itself (a shot, a caption, the music, a scientific or historical detail).
 labels: [film]
 body:
   - type: input
     id: film
     attributes:
-      label: Film and cut
-      placeholder: The Arrow of Time v0.3
+      label: Version
+      description: The release you watched (see the Releases page), or the commit you built.
+      placeholder: v1.0
     validations:
       required: true
   - type: input
@@ -14,7 +15,7 @@ body:
     attributes:
       label: Timestamp
       description: Where in the film (mm:ss), or the beat name from timeline.json.
-      placeholder: "3:05 (civilization)"
+      placeholder: "3:55 (moonlanding)"
     validations:
       required: true
   - type: textarea

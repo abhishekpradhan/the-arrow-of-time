@@ -112,7 +112,7 @@ export default defineProject({
   height: 1080,
   fps: T.fps,
   duration: T.duration,
-  audio: '/out/arrow-of-time/audio/score.wav',
+  audio: '/out/audio/score.wav',
   fonts: ['500 58px Cinzel', '400 22px Jost', 'italic 500 35px "Cormorant Garamond"', 'italic 400 44px "Cormorant Garamond"'],
   motionBlur: 1,
   shutter: 0.5,

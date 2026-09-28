@@ -43,7 +43,7 @@ export interface Shot<S = any> {
   render(c: ShotContext, state: S): void;
 }
 
-export type Tonemapper = 'aces' | 'neutral' | 'agx';
+export type Tonemapper = 'aces' | 'agx';
 
 /** Post-processing "look". Every field can be animated through `Project.look(t)`. */
 export interface Look {

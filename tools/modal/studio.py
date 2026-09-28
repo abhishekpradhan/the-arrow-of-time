@@ -1,26 +1,26 @@
-"""Render a film on Modal: many CPU containers each render a slice of the timeline at once.
+"""Render the film on Modal: many CPU containers each render a slice of the timeline at once.
 
     pip install -r tools/modal/requirements.txt && modal setup        # once
-    modal run tools/modal/studio.py --project arrow-of-time                       # 1080p master
-    modal run tools/modal/studio.py --project arrow-of-time --preset draft        # half resolution
-    modal run tools/modal/studio.py --project arrow-of-time --window 182-216      # re-render one sequence
-    modal run tools/modal/studio.py --project arrow-of-time --release             # + distribution encodes
-    modal run tools/modal/studio.py --project arrow-of-time --scale 2 --release --variants 2160p,1080p,poster
+    modal run tools/modal/studio.py                                   # 1080p master
+    modal run tools/modal/studio.py --preset draft                    # half resolution
+    modal run tools/modal/studio.py --window 182-216                  # re-render one sequence
+    modal run tools/modal/studio.py --release                         # + distribution encodes
+    modal run tools/modal/studio.py --scale 2 --release --variants 2160p,1080p,poster
 
 Slices are rendered with the same code, browser and software rasterizer (Mesa llvmpipe) as
 `npm run render`, so a Modal render matches a local one frame for frame.
 
 Nothing is deployed. `modal run` makes an ephemeral app that stops when the command ends, and no
 other app in the Modal workspace is touched. The one persistent object is a Volume (default
-"movies-studio") that caches slices, scores and outputs under keys hashed from the files that
+"arrow-of-time") that caches slices, scores and outputs under keys hashed from the files that
 affect them: re-running after a score-only change renders no video at all, and an unchanged
 film costs nothing. The volume carries a marker file; if a volume of that name exists without it,
 the run stops rather than write into someone else's data.
 
 Settings (environment variables, all optional):
-    MODAL_ENVIRONMENT             Modal environment to run in (e.g. a dedicated "movies" one)
-    STUDIO_MODAL_APP              app name shown in the Modal dashboard   (default movies-studio)
-    STUDIO_MODAL_VOLUME           cache volume name                       (default movies-studio)
+    MODAL_ENVIRONMENT             Modal environment to run in (e.g. a dedicated one for the film)
+    STUDIO_MODAL_APP              app name shown in the Modal dashboard   (default arrow-of-time)
+    STUDIO_MODAL_VOLUME           cache volume name                       (default arrow-of-time)
     STUDIO_MODAL_CPU              cores per render container              (default 8)
     STUDIO_MODAL_WORKERS          browser pages per render container      (default 3)
     STUDIO_MODAL_MAX_CONTAINERS   render containers at once               (default 40)
@@ -43,13 +43,14 @@ from pathlib import Path
 
 import modal
 
-APP_NAME = os.environ.get("STUDIO_MODAL_APP", "movies-studio")
-VOLUME_NAME = os.environ.get("STUDIO_MODAL_VOLUME", "movies-studio")
+APP_NAME = os.environ.get("STUDIO_MODAL_APP", "arrow-of-time")
+VOLUME_NAME = os.environ.get("STUDIO_MODAL_VOLUME", "arrow-of-time")
 CPU = float(os.environ.get("STUDIO_MODAL_CPU", "8"))
 WORKERS = int(os.environ.get("STUDIO_MODAL_WORKERS", "3"))
 MAX_CONTAINERS = int(os.environ.get("STUDIO_MODAL_MAX_CONTAINERS", "40"))
 MEMORY_GIB = 12  # per render container: enough for three 4K pages
-MARKER = ".movies-studio"
+MARKER = ".arrow-of-time"
+SLUG = "the-arrow-of-time"  # the stem of rendered and released file names (tools/lib/util.ts)
 # Modal list prices (September 2026) for the cost estimate printed at the end.
 USD_PER_CORE_S = 0.0000131
 USD_PER_GIB_S = 0.00000222
@@ -114,7 +115,7 @@ def _frames_in(path: Path) -> int:
 
 
 @app.function(cpu=CPU, memory=MEMORY_GIB * 1024, timeout=3600, retries=1, max_containers=MAX_CONTAINERS, volumes={str(CACHE): vol})
-def render_slice(project: str, preset: str, scale: float, a: int, b: int, rel: str, segment_s: float, force: bool) -> float:
+def render_slice(preset: str, scale: float, a: int, b: int, rel: str, segment_s: float, force: bool) -> float:
     """Render frames [a, b) into CACHE/rel (video only). Returns the seconds spent."""
     t0 = time.time()
     out = CACHE / rel
@@ -126,7 +127,7 @@ def render_slice(project: str, preset: str, scale: float, a: int, b: int, rel: s
     env = {"LP_NUM_THREADS": str(cores)} if cores < (os.cpu_count() or cores) else {}
     print(f"[slice {a}-{b}] {cores} cores, {WORKERS} pages", flush=True)
     tmp = Path("/tmp") / out.name
-    _run(["npx", "tsx", "tools/render.ts", project, "--preset", preset, "--scale", f"{scale:g}", "--frames", f"{a}:{b}",
+    _run(["npx", "tsx", "tools/render.ts", "--preset", preset, "--scale", f"{scale:g}", "--frames", f"{a}:{b}",
           "--workers", str(WORKERS), "--segment", f"{segment_s:.4f}", "--no-audio", "--out", str(tmp)], root, env)
     if _frames_in(tmp) != b - a:
         raise RuntimeError(f"slice {a}-{b}: expected {b - a} frames, got {_frames_in(tmp)}")
@@ -137,22 +138,22 @@ def render_slice(project: str, preset: str, scale: float, a: int, b: int, rel: s
 
 
 @app.function(cpu=2, memory=8192, timeout=3600, volumes={str(CACHE): vol})
-def score(project: str, rel: str) -> float:
+def score(rel: str) -> float:
     """Synthesize the soundtrack into CACHE/rel. Returns the seconds spent."""
     t0 = time.time()
     out = CACHE / rel
     if out.exists():
         return 0.0
     root = _prepare()
-    _run(["npx", "tsx", "tools/audio.ts", project], root)
+    _run(["npx", "tsx", "tools/audio.ts"], root)
     out.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(root / "out" / project / "audio" / "score.wav", out)
+    shutil.copyfile(root / "out" / "audio" / "score.wav", out)
     vol.commit()
     return time.time() - t0
 
 
 @app.function(cpu=4, memory=8192, timeout=3600, volumes={str(CACHE): vol})
-def assemble(project: str, slices: list[str], audio: str, frames: int, fps: float, rel: str) -> float:
+def assemble(slices: list[str], audio: str, frames: int, fps: float, rel: str) -> float:
     """Join the slices (stream copy), add the soundtrack, and check picture/sound sync."""
     t0 = time.time()
     vol.reload()
@@ -178,19 +179,19 @@ def assemble(project: str, slices: list[str], audio: str, frames: int, fps: floa
              "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-t", f"{frames / fps:.3f}", "-movflags", "+faststart", str(out)])
     vol.commit()
     # Every cue in the timeline against the audio (prints a table; informational).
-    subprocess.run(["python3", "tools/check_sync.py", str(out), f"projects/{project}/timeline.json"], cwd=root)
+    subprocess.run(["python3", "tools/check_sync.py", str(out)], cwd=root)
     return time.time() - t0
 
 
 @app.function(cpu=16, memory=16384, timeout=5400, volumes={str(CACHE): vol})
-def release_variant(project: str, master: str, variant: str, poster: float, rel_dir: str) -> float:
+def release_variant(master: str, variant: str, poster: float, rel_dir: str) -> float:
     """Encode one distribution variant (2160p, 1080p, 720p or poster) of a master into CACHE/rel_dir."""
     t0 = time.time()
     vol.reload()
     root = _prepare()
     work = Path("/tmp/release")
     shutil.rmtree(work, ignore_errors=True)
-    cmd = ["npx", "tsx", "tools/release.ts", project, "--input", str(CACHE / master), "--variants", variant, "--out-dir", str(work)]
+    cmd = ["npx", "tsx", "tools/release.ts", "--input", str(CACHE / master), "--variants", variant, "--out-dir", str(work)]
     if poster >= 0:
         cmd += ["--poster", f"{poster:g}"]
     _run(cmd, root)
@@ -204,7 +205,7 @@ def release_variant(project: str, master: str, variant: str, poster: float, rel_
 
 
 @app.function(cpu=2, memory=4096, timeout=1200, volumes={str(CACHE): vol})
-def finalize_release(project: str, rel_dir: str, duration: float, commit: str) -> list[str]:
+def finalize_release(rel_dir: str, duration: float, commit: str) -> list[str]:
     """Write info.json and SHA256SUMS for everything in a release folder; returns the file names."""
     vol.reload()
     dest = CACHE / rel_dir
@@ -218,7 +219,7 @@ def finalize_release(project: str, rel_dir: str, duration: float, commit: str) -
         return h.hexdigest()
 
     entries = [{"file": f.name, "bytes": f.stat().st_size, "sha256": sha(f)} for f in files]
-    info = {"project": project, "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "commit": commit, "duration": duration, "files": entries}
+    info = {"film": SLUG, "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "commit": commit, "duration": duration, "files": entries}
     (dest / "info.json").write_text(json.dumps(info, indent=2) + "\n")
     (dest / "SHA256SUMS").write_text("".join(f"{e['sha256']}  {e['file']}\n" for e in entries))
     vol.commit()
@@ -245,17 +246,17 @@ def _walk(*roots: Path) -> list[Path]:
     return out
 
 
-def _video_sources(project: str) -> list[Path]:
-    """Everything that can change a pixel: engine, project code and data, assets, the render tools."""
-    pdir = REPO / "projects" / project
-    own = [p for p in _walk(pdir) if p.suffix != ".md" and p.name not in ("score.py", "poster.jpg")]
+def _video_sources() -> list[Path]:
+    """Everything that can change a pixel: the engine, the film's code and data, assets, the render tools."""
+    own = [p for p in _walk(REPO / "film") if p.suffix != ".md" and p.name != "score.py"]
     return own + _walk(REPO / "engine", REPO / "assets", REPO / "tools" / "render.ts", REPO / "tools" / "lib",
                        REPO / "render.html", REPO / "vite.config.ts", REPO / "package-lock.json")
 
 
-def _audio_sources(project: str) -> list[Path]:
-    pdir = REPO / "projects" / project
-    return _walk(REPO / "audio" / "studio", pdir / "score.py", pdir / "timeline.json", REPO / "requirements.txt", REPO / "tools" / "audio.ts")
+def _audio_sources() -> list[Path]:
+    film = REPO / "film"
+    return _walk(REPO / "audio" / "studio", film / "score.py", film / "timeline.json", REPO / "assets" / "apollo11",
+                 REPO / "requirements.txt", REPO / "tools" / "audio.ts")
 
 
 def _listdir(path: str) -> set[str]:
@@ -291,7 +292,7 @@ def _claim_volume() -> None:
         raise SystemExit(f"The Modal volume '{VOLUME_NAME}' already holds data from something else. "
                          "Set STUDIO_MODAL_VOLUME to a new name and run again.")
     if not names:
-        _write(MARKER, b"Cache for tools/modal/studio.py (movies studio). Safe to delete: it only holds rendered media.\n")
+        _write(MARKER, b"Cache for tools/modal/studio.py (The Arrow of Time). Safe to delete: it only holds rendered media.\n")
 
 
 def _git_commit() -> str:
@@ -303,7 +304,6 @@ def _git_commit() -> str:
 
 @app.local_entrypoint()
 def main(
-    project: str = "arrow-of-time",
     preset: str = "final",
     scale: float = 0.0,
     window: str = "",
@@ -314,7 +314,7 @@ def main(
     download: str = "auto",
     force: bool = False,
 ) -> None:
-    """Render PROJECT on Modal and download the result into out/<project>/.
+    """Render the film on Modal and download the result into out/.
 
     --preset final|draft, --scale (0 = preset default; 2 = 4K), --window 182-216 re-renders only the
     slices touching that time range and reuses the rest from the last render with the same settings,
@@ -324,18 +324,18 @@ def main(
     t0 = time.time()
     if preset not in ("final", "draft"):
         raise SystemExit("--preset must be final or draft")
-    timeline = json.loads((REPO / "projects" / project / "timeline.json").read_text())
+    timeline = json.loads((REPO / "film" / "timeline.json").read_text())
     fps, duration = float(timeline["fps"]), float(timeline["duration"])
     frames = round(duration * fps)
     scale = scale or (0.5 if preset == "draft" else 1.0)
-    base = f"{project}/{preset}-x{scale:g}"
-    vkey, akey = _hash(_video_sources(project)), _hash(_audio_sources(project))
+    base = f"{preset}-x{scale:g}"
+    vkey, akey = _hash(_video_sources()), _hash(_audio_sources())
     _claim_volume()
 
     latest = _read_json(f"{base}/latest.json")
     if window:
         if not latest:
-            raise SystemExit(f"--window needs an earlier full render of {project} with --preset {preset} --scale {scale:g}.")
+            raise SystemExit(f"--window needs an earlier full render with --preset {preset} --scale {scale:g}.")
         wa, wb = (float(x) for x in window.split("-"))
         step = int(latest["slice_frames"])
         grid = [(a, min(a + step, frames)) for a in range(0, frames, step)]
@@ -351,13 +351,13 @@ def main(
     prefix = f"{base}/slices/{vkey}/"
     have = set() if force else _listdir(prefix)
     todo = [(a, b, rel) for a, b, rel in plan if rel.startswith(prefix) and rel[len(prefix):] not in have]
-    print(f"[modal] {timeline.get('title', project)}: {len(plan)} slices of {step / fps:g} s, {len(todo)} to render "
+    print(f"[modal] {timeline.get('title', SLUG)}: {len(plan)} slices of {step / fps:g} s, {len(todo)} to render "
           f"(video {vkey}, audio {akey}), {CPU:g} cores x {WORKERS} pages each, up to {MAX_CONTAINERS} containers", flush=True)
 
-    audio_rel = f"{project}/audio/{akey}.wav"
-    audio_call = score.spawn(project, audio_rel)
+    audio_rel = f"audio/{akey}.wav"
+    audio_call = score.spawn(audio_rel)
     busy, done, failed = 0.0, 0, []
-    args = [(project, preset, scale, a, b, rel, step / fps / WORKERS, force) for a, b, rel in todo]
+    args = [(preset, scale, a, b, rel, step / fps / WORKERS, force) for a, b, rel in todo]
     # A failed slice does not stop the others: they finish and stay cached, so a re-run resumes.
     # (Never map over an empty list: with every slice cached, that call waits forever.)
     for spent in render_slice.starmap(args, order_outputs=False, return_exceptions=True) if args else []:
@@ -374,9 +374,9 @@ def main(
     cost = busy * (CPU * USD_PER_CORE_S + MEMORY_GIB * USD_PER_GIB_S) + audio_s * (2 * USD_PER_CORE_S + 8 * USD_PER_GIB_S)
 
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
-    master = f"{base}/renders/{project}-{preset}-{stamp}.mp4"
+    master = f"{base}/renders/{SLUG}-{preset}-{stamp}.mp4"
     print(f"[modal] joining {len(plan)} slices and adding the soundtrack …", flush=True)
-    cost += assemble.remote(project, [rel for _, _, rel in plan], audio_rel, frames, fps, master) * (4 * USD_PER_CORE_S + 8 * USD_PER_GIB_S)
+    cost += assemble.remote([rel for _, _, rel in plan], audio_rel, frames, fps, master) * (4 * USD_PER_CORE_S + 8 * USD_PER_GIB_S)
     _write(f"{base}/latest.json", json.dumps({
         "slice_frames": step, "slices": plan, "video": vkey, "audio": audio_rel, "master": master, "commit": _git_commit(),
     }, indent=1).encode())
@@ -386,19 +386,19 @@ def main(
         rel_dir = f"{base}/release/{stamp}"
         wanted = [v.strip() for v in variants.split(",") if v.strip()]
         print(f"[modal] encoding {', '.join(wanted)} in parallel …", flush=True)
-        for spent in release_variant.starmap([(project, master, v, poster, rel_dir) for v in wanted], order_outputs=False):
+        for spent in release_variant.starmap([(master, v, poster, rel_dir) for v in wanted], order_outputs=False):
             cost += spent * (16 * USD_PER_CORE_S + 16 * USD_PER_GIB_S)
-        names = finalize_release.remote(project, rel_dir, duration, _git_commit())
+        names = finalize_release.remote(rel_dir, duration, _git_commit())
 
     what = download if download != "auto" else ("release" if release else "master")
     print(f"[modal] downloading ({what}) …", flush=True)
     if what in ("master", "all"):
-        local = REPO / "out" / project / "renders" / master.split("/")[-1]
+        local = REPO / "out" / "renders" / master.split("/")[-1]
         _fetch(master, local)
         if not window:
-            shutil.copyfile(local, local.with_name(f"{project}-{preset}-latest.mp4"))
+            shutil.copyfile(local, local.with_name(f"{SLUG}-{preset}-latest.mp4"))
     if what in ("release", "all") and release:
         for name in names:
-            _fetch(f"{rel_dir}/{name}", REPO / "out" / project / "release" / name)
+            _fetch(f"{rel_dir}/{name}", REPO / "out" / "release" / name)
     print(f"[modal] done in {time.time() - t0:.0f} s; about ${cost:.2f} of compute. Master in volume "
           f"'{VOLUME_NAME}' at {master}{f', release files at {rel_dir}' if rel_dir else ''}.", flush=True)

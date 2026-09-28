@@ -45,7 +45,7 @@ remaps (slow motion around an event) and camera moves. Also `envelope`, `drift`,
 | --- | --- |
 | `common` | constants, `saturate`, `remap`, rotations, hashes, `centered`, ray/sphere, `band` |
 | `noise` | value and gradient noise, fbm, ridged, turbulence, Worley, Voronoi edges, domain warping |
-| `color` | sRGB conversion, blackbody, palettes, saturation and hue, ACES/AgX/neutral tonemaps, fire ramp |
+| `color` | sRGB conversion, blackbody, palettes, saturation and hue, ACES and AgX tonemaps, fire ramp |
 | `sdf` | 2D distance fields (circle, box, segment, tapered strokes, Bézier, ellipse, triangle), smooth min/max, anti-aliased fills |
 | `sdf3` | 3D distance fields (sphere, box, capsule, tapered capsule, cylinders, cone frustum, torus, square pyramid, ellipsoid, hexagonal prism) and limited repetition |
 | `march` | a ray marcher for 3D scenes: `march`, `calcNormal`, `softShadow`, `calcAO`, `skyColor`, `applyFog` (see below) |
@@ -155,7 +155,7 @@ Promote anything a second film could use into the engine rather than copying it.
 
 The post chain turns the HDR frame into the picture: 13-tap bloom with Karis averaging, anamorphic
 streaks, light shafts (`rays`: the bright parts of the frame smeared towards `raysCenter`, so a low
-sun streams between silhouettes), ACES/AgX/neutral tonemapping, lift/gamma/gain grading, saturation and contrast, grain,
+sun streams between silhouettes), ACES or AgX tonemapping, lift/gamma/gain grading, saturation and contrast, grain,
 vignette, chromatic aberration, a letterbox that animates between 16:9 and 2.39:1, fades, flashes
 and camera shake. Everything is animated through `project.look(t)` (see `Look` in
 `engine/core/types.ts`). NaNs are zeroed so they cannot bloom into black holes, but the pixel is

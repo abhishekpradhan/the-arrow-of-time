@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Insert (or remove) time in a film's timeline.json.
 
-    python3 tools/retime.py projects/<id>/timeline.json --at 108 --by 4 [--extend moon]
+    python3 tools/retime.py [film/timeline.json] --at 108 --by 4 [--extend moon]
 
 Every time at or after ``--at`` moves by ``--by`` seconds: beat starts and ends, cues, montage
 times, the times cards leave (``until``, ``captionUntil``), time lists (e.g. ``starIgnitions``),
@@ -15,6 +15,7 @@ import argparse
 import json
 import re
 import sys
+from pathlib import Path
 
 
 def fmt(x: float) -> str:
@@ -23,7 +24,7 @@ def fmt(x: float) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('timeline')
+    ap.add_argument('timeline', nargs='?', default=str(Path(__file__).resolve().parents[1] / 'film' / 'timeline.json'))
     ap.add_argument('--at', type=float, required=True, help='times >= this move')
     ap.add_argument('--by', type=float, required=True, help='seconds to insert (negative removes)')
     ap.add_argument('--extend', default=None, help='beat id whose end moves while its start stays')
