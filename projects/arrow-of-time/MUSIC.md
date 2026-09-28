@@ -12,7 +12,8 @@ universe organizes, then **accelerates** through human history up to NOW, where 
 (it falls silent above the clouds as the rocket leaves the Earth, and comes back from far away as
 the Moon dissolves into night Earth).
 It resumes for the future and **slows down** as the stars die, until the last tick at the
-heat death. After a long silence, one final soft tick ends the film.
+heat death. After a long silence, one final soft tick ends the score; the credits follow in
+silence.
 
 The palette is Interstellar-style pipe organ and sustained strings, Vangelis-style synth brass
 for the epic reveals, glassy bells for stars, and huge booms for cosmic violence. It is
@@ -110,3 +111,4 @@ integrated, −1 dBTP**. 48 kHz stereo.
 | **353.4** | `picardy` | **A major** blooms (strings, organ, choir): "That moment is now." |
 | 357.4–361 | `finalTitle` | the final chord sustains and fades |
 | 361.2 | `finalTick` | one final, soft tick |
+| 362–372 | credits | silence |

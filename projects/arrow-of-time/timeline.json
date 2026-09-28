@@ -2,7 +2,7 @@
   "title": "The Arrow of Time",
   "logline": "The history and future of everything, from the first instant to the last.",
   "fps": 24,
-  "duration": 362,
+  "duration": 372,
   "notes": "Single source of truth for timing. Read by project.ts (visuals, captions) and score.py (music). Times in seconds. Exponents use ^ (e.g. 10^40), minus signs use U+2212.",
   "syncCues": ["bang", "theia", "asteroidImpact", "now", "lastFlash"],
   "beats": [
@@ -57,7 +57,8 @@
     { "id": "blackholes", "act": "end", "start": 314, "end": 322, "card": "chapter", "era": "+10^40 years", "title": "The Black Hole Era", "line": "Only black holes remain." },
     { "id": "evaporation", "act": "end", "start": 322, "end": 330, "card": "chapter", "era": "+10^100 years", "line": "Even they evaporate, in a final flash of light." },
     { "id": "heatdeath", "act": "end", "start": 330, "end": 340, "card": "chapter", "layout": "center", "title": "The End of Time", "line": "No light. No change. No time." },
-    { "id": "epilogue", "act": "epilogue", "start": 340, "end": 362, "card": "epilogue" }
+    { "id": "epilogue", "act": "epilogue", "start": 340, "end": 362, "card": "epilogue" },
+    { "id": "credits", "act": "credits", "start": 362, "end": 372, "card": "none" }
   ],
   "prologueLines": [
     { "start": 2, "end": 6.6, "text": "Everything that has ever happened," },
@@ -73,6 +74,14 @@
     { "start": 21.2, "end": 29.2, "text": "The Arrow of Time" },
     { "start": 357.4, "end": 362, "text": "The Arrow of Time", "credit": "A film by Abhishek Pradhan" }
   ],
+  "credits": { "start": 362.8, "end": 371.2, "head": "Made entirely in code",
+    "line": "Every frame rendered in WebGL, every note of the score synthesized in Python.",
+    "names": [
+      "Apollo 11 air-to-ground audio courtesy of NASA",
+      "Earth maps from Natural Earth · Star positions from ESA’s Hipparcos catalogue",
+      "The Moon-forming impact simulated with SWIFT",
+      "Set in Cinzel, Jost and Cormorant Garamond"
+    ] },
   "cues": {
     "firstTick": 1,
     "riserStart": 13,

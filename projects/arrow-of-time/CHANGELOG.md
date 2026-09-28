@@ -6,7 +6,7 @@ The newest section is used for the release notes. Cuts are published on the
 ## v0.6 (27 September 2026)
 
 - **The space race** is the new centrepiece: 36 seconds from Baikonur to the Sea of
-  Tranquility with the letterbox open to full frame, and the film runs 6:02. The camera cranes
+  Tranquility with the letterbox open to full frame, and the film runs 6:12. The camera cranes
   up after the painted R-7 into the cloud over the pad and comes out above it in 3D: the rocket
   bursts through a moonlit cloud deck, its fire glowing inside the cloud, and climbs across the
   face of the gibbous Moon (it was ten days old that night) on a long lens. At 45 km, in slow
@@ -33,6 +33,9 @@ The newest section is used for the release notes. Cuts are published on the
   that chord, whose last note becomes the A minor of night Earth, where the clock comes back from
   far away and the orchestra builds again to NOW. New cues `clouds`, `staging`, `orbitalDawn`,
   `eagleLands`, `tranquilityBase` and `reflection`.
+- **Credits**: a closing card after the final title, over black and in silence: the film was
+  made entirely in code, and it names what it borrows (NASA's Apollo 11 audio, Natural Earth,
+  the Hipparcos catalogue, SWIFT, the typefaces).
 
 ## v0.5 (27 September 2026)
 

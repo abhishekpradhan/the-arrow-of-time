@@ -1,6 +1,6 @@
 # The Arrow of Time
 
-*The history and future of everything, from the first instant to the last.* 6:02, 1920×1080,
+*The history and future of everything, from the first instant to the last.* 6:12, 1920×1080,
 24 fps, 2.39:1 letterbox that opens to full frame for the biggest moments.
 
 ![Frames from the film](poster.jpg)
@@ -38,6 +38,7 @@ at itself. See `MUSIC.md` for the score design.
 | 4:12 | Now | the pale blue dot, and silence |
 | 4:20 | The Future | new worlds, drifting constellations, oceans boil away, red giant, white dwarf, Milky Way and Andromeda merge |
 | 5:06 | The End | the last stars, the black hole era, evaporation, the end of time |
+| 6:02 | Credits | made entirely in code; NASA's Apollo 11 audio, Natural Earth, Hipparcos, SWIFT |
 | 5:33 | Epilogue | "That moment is now." |
 
 ## Visual techniques

@@ -86,9 +86,10 @@ score synthesis, headless rendering). Read `README.md` for the overview and comm
   (`lower`, `lower-left/right`, `left/right`, `upper-left/right`, `upper`, `center`, or `{ "at":
   ..., "x": ..., "y": ... }`), and `captionDelay` to let an event play first (`captionUntil` takes
   it away early; a `line` with `\n` in it arrives a line at a time, `lineStagger` seconds apart).
-  The scrim follows the card (`Look.scrimCenter/scrimRadius`). If a card collides with the subject,
-  reframe the shot (`Camera.pan`, target offsets) rather than squeezing the text. Review layouts
-  with a sheet of one frame per beat.
+  The closing credits are `credits` in `timeline.json`: name anything a film borrows there as well
+  as in `THIRD_PARTY_NOTICES.md`. The scrim follows the card (`Look.scrimCenter/scrimRadius`). If a
+  card collides with the subject, reframe the shot (`Camera.pan`, target offsets) rather than
+  squeezing the text. Review layouts with a sheet of one frame per beat.
 - **Camera**: `engine/core/camera.ts` feeds both sprites and ray-marched shaders
   (`...cam.uniforms()` plus `#include <camera>` and `camRay(p)`). The chunk declares
   `uCamPos, uCamFwd, uCamRight, uCamUp, uTanHalfFov, uNear, uFar, uViewProj, uJitter`, so do

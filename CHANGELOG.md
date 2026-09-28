@@ -31,7 +31,8 @@ and are published on the [Releases page](https://github.com/abhishekpradhan/movi
   ([docs/engine.md](docs/engine.md#atmosphere)).
 - The Arrow of Time v0.6: the space race in 3D, from the R-7 climbing out of the clouds to Sputnik
   in an orbital sunrise and Apollo 11's landing, held under Armstrong's own voice (NASA's
-  recording, in `assets/apollo11/`) before a slow dissolve home to the Earth of today.
+  recording, in `assets/apollo11/`) before a slow dissolve home to the Earth of today; closing
+  credits.
 - `tools/retime.py` also moves the times cards leave (`until`, `captionUntil`).
 
 ### Changed

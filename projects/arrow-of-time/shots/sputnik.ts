@@ -66,9 +66,13 @@ const STAGE_AXIS: Vec3 = v3.norm([1, -0.1, 0.06]);
 function layout(time: number) {
   const since = Math.max(0, time - cues.sputnik);
   const axis = rotateAbout(STAGE_AXIS, [0, 0, 1], -0.006 * (time - T_FAIR));
-  const top = v3.scale([1, 0, 0], -0.1 * since - 0.12 * since * since);
+  // Sputnik (and the camera) ride with `ref`, the stage's top as it was at the release; the spent
+  // stage itself falls back from them, out of the way of the camera as it swings round behind
+  // Sputnik (it would otherwise pass through the stage's top).
+  const ref = v3.scale([1, 0, 0], -0.1 * since - 0.12 * since * since);
+  const top = v3.add(ref, v3.scale(axis, -(0.8 * since + 0.3 * since * since)));
   // Sputnik: on its adapter under the fairing, then pushed off, tumbling slowly.
-  const sat = v3.add(top, v3.add(v3.scale(axis, 0.62 + 0.75 * since), [0, 0.04 * since, 0.03 * since]));
+  const sat = v3.add(ref, v3.add(v3.scale(axis, 0.62 + 0.75 * since), [0, 0.04 * since, 0.03 * since]));
   const tumble = 0.25 * since;
   const [sx0, sy0, sz0] = frameAlong(axis, [0, 0, 1]);
   // Sputnik's frame: its x (front) along the stage's axis, then turning.
@@ -99,7 +103,7 @@ function layout(time: number) {
     if (open > 4.0) base = v3.add(base, [0, 1e4, 0]);
     fair.push({ pos: base, rot: rows(hx, hy, hz) });
   }
-  return { axis, top, sat, satRot: rows(fx, fy, fz), sweep, fair };
+  return { axis, top, ref, sat, satRot: rows(fx, fy, fz), sweep, fair };
 }
 
 /** Rotate a direction about the vertical by `az` and tilt it by `el` (radians). */
@@ -132,9 +136,9 @@ function dawnView(t: number): { pos: Vec3; target: Vec3 } {
  * in close past Sputnik as it is released and on round behind it as it drifts into the dawn (a
  * quadratic Bezier through the three setups, eased once from end to end, so it never stops).
  */
-function cameraA(time: number, top: Vec3): { pos: Vec3; target: Vec3; fov: number } {
+function cameraA(time: number, ref: Vec3): { pos: Vec3; target: Vec3; fov: number } {
   const sat = layout(time).sat;
-  const k0Pos = v3.add(top, [-1.4 + 0.25 * (time - T_FAIR), 1.25, -6.8]), k0Tgt = v3.add(top, [0.9, 0.15, 0]);
+  const k0Pos = v3.add(ref, [-1.4 + 0.25 * (time - T_FAIR), 1.25, -6.8]), k0Tgt = v3.add(ref, [0.9, 0.15, 0]);
   const k1Pos = v3.add(sat, [-1.2, 0.45, -2.1]), k1Tgt = v3.add(sat, [0.45, -0.12, 0.1]);
   const k2 = dawnView(time);
   const u = keys(time, [[cues.sputnik - 1.1, 0], [cues.orbitalDawn + 1.1, 1, 'inOutSine']]);
@@ -177,7 +181,7 @@ const lookCam = new Camera({ fov: 42, aspect: 16 / 9 });
 export function sunriseLook(time: number): Partial<Look> {
   const a = cues.orbitalDawn - 0.15, b = T_AB;
   if (time < a || time > b) return {};
-  const cam = cameraA(time, layout(time).top);
+  const cam = cameraA(time, layout(time).ref);
   lookCam.set({ pos: [0, 0, 0], target: v3.sub(cam.target, cam.pos), up: [0, 1, 0], fov: cam.fov });
   const pr = lookCam.project(v3.scale(sunAt(time), 1000));
   if (!pr.visible) return {};
@@ -258,7 +262,7 @@ export function sputnik(): Shot<Orbit> {
     motionBlur: (time) => (time > cues.sputnik - 1.1 && time < cues.orbitalDawn + 1.1 ? 6 : 3),
     setup: orbitSetup,
     render(c, s) {
-      drawOrbit(c, s, cameraA(c.time, layout(c.time).top));
+      drawOrbit(c, s, cameraA(c.time, layout(c.time).ref));
     },
   };
 }

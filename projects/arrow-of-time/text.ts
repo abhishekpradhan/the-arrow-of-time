@@ -40,6 +40,14 @@ export const STYLE = {
     color: '#efe7da',
     glow: { color: 'rgba(255,230,200,0.06)', blur: 18 },
   },
+  small: {
+    family: 'Jost',
+    weight: 400,
+    size: 20,
+    tracking: 0.05,
+    color: '#cfc6b8',
+    shadow: { color: 'rgba(0,0,0,0.6)', blur: 10 },
+  },
   main: {
     family: 'Cinzel',
     weight: 500,
@@ -293,6 +301,36 @@ function credit(start: number, end: number, text: string): TextItem {
   };
 }
 
+/** The closing credits, over black after the final title: what the film was made with, and whose
+ * work it borrows (THIRD_PARTY_NOTICES.md has the details). The sources arrive a beat after the
+ * headline and all leave together. */
+function credits(c: { start: number; end: number; head: string; line: string; names: string[] }): TextItem {
+  return {
+    start: c.start,
+    end: c.end,
+    draw(ctx, t, L) {
+      const y = (v: number) => L.top + v * (L.bottom - L.top);
+      const blocks: { text: string; style: TextStyle; at: number; delay: number }[] = [
+        { text: c.head, style: STYLE.era, at: 0.3, delay: 0 },
+        { text: c.line, style: STYLE.line, at: 0.39, delay: 0.5 },
+        ...c.names.map((text, i) => ({ text, style: STYLE.small, at: 0.56 + 0.068 * i, delay: 1.6 + 0.15 * i })),
+      ];
+      for (const b of blocks) {
+        if (t < c.start + b.delay) continue;
+        const life = lifeOf(t, c.start + b.delay, c.end, 1.2, 1.2);
+        drawText(ctx, b.text, L.w / 2, y(b.at), b.style, L.s, 'center', {
+          inP: life.inP,
+          outP: life.outP,
+          lifeP: life.lifeP,
+          mode: 'blur',
+          blur: 8,
+          trackingDrift: 0.02,
+        });
+      }
+    },
+  };
+}
+
 export function buildText(): TextItem[] {
   const items: TextItem[] = [];
   for (const b of T.beats as Beat[]) {
@@ -307,5 +345,6 @@ export function buildText(): TextItem[] {
     items.push(arrowLine(c.start + 1.2, c.end));
     if (c.credit) items.push(credit(c.start + 2.0, c.end, c.credit));
   }
+  items.push(credits(T.credits));
   return items;
 }
