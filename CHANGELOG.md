@@ -6,7 +6,7 @@ it. Releases start with v1.0 and are published on the
 here becomes the release notes. The working cuts before it (v0.1 to v0.4) are recorded below. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [v1.1] - 2026-11-12
 
 A second pass over the picture, shot by shot, for cinematic quality. The cut, the captions, the
 timing and the score are unchanged: every beat and cue is where it was.
@@ -309,4 +309,5 @@ film's own.
   loudness mastering and analysis.
 - `npm run new` and the starter template.
 
+[v1.1]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/v1.1
 [v1.0]: https://github.com/abhishekpradhan/the-arrow-of-time/releases/tag/v1.0

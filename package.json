@@ -1,7 +1,7 @@
 {
   "name": "the-arrow-of-time",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "The Arrow of Time: the history and future of everything in six minutes, made entirely in code (a WebGL2 film engine and a Python-synthesized score).",
   "license": "MIT",
   "author": "Abhishek Pradhan",
