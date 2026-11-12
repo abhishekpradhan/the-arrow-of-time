@@ -13,3 +13,5 @@ export * from './components/sprites';
 export * from './components/planet';
 export * from './components/galaxy';
 export * from './components/atmosphere';
+export * from './components/noise-volume';
+export * from './components/streaks';

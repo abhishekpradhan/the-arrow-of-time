@@ -61,6 +61,18 @@ export interface Look {
   gain: Vec3;
   vignette: number;
   grain: number;
+  /**
+   * Size of the grain's clumps in pixels at 1080p (it scales with the frame). 1 is per-pixel
+   * noise; about 1.6 reads as film grain and is far cheaper to encode.
+   */
+  grainSize: number;
+  /**
+   * Halation: a soft red-orange fringe around highlights brighter than `halationThreshold`
+   * (scene-linear), as film shows around lamps and the Sun. 0 = off; 0.2 is plenty.
+   */
+  halation: number;
+  halationThreshold: number;
+  halationTint: Vec3;
   aberration: number;
   /** 0 = full 16:9 frame, 1 = bars for `letterboxAspect`. */
   letterbox: number;
@@ -108,6 +120,10 @@ export const DEFAULT_LOOK: Look = {
   gain: [1, 1, 1],
   vignette: 0.25,
   grain: 0.03,
+  grainSize: 1,
+  halation: 0,
+  halationThreshold: 1.5,
+  halationTint: [1.0, 0.3, 0.1],
   aberration: 0,
   letterbox: 0,
   letterboxAspect: 2.39,

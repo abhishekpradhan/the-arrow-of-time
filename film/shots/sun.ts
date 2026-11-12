@@ -10,202 +10,240 @@ import {
   rng,
   smoothstep,
   starSphere,
-  type RenderTarget,
+  RenderTarget,
+  volumeTexture,
+  type GL,
   type Shot,
+  type Texture,
   type Vec3,
 } from '@engine';
-import { beat, cues, scratch, span } from '../lib';
+import type { Look } from '@engine';
+import { beat, cues, span } from '../lib';
 import { giantImpact, moonAt, youngEarthView, youngMoon } from './moon';
 
-// ------------------------------------------------------------------ collapsing nebula
-const NEBULA = `
-#include <noise>
-#include <color>
-#include <stars>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uT, uShock, uZoom;
-uniform vec2 uSnPos;
-void main() {
-  vec2 p = centered(vUv, uAspect) / uZoom;
-  // Background: a glowing emission nebula (H-alpha crimson with teal OIII pockets) behind the dark cloud.
-  vec2 q;
-  float em = warpedFbm(p * 1.3 + vec2(3.0, 1.0), uGTime * 0.3, 6, q);
-  // Wispy filaments: ridged detail modulating the smooth glow, with dark gaps between.
-  float fil = 1.0 - abs(fbm(p * 3.5 + q * 2.0, 5) * 2.0 - 1.0);
-  fil = pow(fil, 3.0);
-  float lum = pow(em, 2.6) * (0.35 + 1.4 * fil) * smoothstep(0.25, 0.6, em);
-  vec3 ha = vec3(0.9, 0.2, 0.25), o3 = vec3(0.15, 0.55, 0.65), glow = vec3(1.0, 0.7, 0.45);
-  vec3 emission = mix(ha, o3, smoothstep(0.55, 0.9, q.y) * 0.75);
-  emission = mix(emission, glow, smoothstep(0.65, 0.9, em) * 0.45) * lum * 1.6;
-  emission += starField(p, 1.0 / (uRes.y * uZoom), uGTime, 11.0, 0.7);
-  // Dark dust: columns rising from the bottom, ragged tops.
-  float d = fbm(vec2(p.x * 2.2, p.y * 1.4) + vec2(0.0, -0.4) + q * 0.6, 6);
-  float columns = smoothstep(0.1, -0.45, p.y - 0.35 * sin(p.x * 3.1 + 1.0) - 0.25 * (d - 0.5) * 2.0);
-  float dust = saturate(smoothstep(0.38, 0.72, d) * 0.85 + columns * 0.95);
-  // The supernova shock front sweeping through (a thin, turbulent, glowing shell).
-  vec2 sp = p - uSnPos;
-  float rr = length(sp);
-  float ang = atan(sp.y, sp.x);
-  float wob = 0.04 * (fbm(vec2(ang * 4.0, uT * 0.5), 4) - 0.5);
-  float front = uShock + wob;
-  float fade = exp(-max(uT, 0.0) * 0.25);
-  float shell = exp(-pow((rr - front) / 0.006, 2.0)) * step(0.0, uShock) * (0.2 + 0.8 * fbm(vec2(ang * 12.0, rr * 20.0), 3)) * smoothstep(0.02, 0.12, uShock);
-  float behind = smoothstep(front + 0.01, front - 0.3, rr) * step(0.0, uShock);
-  // Dust edges light up as the shock passes (rim lighting); the shell itself is faint and blue.
-  float edgeDust = smoothstep(0.2, 0.6, dust) * (1.0 - smoothstep(0.7, 1.0, dust));
-  float rim = shell * (0.25 + edgeDust * 3.0) + behind * edgeDust * 0.35;
-  vec3 col = emission * (1.0 - dust * 0.96);
-  col += vec3(0.3, 0.18, 0.1) * dust * 0.03;
-  col += mix(vec3(0.45, 0.65, 1.0), vec3(1.0, 0.7, 0.45), edgeDust) * rim * 1.4 * fade;
-  // The dying star itself: a brief blinding point.
-  float flash = step(0.0, uT) * exp(-uT * 1.4) * 30.0 + step(0.0, uT) * 0.4;
-  col += vec3(0.8, 0.9, 1.0) * flash * exp(-rr * rr / 0.00008);
-  fragColor = vec4(col, 1.0);
-}`;
+// ------------------------------------------------------------------ noise volume
+// A tiling 3D noise texture for the volumes marched below (rgba8: r and g are large shapes of
+// three octaves each, b is finer detail and a is ridged, for filaments). One fetch gives four
+// decorrelated fields, so a march can afford shadows. Built on first use, once per GL context.
+const NOISE_N = 96;
+const noiseCache = new WeakMap<GL, Texture>();
 
-function nebula(): Shot<{ half: RenderTarget }> {
+function noiseVolume(gl: GL): Texture {
+  const hit = noiseCache.get(gl);
+  if (hit) return hit;
+  const n = NOISE_N, r = rng(4600);
+  const fbm = (lattices: number[], weights: number[]) => {
+    const out = new Float32Array(n * n * n);
+    lattices.forEach((L, o) => {
+      const g = new Float32Array(L * L * L);
+      for (let i = 0; i < g.length; i++) g[i] = r.next();
+      const i0 = new Int32Array(n), i1 = new Int32Array(n), w = new Float32Array(n);
+      for (let x = 0; x < n; x++) {
+        const f = ((x + 0.5) / n) * L, i = Math.floor(f), u = f - i;
+        i0[x] = i % L;
+        i1[x] = (i + 1) % L;
+        w[x] = u * u * u * (u * (u * 6 - 15) + 10);
+      }
+      const a = weights[o];
+      let idx = 0;
+      for (let z = 0; z < n; z++) {
+        const z0 = i0[z] * L * L, z1 = i1[z] * L * L, wz = w[z];
+        for (let y = 0; y < n; y++) {
+          const y0 = i0[y] * L, y1 = i1[y] * L, wy = w[y];
+          const a00 = z0 + y0, a01 = z0 + y1, a10 = z1 + y0, a11 = z1 + y1;
+          for (let x = 0; x < n; x++) {
+            const x0 = i0[x], x1 = i1[x], wx = w[x];
+            const c00 = g[a00 + x0] + (g[a00 + x1] - g[a00 + x0]) * wx;
+            const c01 = g[a01 + x0] + (g[a01 + x1] - g[a01 + x0]) * wx;
+            const c10 = g[a10 + x0] + (g[a10 + x1] - g[a10 + x0]) * wx;
+            const c11 = g[a11 + x0] + (g[a11 + x1] - g[a11 + x0]) * wx;
+            const c0 = c00 + (c01 - c00) * wy, c1 = c10 + (c11 - c10) * wy;
+            out[idx++] += a * (c0 + (c1 - c0) * wz);
+          }
+        }
+      }
+    });
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < out.length; i++) {
+      if (out[i] < lo) lo = out[i];
+      if (out[i] > hi) hi = out[i];
+    }
+    for (let i = 0; i < out.length; i++) out[i] = (out[i] - lo) / (hi - lo);
+    return out;
+  };
+  const chans = [
+    fbm([4, 8, 16], [0.55, 0.3, 0.15]),
+    fbm([4, 8, 16], [0.55, 0.3, 0.15]),
+    fbm([8, 16, 32], [0.5, 0.32, 0.18]),
+    fbm([6, 12, 24], [0.5, 0.32, 0.18]),
+  ];
+  // Ridged: bright along the lines where the field crosses its middle.
+  const ridged = chans[3];
+  for (let i = 0; i < ridged.length; i++) ridged[i] = Math.pow(Math.max(0, 1 - Math.abs(2 * ridged[i] - 1) * 1.6), 1.5);
+  const data = new Uint8Array(n * n * n * 4);
+  for (let i = 0; i < n * n * n; i++)
+    for (let k = 0; k < 4; k++) data[i * 4 + k] = Math.round(255 * chans[k][i]);
+  const tex = volumeTexture(gl, [n, n, n], data, { format: 'rgba8', wrap: 'repeat', filter: 'linear' });
+  noiseCache.set(gl, tex);
+  return tex;
+}
+
+// ------------------------------------------------------------------ collapsing nebula
+// The cloud is marched as a volume (shaders/nebula-cloud.glsl). The camera pushes in on the head
+// of the tallest pillar: the blast wave of a supernova crosses the frame, the head falls in on
+// itself, and an ember lights inside it where the next shot's protostar will be.
+const SN: Vec3 = [-2.35, 1.12, -1.25];
+const CORE: Vec3 = [-0.2, 0.3, 0.0];
+
+function nebula(): Shot<{ cam: Camera }> {
+  const b = beat('nebula');
   return {
     ...span('nebula', { dIn: 1.2, dOut: 1.2 }),
-    setup: (e) => ({ half: scratch(e, 0.5) }),
+    // Two samples a frame: they halve the grain of the march and anti-alias the stars.
+    motionBlur: 2,
+    setup: () => ({ cam: new Camera({ fov: 44, near: 0.05, far: 100 }) }),
     render(c, s) {
       const t = c.time - cues.supernova;
-      s.half.bind();
-      c.fullscreen(c.e.program(NEBULA, 'nebula'), {
-        uT: t,
-        uShock: t < 0 ? -1 : 0.33 * Math.pow(t, 0.8),
-        uSnPos: [-0.62, 0.18],
-        uZoom: keys(c.time, [[79, 1.0], [87, 1.35, 'inOutSine']]),
+      const u = prog(c.time, b.start - 0.6, b.end + 0.6, 'inOutSine');
+      const mix3 = (p: Vec3, q: Vec3): Vec3 => [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u, p[2] + (q[2] - p[2]) * u];
+      s.cam.aspect = c.aspect;
+      s.cam.set({ pos: mix3([0.7, -0.05, 3.6], [0.1, 0.2, 1.75]), target: mix3([0.25, 0.12, 0], [CORE[0], CORE[1] - 0.215, CORE[2]]) });
+      const sn = s.cam.project(SN);
+      c.fullscreen(c.e.program('#include <arrow-of-time/nebula-cloud>', 'nebula'), {
+        ...s.cam.uniforms(),
+        uNoise: noiseVolume(c.gl),
+        uNoiseRes: NOISE_N,
+        uSn: SN,
+        uSnScreen: [(sn.x - 0.5) * c.aspect, sn.y - 0.5],
+        uCore: CORE,
+        uSnT: t,
+        // The blast wave decelerates as it sweeps up gas.
+        uShock: t < 0 ? 0 : 1.45 * Math.pow(t, 0.78),
+        uCollapse: prog(c.time, cues.supernova + 2.2, b.end, 'inOutSine'),
+        uEmber: prog(c.time, cues.supernova + 2.9, b.end - 0.2, 'inOutSine'),
+        uDither: (c.time * 175.44) % 97,
       });
-      c.target.bind();
-      c.fullscreen(c.e.program(COPY, 'copy'), { uSrc: s.half });
     },
   };
 }
 
-const COPY = `
-in vec2 vUv; out vec4 fragColor;
-uniform sampler2D uSrc;
-void main() { fragColor = vec4(texture(uSrc, vUv).rgb, 1.0); }`;
-
 // ------------------------------------------------------------------ the Sun and its disk
-const DISK = `
-#include <noise>
-#include <color>
+// The disk is marched as a volume (shaders/sun-disk.glsl): a first pass fills a small table of
+// the dust's optical depth from the star, the second paints the picture over the sky. The camera
+// starts high over the rings and comes down towards the plane of the disk, where its flare shows.
+
+// What is left of the cloud the Sun formed in, far behind the disk.
+const REMNANT = `
+#include <common>
 #include <camera>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uIgnite, uStar, uClump;
-// Surface density of the disk with ALMA-like rings and gaps.
-float diskDensity(vec2 xz) {
-  float r = length(xz);
-  float a = atan(xz.y, xz.x);
-  float prof = smoothstep(0.08, 0.2, r) * exp(-r * 1.3) * smoothstep(2.6, 1.7, r);
-  float gaps = 1.0;
-  gaps *= 1.0 - 0.85 * exp(-pow((r - 0.55) / 0.035, 2.0));
-  gaps *= 1.0 - 0.7 * exp(-pow((r - 0.86) / 0.03, 2.0));
-  gaps *= 1.0 - 0.8 * exp(-pow((r - 1.25) / 0.045, 2.0));
-  gaps *= 1.0 - 0.6 * exp(-pow((r - 1.62) / 0.04, 2.0));
-  float swirl = fbm(vec2(a * 3.0 + log(r) * 4.0 - uGTime * 0.06, r * 6.0), 4);
-  float clumps = pow(fbm(vec2(a * 18.0 - uGTime * 0.3 / max(r, 0.2), r * 40.0), 3), 3.0) * 3.0 * uClump;
-  return prof * gaps * (0.6 + 0.6 * swirl + clumps);
-}
+uniform vec2 uRes; uniform float uAspect, uAmt;
+uniform sampler3D uNoise;
 void main() {
-  vec2 p = centered(vUv, uAspect);
-  vec3 rd = camRay(p);
-  vec3 ro = uCamPos;
-  vec3 col = vec3(0.0);
-  // Thin disk in the y=0 plane, sampled at a few heights for a soft, thick look.
-  float trans = 1.0;
-  for (int i = 0; i < 5; i++) {
-    float y = (float(i) - 2.0) * 0.012;
-    if (abs(rd.y) < 1e-4) continue;
-    float t = (y - ro.y) / rd.y;
-    if (t <= 0.0) continue;
-    vec3 pos = ro + rd * t;
-    float r = length(pos.xz);
-    float dens = diskDensity(pos.xz) * exp(-pow(y / (0.02 + 0.015 * r), 2.0));
-    // Lit by the young star (1/r^2 falloff, warm), plus faint thermal glow.
-    float lightIn = uStar / (0.15 + r * r * 1.4);
-    vec3 dcol = mix(vec3(1.0, 0.62, 0.3), vec3(0.75, 0.45, 0.35), smoothstep(0.3, 1.8, r));
-    vec3 em = dcol * dens * (lightIn * 0.9 + 0.05) ;
-    float a = saturate(dens * 0.9);
-    col += em * a * trans;
-    trans *= 1.0 - a * 0.55;
-  }
-  // The protostar: core, corona glow, and polar jets.
-  vec2 sc = rayPointDist(ro, rd, vec3(0.0));
-  float d = sc.x;
-  float px = 2.0 * uTanHalfFov / uRes.y * sc.y;
-  float star = uStar * (exp(-d * d / (2.0 * pow(max(0.012, px), 2.0))) * 12.0 + exp(-d / 0.06) * 1.2 + exp(-d / 0.25) * 0.25);
-  vec3 scol = mix(vec3(1.0, 0.55, 0.25), vec3(1.0, 0.9, 0.75), uIgnite);
-  col = col + scol * star * (0.35 + 0.65 * trans);
-  // Jets along the rotation axis.
-  vec3 axis = vec3(0.0, 1.0, 0.0);
-  vec2 jc = rayPointDist(ro, rd, vec3(0.0));
-  float along = 0.0;
-  {
-    // distance from ray to the axis line
-    vec3 w0 = ro;
-    float b = dot(rd, axis);
-    float dd = dot(rd, w0), e = dot(axis, w0);
-    float den = 1.0 - b * b;
-    float tr = (b * e - dd) / max(den, 1e-4);
-    float ta = (e - b * dd) / max(den, 1e-4);
-    vec3 pr = ro + rd * max(tr, 0.0), pa = axis * ta;
-    float dj = length(pr - pa);
-    along = abs(ta);
-    float jet = exp(-dj * dj / (0.0003 + 0.002 * along)) * exp(-along * 3.0) * smoothstep(0.02, 0.15, along);
-    col += vec3(0.55, 0.7, 1.0) * jet * 0.45 * uIgnite * trans;
-  }
-  fragColor = vec4(col, 1.0);
+  vec3 rd = camRay(centered(vUv, uAspect));
+  vec4 a = texture(uNoise, rd * 0.42 + 0.21);
+  vec4 b = texture(uNoise, rd * 1.5 + a.rgb * 0.3);
+  float g = pow(clamp(a.r * 1.25, 0.0, 1.0), 2.6) * (0.3 + 1.0 * b.b) * smoothstep(0.25, 0.65, a.b + 0.25 * b.r);
+  vec3 col = mix(vec3(0.6, 0.1, 0.15), vec3(0.1, 0.5, 0.62), smoothstep(0.35, 0.7, a.g));
+  fragColor = vec4(col * g * uAmt, 1.0);
 }`;
 
-function sunBorn(): Shot<{ cam: Camera; sky: Sprites; bits: Sprites; half: RenderTarget }> {
+// Orbital speed at r = 1 (radians per second of film); everything in the disk keeps this clock.
+const KEPLER = 0.3;
+const GAPS = [0.4, 0.62, 0.92, 1.28, 1.7];
+const WORLD_PHASE = [1.3, 3.7, 3.5, 2.2, 5.9];
+const diskHeight = (r: number) => 0.04 * Math.pow(r, 1.28);
+
+interface DiskState {
+  cam: Camera;
+  sky: Sprites;
+  bits: Sprites;
+  shadow: RenderTarget;
+}
+
+function sunBorn(): Shot<DiskState> {
+  const b = beat('sun');
   return {
     ...span('sun', { dIn: 1.2, dOut: 1.0 }),
+    motionBlur: 2,
     setup(e) {
+      // Grains and boulders riding the disk's upper surface, catching the light.
       const r = rng(86);
-      const n = 2500;
+      const n = 2200;
       const d = allocSprites(n);
       for (let i = 0; i < n; i++) {
         let rr = 0;
-        do rr = 0.25 + Math.abs(r.gauss()) * 0.8; while (rr > 2.2);
+        do rr = 0.24 + Math.abs(r.gauss()) * 0.85; while (rr > 2.15 || GAPS.some((g) => Math.abs(rr - g) < 0.035));
         const a = r.next() * Math.PI * 2;
-        d.position.set([rr * Math.cos(a), r.gauss() * 0.01, rr * Math.sin(a)], i * 3);
-        const c = blackbody(r.range(2500, 4000));
-        const b = r.range(0.05, 0.3);
-        d.color.set([c[0] * b, c[1] * b, c[2] * b], i * 3);
-        d.size[i] = r.range(0.002, 0.005);
+        d.position.set([rr * Math.cos(a), diskHeight(rr) * r.range(2.6, 3.6), rr * Math.sin(a)], i * 3);
+        const c = blackbody(r.range(2600, 4200));
+        const big = Math.pow(r.next(), 5);
+        const br = r.range(0.015, 0.06) + 0.3 * big;
+        d.color.set([c[0] * br, c[1] * br, c[2] * br], i * 3);
+        d.size[i] = r.range(0.0015, 0.003) + 0.002 * big;
         d.extra!.set([rr, a, r.next(), 0], i * 4);
       }
       const bits = new Sprites(e, d, {
-        animate: `vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
-          float a = x.y + uTime * 0.35 / pow(x.x, 1.5);
+        animate: `uniform float uSpin;
+        vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
+          float a = x.y + uSpin * ${KEPLER.toFixed(2)} / pow(x.x, 1.5);
+          col *= 1.0 / (0.25 + x.x * x.x);
           return vec3(x.x * cos(a), p.y, x.x * sin(a));
         }`,
       });
-      return { cam: new Camera({ fov: 42 }), sky: new Sprites(e, starSphere(rng(87), { count: 7000, brightness: 0.3 })), bits, half: scratch(e, 0.5) };
+      return {
+        cam: new Camera({ fov: 36, near: 0.05, far: 1e5 }),
+        sky: new Sprites(e, starSphere(rng(87), { count: 9000, brightness: 0.3 })),
+        bits,
+        shadow: new RenderTarget(e.gl, 1024, 128, { format: 'rgba16f', filter: 'linear' }),
+      };
     },
     render(c, s) {
-      const t = c.time - beat('sun').start;
-      const az = keys(t, [[-1, -0.35], [9, 0.25, 'inOutSine']]);
-      const el = keys(t, [[-1, 0.42], [9, 0.3, 'inOutSine']]);
-      const dist = keys(t, [[-1, 3.6], [9, 2.9, 'inOutSine']]);
-      s.cam.set({ pos: [Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, Math.cos(az) * Math.cos(el) * dist], target: [0, -0.05, 0] });
-      const ign = prog(c.time, cues.sunIgnite - 0.3, cues.sunIgnite + 0.6, 'outCubic');
-      s.half.bind();
-      c.fullscreen(c.e.program(DISK, 'disk'), {
-        ...s.cam.uniforms(),
-        uIgnite: ign,
-        uStar: 0.35 + 1.1 * ign + 2.5 * Math.exp(-Math.max(0, c.time - cues.sunIgnite) * 2.0) * (c.time > cues.sunIgnite ? 1 : 0),
-        uClump: prog(t, 2, 8),
+      const t = c.time - b.start;
+      const since = c.time - cues.sunIgnite;
+      const ign = prog(c.time, cues.sunIgnite - 0.1, cues.sunIgnite + 0.5, 'outCubic');
+      // From high over the rings down towards the plane of the disk, where its flare shows.
+      const u = prog(t, -0.6, 8.5, 'inOutSine');
+      const az = -0.55 + 0.9 * u, el = 0.6 - 0.26 * u, dist = 6.4 - 1.2 * u;
+      s.cam.aspect = c.aspect;
+      s.cam.set({ pos: [Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, Math.cos(az) * Math.cos(el) * dist], target: [0, 0, 0] }).pan(0, -0.098 * dist);
+      const gaps = prog(t, -0.6, 7.5, 'inOutSine');
+      const spin = c.time - b.start + 20;
+      const noise = noiseVolume(c.gl);
+      const worlds: number[] = [];
+      GAPS.forEach((g, i) => {
+        const a = WORLD_PHASE[i] + KEPLER * spin * Math.pow(g, -1.5);
+        // The third world ends the shot on the near side, glowing: the next shot is its surface.
+        const glow = gaps * gaps * (0.7 + 0.12 * i) * (i === 2 ? 1 + 1.6 * prog(t, 6.2, 8.2, 'inOutSine') : 1);
+        worlds.push(g * Math.cos(a), g * Math.sin(a), glow, 0.0055 + 0.0012 * i);
       });
+      const disk = {
+        uNoise: noise,
+        uGaps: gaps,
+        uSpin: spin,
+      };
+      s.shadow.bind();
+      c.fullscreen(c.e.program('#define SHADOW_PASS\n#include <arrow-of-time/sun-disk>', 'disk.shadow'), disk);
       c.target.bind();
-      s.sky.draw(s.cam, c.time, {}, { sky: true, brightness: 0.8 });
+      c.fullscreen(c.e.program(REMNANT, 'remnant'), { ...s.cam.uniforms(), uNoise: noise, uAmt: 0.26 });
+      s.sky.draw(s.cam, c.time, {}, { sky: true, brightness: 1.0 });
+      const star = 0.4 + 0.6 * ign + (since > 0 ? 1.8 * Math.exp(-since * 2.2) : 0);
       c.gl.enable(c.gl.BLEND);
-      c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
-      c.fullscreen(c.e.program(COPY, 'copy'), { uSrc: s.half });
+      c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
+      c.fullscreen(c.e.program('#include <arrow-of-time/sun-disk>', 'disk'), {
+        ...s.cam.uniforms(),
+        ...disk,
+        uShadow: s.shadow,
+        uStar: star,
+        uHeat: ign,
+        // Ignition: the new light crosses the disk in under a second.
+        uFront: since < 0 ? 0 : since * 3.4,
+        uJet: 0.3 + 0.7 * ign,
+        uWorlds: worlds,
+        uDither: (c.time * 175.44) % 97,
+      });
       c.gl.disable(c.gl.BLEND);
-      s.bits.draw(s.cam, c.time, {}, { brightness: 1.0 * prog(t, 1, 5) });
+      s.bits.draw(s.cam, c.time, { uSpin: spin }, { brightness: (0.12 + 0.88 * prog(since, 0.1, 0.9)) * star });
     },
   };
 }
@@ -226,7 +264,8 @@ function oceans(): Shot<{ planet: Planet; moon: Planet; cam: Camera; sky: Sprite
       const cool = prog(t, -0.5, 3.5, 'inOutSine');
       const flashes: [number, number, number, number][] = [];
       const r = rng(Math.floor(c.time * 3));
-      if (t > 1 && r.next() < 0.5) flashes.push([r.range(-0.6, 0.6), r.range(-0.5, 0.5), 0.8, 0.8]);
+      // The last of the bombardment: each strike flares and its ring spreads for a third of a second.
+      if (t > 1 && r.next() < 0.5) flashes.push([r.range(-0.6, 0.6), r.range(-0.5, 0.5), 0.8, ((c.time * 3) % 1) * 1.6]);
       s.planet.draw(c, s.cam, {
         center: [0, 0, 0], radius: 1, spin: c.time * 0.05, tilt: 0.3, sunDir: [-0.7, 0.3, 0.6], seed: 3,
         lava: 1 - cool,
@@ -250,4 +289,19 @@ function oceans(): Shot<{ planet: Planet; moon: Planet; cam: Camera; sky: Sprite
 
 export function sunShots(): Shot[] {
   return [nebula(), sunBorn(), giantImpact(), youngMoon(), oceans()];
+}
+
+/**
+ * Look overrides for this file's beats (bloom, streak, exposure, grade...), merged last in
+ * project.ts. Return {} outside them so other shots keep the film's look.
+ */
+export function sunLook(time: number): Partial<Look> {
+  const sun = beat('sun');
+  if (time < sun.start - 0.6 || time > sun.end + 0.5) return {};
+  // The young star is the brightest thing in the film so far: keep its anamorphic streak from
+  // cutting the disk in two, except for a moment at ignition.
+  const since = time - cues.sunIgnite;
+  const edge = keys(time, [[sun.start - 0.6, 0], [sun.start + 0.4, 1], [sun.end - 0.5, 1], [sun.end + 0.5, 0]]);
+  const streak = 0.015 + (since > 0 ? 0.02 * Math.exp(-since * 3.0) : 0);
+  return { streak: 0.09 + (streak - 0.09) * edge };
 }

@@ -21,53 +21,8 @@ import {
 import { beat, cues, scratch, span } from '../lib';
 
 // ------------------------------------------------------------------ hydrothermal vent
-const VENT = `
-#include <noise>
-#include <color>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uT;
-float chimneyW(float y) { return mix(0.075, 0.03, saturate((y + 0.5) / 0.62)); }
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  float px = 1.0 / uRes.y;
-  vec3 col = mix(vec3(0.001, 0.01, 0.02), vec3(0.01, 0.055, 0.09), smoothstep(-0.5, 0.5, p.y));
-  // Distant chimney, lost in the murk.
-  float cx2 = 0.42 + 0.01 * gnoise(vec2(p.y * 9.0, 2.0));
-  float far = step(abs(p.x - cx2), mix(0.04, 0.018, saturate((p.y + 0.5) / 0.45))) * step(p.y, -0.05);
-  col = mix(col, vec3(0.005, 0.02, 0.035), far * 0.8);
-  // Main chimney: rough column.
-  float top = 0.12;
-  float cx = -0.22 + 0.015 * gnoise(vec2(p.y * 7.0, 1.0)) + 0.008 * gnoise(vec2(p.y * 25.0, 4.0));
-  float dx = abs(p.x - cx) - chimneyW(p.y) * (1.0 + 0.25 * gnoise(vec2(p.y * 14.0, 3.0)));
-  float body = (1.0 - smoothstep(-px, px, dx)) * (1.0 - smoothstep(top - px, top + px, p.y));
-  float glowCracks = pow(vnoise(vec2(p.x * 40.0, p.y * 12.0 - uT * 0.3)), 6.0) * smoothstep(0.0, -0.4, p.y);
-  vec3 rock = vec3(0.014, 0.012, 0.011) + fireRamp(0.45) * glowCracks * 1.4 + vec3(0.02, 0.04, 0.05) * smoothstep(0.0, 0.04, dx + 0.03);
-  col = mix(col, rock, body);
-  // Black smoke billowing from the top, underlit orange near the mouth.
-  vec2 sp = vec2(p.x - cx, p.y - top);
-  float h = max(sp.y, 0.0);
-  float width = 0.03 + h * 0.55;
-  vec3 sq = vec3(sp.x * 5.0, (sp.y - uT * 0.09) * 5.0, uT * 0.25);
-  float n = fbm(sq + fbm(sq * 1.7, 3) * 1.2, 5);
-  float plume = smoothstep(width, width * 0.2, abs(sp.x + 0.03 * sin(h * 6.0 + uT * 0.6))) * smoothstep(-0.01, 0.02, sp.y);
-  float dens = saturate(plume * (0.3 + 1.2 * n) * exp(-h * 1.2));
-  vec3 smoke = mix(vec3(0.02, 0.018, 0.016), fireRamp(0.5) * 0.35, exp(-h * 18.0));
-  col = mix(col, smoke, dens * 0.95);
-  // Hot mouth glow.
-  float mouth = exp(-length(sp - vec2(0.0, 0.004)) / 0.02);
-  col += fireRamp(0.55) * mouth * 1.2;
-  // Seafloor mounds.
-  float floorY = -0.44 + 0.03 * gnoise(vec2(p.x * 4.0, 0.0)) + 0.01 * gnoise(vec2(p.x * 20.0, 1.0));
-  col = mix(col, vec3(0.004, 0.01, 0.014), smoothstep(floorY + px, floorY - px, p.y));
-  // Drifting specks: a little bioluminescence.
-  vec2 g = p * 60.0 + vec2(0.0, uT * 2.0);
-  vec2 cell = floor(g);
-  vec3 hh = hash32(cell);
-  float spec = step(0.93, hh.z) * exp(-dot(fract(g) - hh.xy, fract(g) - hh.xy) / 0.004);
-  col += vec3(0.2, 0.7, 1.0) * spec * 0.5 * (0.5 + 0.5 * sin(uT * 3.0 + hh.x * 20.0));
-  fragColor = vec4(col, 1.0);
-}`;
-
+// shaders/vent.glsl: a field of black smokers on the floor of the first ocean, lit by the glow
+// of their own mouths.
 function vent(): Shot {
   const b = beat('life');
   return {
@@ -77,7 +32,8 @@ function vent(): Shot {
     fadeIn: 1.2,
     fadeOut: 1.0,
     render(c) {
-      c.fullscreen(c.e.program(VENT, 'vent'), { uT: c.time - b.start });
+      const t = c.time - b.start;
+      c.fullscreen(c.e.program('#include <arrow-of-time/vent>', 'vent'), { uT: t, uPan: -0.03 + 0.012 * t, uPush: prog(t, -0.6, 4.2, 'outSine') });
     },
   };
 }
@@ -253,9 +209,12 @@ function oxygen(): Shot<EarthShot> {
         ocean: 1, seaLevel: 0.12, glint: 0.4,
         oceanColor: [0.03 + 0.0 * k, 0.12 - 0.02 * k, 0.1 + 0.12 * k],
         bloom: 0.6 + 0.4 * k,
-        clouds: 0.45, cloudT: c.time * 0.02,
-        atmo: 0.8, atmoColor: [0.95 - 0.7 * k, 0.55 - 0.05 * k, 0.25 + 0.75 * k],
-        haze: 0.35 * (1 - k), hazeColor: [0.85, 0.55, 0.28],
+        clouds: 0.45, cloudT: 1.7 + c.time * 0.02,
+        // The orange methane smog thins and clears before the oxygen-blue sky builds: halfway,
+        // the air is at its thinnest (mixing the two colours instead gives a grey veil).
+        atmo: 0.8 * (1 - 0.6 * Math.pow(1 - Math.abs(2 * k - 1), 0.7)),
+        atmoColor: v3.lerp([0.95, 0.55, 0.25], [0.25, 0.5, 1.0], smoothstep(0.35, 0.65, k)),
+        haze: 0.3 * Math.pow(1 - k, 1.5), hazeColor: [0.85, 0.55, 0.28],
       });
     },
   };
@@ -718,7 +677,7 @@ function impact(): Shot<EarthShot & { maps: EarthMaps; curtain: Sprites; reentry
         cd.size[i] = r.range(0.0005, 0.0013);
       }
       // Re-entry: points on the globe, reached by a front moving ~0.85 rad/s from the site.
-      const nr = 14000;
+      const nr = 42000;
       const rd = allocSprites(nr);
       for (let i = 0; i < nr; i++) {
         const d = r.onSphere();
@@ -729,8 +688,9 @@ function impact(): Shot<EarthShot & { maps: EarthMaps; curtain: Sprites; reentry
         }
         rd.position.set(v3.scale(d, 1.004), i * 3);
         rd.extra!.set([0.55 + ang / 0.85 + r.range(-0.12, 0.25), r.next(), 0, 0], i * 4);
-        rd.color.set([r.range(0.25, 0.8), 0, 0], i * 3);
-        rd.size[i] = r.range(0.0011, 0.0026);
+        // A few bright bolides among a rain of faint ones.
+        rd.color.set([0.1 + 0.9 * r.next() ** 3, 0, 0], i * 3);
+        rd.size[i] = r.range(0.0006, 0.0015);
       }
       return {
         maps,
@@ -762,7 +722,9 @@ function impact(): Shot<EarthShot & { maps: EarthMaps; curtain: Sprites; reentry
       const yaw = (89.5 * Math.PI) / 180;
       const smoke = smoothstep(1.0, 4.0, age);
       s.planet.draw(c, s.cam, {
-        center: [0, 0, 0], radius: 1, spin: 0, yaw, tilt: 0, sunDir: sun, earth: 1, clouds: 0.4, cloudT: 0.3 + c.time * 0.004,
+        center: [0, 0, 0], radius: 1, spin: 0, yaw, tilt: 0, sunDir: sun, earth: 1, clouds: 0.52, cloudT: 0.3 + c.time * 0.004,
+        // The blast wave outruns the dust, tearing the cloud deck away as it goes.
+        shock: { dir: YUCATAN, radius: 0.03 + 2.7 * (1 - Math.exp(-Math.max(age, 0) * 0.42)), amount: smoothstep(0, 0.12, age) * (1 - smoothstep(3.2, 5.2, age)) },
         atmo: 0.9, glint: 0.6,
         // Soot turns the blue limb a sick brown as it spreads.
         atmoColor: v3.add(v3.scale([0.3, 0.55, 1.0], 1 - 0.8 * smoke), v3.scale([0.4, 0.26, 0.16], 0.8 * smoke)),

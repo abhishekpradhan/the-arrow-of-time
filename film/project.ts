@@ -7,12 +7,13 @@ import { defineProject, keys, shake, type Look, type Vec3 } from '@engine';
 import T from './timeline.json';
 import { beat, cues } from './lib';
 import { buildText, placeOf, scrimFor, type LayoutSpec } from './text';
-import { universeShots } from './shots/universe';
-import { dawnShots } from './shots/dawn';
-import { sunShots } from './shots/sun';
+import { universeLook, universeShots } from './shots/universe';
+import { dawnLook, dawnShots } from './shots/dawn';
+import { sunLook, sunShots } from './shots/sun';
 import { lifeShots } from './shots/life';
-import { humanShots } from './shots/human';
-import { futureShots } from './shots/future';
+import { humanShots, mammalsLook } from './shots/human';
+import { futureLook, futureShots } from './shots/future';
+import { endLook } from './shots/end';
 import { civilizationLook } from './shots/civilization';
 import { sunriseLook } from './shots/sputnik';
 
@@ -141,10 +142,19 @@ export default defineProject({
       (t > cues.asteroidImpact - 0.1 && t < cues.asteroidImpact + 2) ? 6 : 2.5,
     vignette: 0.32,
     grain: 0.034,
+    grainSize: 1.6,
+    halation: 0.16,
     // Thousands of tiny city lights fringe red and blue under aberration: keep it low there.
     aberration: t > beat('civilization').start && t < beat('nightearth').end ? 0.12 : 0.35,
     tonemap: 'aces',
     ...civilizationLook(t),
     ...sunriseLook(t),
+    ...mammalsLook(t),
+    // Each act's shot file may override the look for its own beats.
+    ...universeLook(t),
+    ...dawnLook(t),
+    ...sunLook(t),
+    ...futureLook(t),
+    ...endLook(t),
   }),
 });

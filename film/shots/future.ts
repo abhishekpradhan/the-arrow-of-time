@@ -1,4 +1,4 @@
-// Act VI: the future, all the way to the end of time, and the epilogue.
+// Act VI: the future, from the clock resuming to the death of the Sun (the end of time is in end.ts).
 import {
   Camera,
   Planet,
@@ -18,7 +18,9 @@ import {
   type SpriteData,
   type Vec3,
 } from '@engine';
+import type { Look } from '@engine';
 import { beat, cues, scratch, span, timeline } from '../lib';
+import { endShots } from './end';
 
 const COPY_ADD = `
 in vec2 vUv; out vec4 fragColor;
@@ -30,7 +32,19 @@ const DIAL = `
 #include <common>
 #include <stars>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uHand, uVis;
+uniform vec2 uRes; uniform float uAspect, uGTime, uHand, uPrev, uGhost, uVis;
+uniform float uAge[6];                    // seconds since each tick (negative: not yet)
+// A hair line: 1 on the line, falling off over about a pixel.
+float hair(float d, float w) { return exp(-d * d / (w * w)); }
+float handAt(vec2 p, float a, float px, float R) {
+  vec2 hd = vec2(sin(a), cos(a));
+  float along = dot(p, hd);
+  float perp = abs(dot(p, vec2(hd.y, -hd.x)));
+  // A needle that tapers to its tip, with a short counterweight behind the pivot.
+  float w = px * mix(1.5, 0.7, saturate(along / R));
+  return hair(perp, w) * smoothstep(-0.052, -0.046, along) * smoothstep(R - 0.02, R - 0.03, along)
+       + hair(perp, px * 2.2) * smoothstep(-0.05, -0.044, along) * smoothstep(-0.018, -0.024, along) * 0.7;
+}
 void main() {
   vec2 p = centered(vUv, uAspect);
   float px = 1.0 / uRes.y;
@@ -39,34 +53,52 @@ void main() {
   float r = length(p);
   float a = atan(p.x, p.y);               // 0 at 12 o'clock, clockwise
   float R = 0.24;
-  float dr = (r - R) / (px * 1.2);
-  float ring = exp(-dr * dr) * 0.35;
-  float tickA = mod(a + PI / 60.0, TAU / 60.0) - PI / 60.0;
-  float ta = tickA * R / px;
-  float ticks = exp(-ta * ta) * band(r, R - 0.016, R - 0.007, px * 1.5);
-  float big = step(abs(mod(a + PI / 12.0, TAU / 12.0) - PI / 12.0), 0.01);
-  ticks *= 0.25 + 0.75 * big;
-  // Second hand.
-  vec2 hd = vec2(sin(uHand), cos(uHand));
-  float along = dot(p, hd);
-  float perp = abs(dot(p, vec2(hd.y, -hd.x)));
-  float hand = exp(-(perp * perp) / (px * px)) * step(-0.035, along) * step(along, R - 0.025);
-  col += vec3(0.85, 0.8, 0.72) * (ring + ticks * 0.6 + hand * 0.9) * uVis;
-  col += vec3(1.0, 0.9, 0.75) * exp(-r / (px * 2.5)) * 0.6 * uVis;
+  // The bezel: a fine ring with a hairline inside it.
+  float ring = hair(r - R, px * 1.2) * 0.4 + hair(r - (R - 0.03), px * 0.8) * 0.1;
+  // Sixty marks; every fifth is longer and brighter, and twelve o'clock is a double stroke.
+  float sa = mod(a + PI / 60.0, TAU / 60.0) - PI / 60.0;
+  float fa = mod(a + PI / 12.0, TAU / 12.0) - PI / 12.0;
+  float minor = hair(sa * r, px * 0.9) * band(r, R - 0.014, R - 0.006, px * 1.5) * 0.3;
+  float major = hair(fa * r, px * 1.3) * band(r, R - 0.026, R - 0.006, px * 1.5) * 0.85 * step(0.2, abs(a));
+  float twelve = (hair(abs(a * r) - px * 3.0, px * 1.1)) * band(r, R - 0.026, R - 0.006, px * 1.5) * step(abs(a), 0.2) * 0.85;
+  float marks = max(minor, max(major, twelve));
+  // The second hand, and the ghost of where it stood a moment ago.
+  float hand = handAt(p, uHand, px, R) + handAt(p, uPrev, px, R) * 0.22 * uGhost;
+  // Each tick sends a faint ring out from the bezel.
+  float ripple = 0.0;
+  for (int i = 0; i < 6; i++) {
+    float age = uAge[i];
+    if (age < 0.0) continue;
+    ripple += hair(r - (R + 0.012 + 0.11 * age), px * (1.5 + 14.0 * age)) * exp(-age * 2.6) * 0.22;
+  }
+  vec3 ivory = vec3(0.88, 0.82, 0.72);
+  col += ivory * (ring + marks * 0.7 + hand * 0.95 + ripple) * uVis;
+  // The pivot: a small warm light, where the pale blue dot was.
+  col += vec3(1.0, 0.88, 0.7) * (exp(-r / (px * 2.5)) * 0.7 + exp(-r / 0.02) * 0.03) * uVis;
   fragColor = vec4(col, 1.0);
 }`;
 
 function turn(): Shot {
   const b = beat('turn');
-  // The hand jumps on each tick of the resumed clock.
+  // The hand jumps on each tick of the resumed clock, and settles with a small rebound.
   const tickTimes = [0, 1.5, 2.5, 3.5, 4.5, 5.5].map((d) => cues.resumeTick + d);
+  const STEP = (Math.PI * 2) / 60;
   return {
     ...span('turn', { dIn: 0.6, dOut: 1.6 }),
     render(c) {
-      let k = 0;
-      for (const tt of tickTimes) if (c.time >= tt) k += 1 - Math.exp(-(c.time - tt) * 30);
+      let k = 0, n = 0, last = -1;
+      for (const tt of tickTimes) {
+        if (c.time < tt) continue;
+        const dt = c.time - tt;
+        k += 1 - Math.exp(-dt * 26) * Math.cos(dt * 38);
+        n++;
+        last = dt;
+      }
       c.fullscreen(c.e.program(DIAL, 'dial'), {
-        uHand: (k + 44) * ((Math.PI * 2) / 60),
+        uHand: (k + 44) * STEP,
+        uPrev: (n + 43) * STEP,
+        uGhost: last >= 0 ? Math.exp(-last * 5) : 0,
+        uAge: tickTimes.map((tt) => (c.time >= tt ? c.time - tt : -1)),
         uVis: prog(c.time, b.start, b.start + 1.2, 'inOutSine'),
       });
     },
@@ -112,54 +144,102 @@ const DRIFT = `
 in vec2 vUv; out vec4 fragColor;
 uniform vec2 uRes; uniform float uAspect, uGTime;
 uniform vec2 uNow[7], uThen[7];
-uniform float uMag[7], uLines, uGhost;
-float seg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; float h = saturate(dot(pa, ba) / dot(ba, ba)); return length(pa - ba * h); }
+uniform float uMag[7], uLines, uGhost, uTrail;
+// Distance to the segment a-b (x) and how far along it the nearest point is, 0..1 (y).
+vec2 seg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; float h = saturate(dot(pa, ba) / dot(ba, ba)); return vec2(length(pa - ba * h), h); }
 void main() {
   vec2 p = centered(vUv, uAspect);
   float px = 1.0 / uRes.y;
   vec3 col = vec3(0.0);
-  // Constellation figure: current lines, plus a fading ghost of today's shape.
+  // The figure as a star chart draws it: hair lines that stop short of the stars. Under it,
+  // dotted, the shape we know today.
   int A[7] = int[7](0, 1, 2, 3, 4, 5, 3);
   int B[7] = int[7](1, 2, 3, 4, 5, 6, 0);
   float ln = 0.0, gh = 0.0;
   for (int i = 0; i < 7; i++) {
-    float d = seg(p, uNow[A[i]], uNow[B[i]]);
-    ln += exp(-pow(d / (px * 1.1), 2.0));
-    float g = seg(p, uThen[A[i]], uThen[B[i]]);
-    gh += exp(-pow(g / (px * 1.1), 2.0));
+    vec2 a = uNow[A[i]], b = uNow[B[i]];
+    vec2 d = seg(p, a, b);
+    float len = length(b - a);
+    float gap = smoothstep(0.011, 0.016, d.y * len) * smoothstep(0.011, 0.016, (1.0 - d.y) * len);
+    ln += exp(-pow(d.x / (px * 1.0), 2.0)) * gap;
+    a = uThen[A[i]]; b = uThen[B[i]];
+    d = seg(p, a, b);
+    len = length(b - a);
+    float dots = smoothstep(0.35, 0.5, abs(fract(d.y * len / 0.011) - 0.5) * 2.0);
+    gh += exp(-pow(d.x / (px * 1.0), 2.0)) * (1.0 - dots);
   }
-  col += vec3(0.45, 0.6, 0.9) * min(ln, 1.0) * 0.28 * uLines;
-  col += vec3(0.8, 0.7, 0.5) * min(gh, 1.0) * 0.12 * uGhost;
+  col += vec3(0.5, 0.65, 0.95) * min(ln, 1.0) * 0.3 * uLines;
+  col += vec3(0.85, 0.72, 0.5) * min(gh, 1.0) * 0.16 * uGhost;
   for (int i = 0; i < 7; i++) {
-    float d = length(p - uNow[i]);
-    float sig = px * 1.3;
+    vec2 q = p - uNow[i];
+    float d = length(q);
     float b = pow(2.512, -(uMag[i] - 1.5)) * 6.0;
-    col += blackbody(i == 0 ? 4700.0 : 9500.0) * (exp(-d * d / (2.0 * sig * sig)) * b + exp(-d / (px * 5.0)) * b * 0.04);
+    vec3 tint = blackbody(i == 0 ? 4700.0 : 9500.0);
+    // The path each star has travelled, fading back towards where it began.
+    vec2 tr = seg(p, uThen[i], uNow[i]);
+    col += tint * exp(-pow(tr.x / (px * 1.2), 2.0)) * tr.y * tr.y * 0.1 * b * uTrail;
+    // The star: a point, a little glare, and a fine four-pointed glint.
+    float sig = px * 1.3;
+    float glint = (exp(-abs(q.y) / (px * 0.8)) * exp(-abs(q.x) / (px * 9.0)) + exp(-abs(q.x) / (px * 0.8)) * exp(-abs(q.y) / (px * 9.0))) * 0.05;
+    col += tint * b * (exp(-d * d / (2.0 * sig * sig)) + exp(-d / (px * 5.0)) * 0.05 + glint);
   }
   fragColor = vec4(col, 1.0);
+}`;
+
+// Field stars wander too, each trailing the last third of its journey like a long exposure.
+// The trail is drawn inside the star's own sprite: the vertex hook enlarges the quad to hold it
+// (and keeps the star's flux), the fragment hook draws the point and the fading streak behind it.
+const WANDER = `
+uniform float uYears;
+const float RATE = 6e-7;       // radians per year for a star of unit proper motion
+const float TRAIL = 0.32;      // the fraction of its journey a star trails behind it
+vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
+  vec3 n = normalize(p);
+  vec3 u = normalize(cross(n, vec3(0.0, 1.0, 0.0)));
+  vec3 v = cross(u, n);
+  vec3 q = normalize(n + (u * x.x + v * x.y) * uYears * RATE) * length(p);
+  float pxPerRad = uProj[1][1] * uRes.y * 0.5;
+  float z = -(uView * vec4(q + uCamPos * uSkyFollow, 1.0)).z;
+  float own = size / z * pxPerRad;                       // the star's own sigma in pixels
+  float trail = length(x.xy) * uYears * RATE * TRAIL * pxPerRad;
+  col *= min(own * own / (uMinPx * uMinPx), 1.0);
+  size = max((trail + 6.0 * uMinPx) / uExtent, uMinPx) * z / pxPerRad;
+  return q;
+}`;
+const WANDER_SHADE = `
+uniform float uYears, uMinPx, uExtent;
+uniform mat4 uProj;
+uniform vec2 uRes;
+const float RATE = 6e-7;
+const float TRAIL = 0.32;
+vec4 shade(vec2 q, vec3 col, vec4 x) {
+  float trail = length(x.xy) * uYears * RATE * TRAIL * uProj[1][1] * uRes.y * 0.5;
+  vec2 p = q * max((trail + 6.0 * uMinPx) / uExtent, uMinPx);   // pixels from the star
+  float s2 = uMinPx * uMinPx;
+  float g = exp(-0.5 * dot(p, p) / s2);
+  if (trail > 0.5) {
+    vec2 dir = normalize(x.xy);
+    float along = -dot(p, dir), across = dot(p, vec2(-dir.y, dir.x));
+    float h = saturate(along / trail);
+    // The streak carries about half the star's light, brightest just behind it.
+    g += step(0.0, along) * (1.0 - h) * (1.0 - h) * exp(-0.5 * across * across / s2) * min(3.8 * uMinPx / trail, 0.6);
+  }
+  return vec4(col * g, g);
 }`;
 
 function drift(): Shot<{ sky: Sprites; cam: Camera }> {
   return {
     ...span('drift', { dIn: 1.0, dOut: 1.0 }),
     setup(e) {
-      // Field stars that also wander (random proper motions).
+      // Most stars are far away and barely move in a hundred thousand years; the few near ones
+      // cross the sky.
       const r = rng(228);
-      const d = starSphere(r, { count: 9000, brightness: 0.4 });
-      for (let i = 0; i < d.count; i++) d.extra!.set([r.gauss(), r.gauss(), 0, 0], i * 4);
-      return {
-        sky: new Sprites(e, d, {
-          animate: `
-            uniform float uYears;
-            vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
-              vec3 n = normalize(p);
-              vec3 u = normalize(cross(n, vec3(0.0, 1.0, 0.0)));
-              vec3 v = cross(u, n);
-              return normalize(n + (u * x.x + v * x.y) * uYears * 6e-7) * length(p);
-            }`,
-        }),
-        cam: new Camera({ fov: 40 }),
-      };
+      const d = starSphere(r, { count: 16000, brightness: 0.4 });
+      for (let i = 0; i < d.count; i++) {
+        const near = 0.2 + 2.8 * Math.pow(r.next(), 5);
+        d.extra!.set([r.gauss() * near, r.gauss() * near, 0, 0], i * 4);
+      }
+      return { sky: new Sprites(e, d, { animate: WANDER, shade: WANDER_SHADE }), cam: new Camera({ fov: 40 }) };
     },
     render(c, s) {
       const t = c.time - beat('drift').start;
@@ -177,6 +257,7 @@ function drift(): Shot<{ sky: Sprites; cam: Camera }> {
         uMag: DIPPER.map((st) => st.m),
         uLines: prog(t, 0.0, 1.0, 'inOutSine'),
         uGhost: prog(t, 1.5, 3.0, 'inOutSine'),
+        uTrail: prog(t, 1.2, 3.0, 'inOutSine'),
       });
       c.gl.disable(c.gl.BLEND);
     },
@@ -207,90 +288,35 @@ function hotEarth(): Shot<{ planet: Planet; cam: Camera; sky: Sprites }> {
 }
 
 // ------------------------------------------------------------------ red giant
-// The Sun as a red giant, ray-traced in AU: a few giant convection cells boiling on a strongly
-// limb-darkened surface, an extended atmosphere of plumes and dust. First it swells past the
-// orbits of Mercury and Venus (each flashes as it is swallowed); then the view from a scorched,
-// dried-out Earth, silhouetted against a star that fills half the sky from 1.3 AU. The star is
-// rendered in AU with the same camera orientation as the Earth-scale camera, so they composite.
-const GIANT = `
-#include <common>
-#include <noise>
-#include <color>
-#include <camera>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes;
-uniform float uAspect, uGTime, uR, uHeat, uDetail, uAtmo;
-uniform vec3 uStar;
-uniform vec4 uPl[3];      // planet centre (AU) and drawn radius; 0 radius = gone
-uniform float uFlash[3];  // engulfment flash, 0..1
-vec3 surface(vec3 n, float mu) {
-  float a = uGTime * 0.012;
-  vec3 q = vec3(cos(a) * n.x - sin(a) * n.z, n.y, sin(a) * n.x + cos(a) * n.z) * uDetail;
-  vec3 warp = vec3(fbm(q * 2.0 + uGTime * 0.02, 4), fbm(q * 2.0 + 7.3 - uGTime * 0.015, 4), fbm(q * 2.0 + 13.1, 4));
-  // A handful of giant cells (like Betelgeuse), dark lanes between them, hot centres.
-  vec2 w = worley(q * 2.4 + warp * 1.6 + vec3(0.0, uGTime * 0.015, 0.0));
-  float lanes = smoothstep(0.0, 0.75, w.y - w.x + 0.25 * (warp.x - 0.5));
-  float centre = 1.0 - smoothstep(0.0, 0.9, w.x);
-  float gran = fbm(q * 14.0 + warp * 3.0 + uGTime * 0.04, 4);
-  float big = fbm(q * 1.3 - uGTime * 0.01, 3);
-  // Medium cells inside the giant ones: the surface boils at every scale.
-  vec2 w2 = worley(q * 6.5 + warp * 2.0 + vec3(uGTime * 0.03));
-  float mid = smoothstep(0.0, 0.5, w2.y - w2.x);
-  float I = (0.38 + 0.62 * lanes * (0.55 + 0.45 * centre) * (0.75 + 0.5 * gran) * (0.75 + 0.5 * big)) * (0.68 + 0.32 * mid);
-  float T = 2300.0 + 1000.0 * I;
-  float limb = 1.0 - 0.7 * (1.0 - mu) - 0.22 * (1.0 - mu * mu);
-  return blackbody(T) * I * max(limb, 0.04) * 1.7;
-}
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  vec3 rd = camRay(p), ro = uCamPos;
-  vec3 oc = ro - uStar;
-  float b = dot(oc, rd), h = b * b - dot(oc, oc) + uR * uR;
-  vec3 col = vec3(0.0);
-  float tc = max(-b, 0.0);
-  vec3 cp = ro + rd * tc;
-  float dr = length(cp - uStar) / uR;
-  float tHit = 1e9;
-  if (h > 0.0) {
-    tHit = -b - sqrt(h);
-    vec3 n = normalize(ro + rd * tHit - uStar);
-    col = surface(n, max(dot(n, -rd), 0.0));
-  }
-  // Extended atmosphere: a glow with rising plumes, broken by dark dust.
-  if (dr > 0.97) {
-    float x = max(dr - 1.0, 0.0);
-    vec3 dirc = normalize(cp - uStar);
-    float plume = fbm(dirc * 5.0 + vec3(0.0, 0.0, -x * 7.0) + uGTime * 0.04, 5);
-    // Only rays that look toward the star cross its atmosphere (the camera may sit inside it).
-    float toward = smoothstep(0.0, 0.5, dot(rd, normalize(uStar - ro)));
-    float glow = (exp(-x / (0.025 + 0.1 * plume)) * 0.85 + exp(-x / 0.4) * 0.1) * toward;
-    float dust = smoothstep(0.5, 0.78, fbm(dirc * 8.0 + x * 4.0 + 3.0, 4)) * exp(-x / 0.3);
-    col += blackbody(2200.0 + 700.0 * plume) * glow * (1.0 - 0.75 * dust) * 1.3 * uAtmo;
-  }
-  // The inner planets: tiny sunlit dots, gone in a flash when the surface reaches them.
-  for (int i = 0; i < 3; i++) {
-    vec4 pl = uPl[i];
-    vec3 d = pl.xyz - ro;
-    float t = dot(d, rd);
-    if (t <= 0.0) continue;
-    float px = 2.0 * uTanHalfFov / uRes.y * t;
-    float dist = length(d - rd * t);
-    if (pl.w > 0.0 && t < tHit) {
-      float body = smoothstep(pl.w + px, pl.w - px, dist);
-      vec3 lit = blackbody(2800.0) * 0.35 * max(dot(normalize(uStar - pl.xyz), normalize(rd * t - d)), 0.15);
-      col = mix(col, lit, body);
-    }
-    float f = uFlash[i];
-    if (f > 0.0) col += vec3(1.0, 0.75, 0.45) * f * (exp(-dist / (px * 3.0 + 0.004)) * 6.0 + exp(-dist / 0.06) * 0.5);
-  }
-  // The disk is opaque (hides the sky behind it); the atmosphere adds light.
-  float px = 2.0 * uTanHalfFov / uRes.y * max(tc, 1e-3) / uR;
-  fragColor = vec4(col * uHeat, smoothstep(1.0 + px, 1.0 - px, dr));
-}`;
+// The Sun as a red giant, ray-traced in AU (film/shaders/giant.glsl): giant convection cells
+// boiling on a strongly limb-darkened surface under an extended atmosphere of plumes and wind.
+// First it swells past the orbits of Mercury and Venus (each flares as it is swallowed); then
+// the view from a scorched, dried-out Earth, silhouetted against a star that fills half the sky
+// from 1.3 AU. The star is rendered in AU with the same camera orientation as the Earth-scale
+// camera, so they composite.
+const GIANT = '#include <arrow-of-time/giant>';
 
 const ORBITS = { mercury: 0.39, venus: 0.72, earth: 1.3 };
 /** The star's radius (AU) during the swell: past Mercury's orbit, then Venus's. */
 const giantR = (t: number) => keys(t, [[-1, 0.26], [0.2, 0.28], [3.6, 1.0, 'inOutSine'], [9, 1.06]]);
+
+/** The inner planets during the swell: to the camera's left of the star, a little in front of it. */
+const INNER: Vec3[] = [
+  v3.scale(v3.norm([-0.9, 0.05, 0.42]), ORBITS.mercury),
+  v3.scale(v3.norm([-0.93, -0.04, 0.36]), ORBITS.venus),
+  v3.scale(v3.norm([-0.95, 0.03, 0.3]), ORBITS.earth),
+];
+/** When the surface reaches each of them (seconds into the beat); Earth survives. */
+const SWALLOWED = INNER.map((q, i) => {
+  if (i === 2) return Infinity;
+  let lo = 0, hi = 9;
+  for (let k = 0; k < 30; k++) {
+    const mid = (lo + hi) / 2;
+    if (giantR(mid) < v3.len(q)) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+});
 
 function redGiantSwell(): Shot<{ cam: Camera; sky: Sprites }> {
   const b = beat('redgiant');
@@ -309,19 +335,11 @@ function redGiantSwell(): Shot<{ cam: Camera; sky: Sprites }> {
       });
       s.sky.draw(s.cam, c.time, {}, { sky: true });
       const R = giantR(t);
-      const { right } = s.cam.basis();
-      // The planets sit to the camera's left of the star, a little in front of it.
-      const at = (r: number, y: number): Vec3 => v3.add(v3.scale(right, -r * 0.93), [0, y, r * 0.35]);
-      const pl = [at(ORBITS.mercury, 0.02), at(ORBITS.venus, -0.03), at(ORBITS.earth, 0.04)];
-      const flash = pl.map((q, i) => {
-        if (i === 2) return 0;
-        const tHit = [0.45, 2.15][i];
-        return t > tHit ? Math.exp(-(t - tHit) * 3.5) : 0;
-      });
-      const uPl = pl.flatMap((q, i) => [...q, i < 2 && v3.len(q) < R * 1.02 ? 0 : [0.006, 0.011, 0.012][i]]);
+      const flash = SWALLOWED.map((tE) => (t > tE ? Math.exp(-(t - tE) * 3.2) : 0));
+      const uPl = INNER.flatMap((q, i) => [...q, t > SWALLOWED[i] ? 0 : [0.008, 0.013, 0.014][i]]);
       c.gl.enable(c.gl.BLEND);
       c.gl.blendFunc(c.gl.ONE, c.gl.ONE_MINUS_SRC_ALPHA);
-      c.fullscreen(c.e.program(GIANT, 'giant'), { ...s.cam.uniforms(), uStar: [0, 0, 0], uR: R, uHeat: 1.0, uDetail: 1, uAtmo: 1, uPl, uFlash: flash });
+      c.fullscreen(c.e.program(GIANT, 'giant'), { ...s.cam.uniforms(), uStar: [0, 0, 0], uR: R, uHeat: 1.0, uDetail: 1, uAtmo: 1, uTurn: 0, uPl, uFlash: flash });
       c.gl.disable(c.gl.BLEND);
     },
   };
@@ -358,420 +376,81 @@ function redGiantEarth(): Shot<{ planet: Planet; cam: Camera; starCam: Camera; m
       s.starCam.set({ pos: earthAU, target: v3.add(earthAU, fwd), up: [0, 1, 0], roll: 0.04 });
       s.starCam.aspect = c.aspect;
       c.fullscreen(c.e.program(GIANT, 'giant'), {
-        ...s.starCam.uniforms(), uStar: [0, 0, 0], uR: giantR(t + 3.1), uHeat: 1.0, uDetail: 2.6, uAtmo: 0.4,
+        ...s.starCam.uniforms(), uStar: [0, 0, 0], uR: giantR(t + 3.1), uHeat: 1.8, uDetail: 2.2, uAtmo: 0.45, uTurn: 0.9,
         uPl: new Array(12).fill(0), uFlash: [0, 0, 0],
       });
       s.planet.draw(c, s.cam, {
         center: [0, 0, 0], radius: 1, spin: c.time * 0.03, tilt: 0.41, yaw: 2.2, sunDir: toStar,
-        sunColor: [2.2, 0.85, 0.36], earth: 1, desert: 1, retreat: 1, lava: 0.12, crust: 0.85,
-        nightGlow: 1.2, atmo: 0.22, atmoColor: [0.9, 0.35, 0.12], glint: 0,
+        // Seen from behind: a black disc veined with the glow of its melting crust, ringed by
+        // what is left of its air catching the star's light all the way round the limb.
+        sunColor: [2.6, 1.0, 0.42], earth: 1, desert: 1, retreat: 1, lava: 0.6, crust: 0.8,
+        nightGlow: 0.3, atmo: 0.7, atmoColor: [0.75, 0.6, 0.5], atmoHeight: 0.02, glint: 0,
       });
     },
   };
 }
 
 // ------------------------------------------------------------------ planetary nebula and white dwarf
-const PNEB = `
-#include <noise>
-#include <color>
-#include <camera>
+// The nebula is a volume (film/shaders/pneb.glsl) marched at reduced resolution; the composite
+// adds it to the sky at full resolution with the white dwarf, which is far smaller than a pixel:
+// a point, a little glare, and the faint cross a telescope's struts would give it.
+const PNEB_COMPOSITE = `
+#include <common>
 in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uExpand;
-float shellDensity(vec3 p, out float inner) {
-  vec3 q = p / uExpand;
-  float r = length(q);
-  float n = fbm(q * 4.0 + vec3(0.0, uGTime * 0.02, 0.0), 4);
-  float fil = pow(1.0 - abs(fbm(q * 8.0 + 3.0, 4) * 2.0 - 1.0), 4.0);
-  // Bright equatorial ring (the classic 'ring nebula' torus).
-  float rxz = length(q.xz);
-  float ring = exp(-pow((rxz - 0.66 * (0.94 + 0.12 * n)) / 0.1, 2.0) - pow(q.y / 0.2, 2.0));
-  // Faint bipolar lobes.
-  float c = abs(q.y) / max(r, 1e-4);
-  float R = 0.72 + 0.6 * c * c;
-  float shell = exp(-pow((r - R * (0.92 + 0.16 * n)) / 0.045, 2.0)) * 0.35 * smoothstep(0.3, 0.8, c);
-  inner = exp(-pow(r / 0.5, 2.0)) * (0.35 + 0.9 * n);
-  return (ring * 1.3 + shell) * (0.45 + 1.3 * fil);
-}
+uniform sampler2D uSrc;
+uniform vec2 uRes, uStarAt;
+uniform float uAspect, uStar;
 void main() {
-  vec2 p = centered(vUv, uAspect);
-  vec3 rd = camRay(p);
-  vec3 ro = uCamPos;
-  vec3 col = vec3(0.0);
-  vec2 hit = raySphere(ro, rd, vec3(0.0), 1.3 * uExpand);
-  if (hit.y > 0.0) {
-    float t0 = max(hit.x, 0.0), t1 = hit.y;
-    const int N = 40;
-    float dt = (t1 - t0) / float(N);
-    float j = hash12(gl_FragCoord.xy);
-    for (int i = 0; i < N; i++) {
-      vec3 pos = ro + rd * (t0 + (float(i) + j) * dt);
-      float inner;
-      float d = shellDensity(pos, inner);
-      vec3 ha = mix(vec3(1.0, 0.2, 0.18), vec3(1.0, 0.6, 0.3), smoothstep(0.55, 0.75, length(pos) / uExpand));
-      vec3 o3 = vec3(0.12, 0.65, 0.72);
-      col += (ha * d * 1.4 + o3 * inner * 0.55) * dt;
-    }
-  }
-  // The white dwarf: a tiny, intensely hot ember.
-  vec2 sc = rayPointDist(ro, rd, vec3(0.0));
-  float px = 2.0 * uTanHalfFov / uRes.y * sc.y;
-  col += vec3(0.85, 0.9, 1.0) * (exp(-sc.x * sc.x / (2.0 * px * px)) * 12.0 + exp(-sc.x / 0.03) * 0.5);
-  fragColor = vec4(col * 1.4, 1.0);
+  vec3 col = texture(uSrc, vUv).rgb;
+  vec2 p = centered(vUv, uAspect) - uStarAt;
+  float px = 1.0 / uRes.y;
+  float r = length(p);
+  float core = exp(-r * r / (2.8 * px * px)) * 60.0 + exp(-r / (px * 5.0)) * 1.2 + exp(-r / 0.02) * 0.1;
+  vec2 q = rot2(0.5) * p;
+  float cross = exp(-abs(q.y) / (px * 0.9)) * exp(-abs(q.x) / 0.035) + exp(-abs(q.x) / (px * 0.9)) * exp(-abs(q.y) / 0.035);
+  col += vec3(0.72, 0.84, 1.0) * (core + cross * 1.6) * uStar;
+  fragColor = vec4(col, 1.0);
 }`;
 
 function whiteDwarf(): Shot<{ half: RenderTarget; cam: Camera; sky: Sprites }> {
   return {
     ...span('whitedwarf', { dIn: 1.0, dOut: 1.0 }),
-    setup: (e) => ({ half: scratch(e, 0.5), cam: new Camera({ fov: 38 }), sky: new Sprites(e, starSphere(rng(248), { count: 8000, brightness: 0.3 })) }),
+    setup: (e) => ({ half: scratch(e, 0.75), cam: new Camera({ fov: 38 }), sky: new Sprites(e, starSphere(rng(248), { count: 8000, brightness: 0.3 })) }),
     render(c, s) {
       const t = c.time - beat('whitedwarf').start;
-      const az = 0.6 + t * 0.06;
+      // The shell is still spreading as we arrive, and slows.
+      const expand = keys(t, [[-0.5, 0.6], [6.5, 1.0, 'outQuad']]);
+      const az = 0.6 + t * 0.05;
+      const el = 0.74;
+      const dist = 4.7;
       // Nebula right of centre: the caption sits at lower left.
-      s.cam.set({ pos: [Math.sin(az) * 2.2, 2.0, Math.cos(az) * 2.2], target: [0, 0, 0] }).pan(-0.68);
+      s.cam.aspect = c.aspect;
+      s.cam.set({ pos: [Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, Math.cos(az) * Math.cos(el) * dist], target: [0, 0, 0] }).pan(-1.0, 0.03);
       s.half.bind();
-      c.fullscreen(c.e.program(PNEB, 'pnebula'), { ...s.cam.uniforms(), uExpand: 0.9 + 0.04 * t });
+      c.fullscreen(c.e.program('#include <arrow-of-time/pneb>', 'pnebula'), { ...s.cam.uniforms(), uExpand: expand, uGain: 1.0 });
       c.target.bind();
       s.sky.draw(s.cam, c.time, {}, { sky: true });
+      const at = s.cam.project([0, 0, 0]);
       c.gl.enable(c.gl.BLEND);
       c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
-      c.fullscreen(c.e.program(COPY_ADD, 'copyadd'), { uSrc: s.half });
+      c.fullscreen(c.e.program(PNEB_COMPOSITE, 'pnebula.composite'), { uSrc: s.half, uStarAt: [(at.x - 0.5) * c.aspect, at.y - 0.5], uStar: 1.0 });
       c.gl.disable(c.gl.BLEND);
-    },
-  };
-}
-
-// ------------------------------------------------------------------ Milky Way + Andromeda
-interface MergerSim {
-  frames: Float32Array[];
-  data: SpriteData;
-}
-
-function simulateMerger(): MergerSim {
-  const r = rng(254);
-  const nA = 16000, nB = 20000, n = nA + nB;
-  const data = allocSprites(n);
-  const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3);
-  // Two cores (mass, position, velocity).
-  const M = [1.0, 1.3];
-  const cp = [[-3.2, 0.4, 0.0], [3.2, -0.4, 0.0]];
-  const cv = [[0.18, 0.0, 0.32], [-0.14, 0.0, -0.25]];
-  const soft = 0.12;
-  const disk = (k: number, count: number, offset: number, radius: number, tiltX: number, tiltZ: number) => {
-    const cx = Math.cos(tiltX), sx = Math.sin(tiltX), cz = Math.cos(tiltZ), sz = Math.sin(tiltZ);
-    for (let i = 0; i < count; i++) {
-      const idx = offset + i;
-      let rr = 0;
-      do rr = -Math.log(1 - r.next()) * radius * 0.35 + 0.05; while (rr > radius);
-      let a = r.next() * Math.PI * 2;
-      if (r.next() < 0.65) a = (r.next() < 0.5 ? 0 : Math.PI) + Math.log(rr / 0.15) / Math.tan(0.4) + r.gauss() * 0.3;
-      let x = rr * Math.cos(a), y = r.gauss() * 0.02, z = rr * Math.sin(a);
-      const v = Math.sqrt((M[k] * rr * rr) / Math.pow(rr * rr + soft * soft, 1.5));
-      let vx = -Math.sin(a) * v, vy = 0, vz = Math.cos(a) * v;
-      // Tilt the disk.
-      [y, z] = [y * cx - z * sx, y * sx + z * cx];
-      [vy, vz] = [vy * cx - vz * sx, vy * sx + vz * cx];
-      [x, y] = [x * cz - y * sz, x * sz + y * cz];
-      [vx, vy] = [vx * cz - vy * sz, vx * sz + vy * cz];
-      pos.set([x + cp[k][0], y + cp[k][1], z + cp[k][2]], idx * 3);
-      vel.set([vx + cv[k][0], vy + cv[k][1], vz + cv[k][2]], idx * 3);
-      const young = r.next() < 0.5;
-      const c = blackbody(young ? r.range(7000, 14000) : r.range(3800, 6000));
-      const b = (young ? 0.12 : 0.08) * (0.4 + Math.pow(r.next(), 4) * 2);
-      data.color.set([c[0] * b, c[1] * b, c[2] * b], idx * 3);
-      data.size[idx] = r.range(0.006, 0.012);
-      data.extra!.set([r.next(), 0, 0, 0], idx * 4);
-    }
-  };
-  disk(0, nA, 0, 1.0, 0.25, 0.1);
-  disk(1, nB, nA, 1.3, 1.1, -0.4);
-  const frames: Float32Array[] = [];
-  const K = 96, sub = 8, dt = 0.045;
-  const corePos = cp.map((v) => [...v]), coreVel = cv.map((v) => [...v]);
-  for (let f = 0; f < K; f++) {
-    frames.push(pos.slice());
-    for (let s = 0; s < sub; s++) {
-      // Cores attract each other; dynamical friction makes them spiral in and merge.
-      const dx = corePos[1][0] - corePos[0][0], dy = corePos[1][1] - corePos[0][1], dz = corePos[1][2] - corePos[0][2];
-      const d2 = dx * dx + dy * dy + dz * dz + 0.2;
-      const inv = 1 / Math.pow(d2, 1.5);
-      const drag = 0.35 * Math.exp(-Math.sqrt(d2) / 1.5);
-      for (let k = 0; k < 2; k++) {
-        const sgn = k === 0 ? 1 : -1;
-        const other = M[1 - k];
-        coreVel[k][0] += (sgn * dx * other * inv - drag * (coreVel[k][0] - (coreVel[0][0] * M[0] + coreVel[1][0] * M[1]) / (M[0] + M[1]))) * dt;
-        coreVel[k][1] += (sgn * dy * other * inv - drag * (coreVel[k][1] - (coreVel[0][1] * M[0] + coreVel[1][1] * M[1]) / (M[0] + M[1]))) * dt;
-        coreVel[k][2] += (sgn * dz * other * inv - drag * (coreVel[k][2] - (coreVel[0][2] * M[0] + coreVel[1][2] * M[1]) / (M[0] + M[1]))) * dt;
-      }
-      for (let k = 0; k < 2; k++) for (let j = 0; j < 3; j++) corePos[k][j] += coreVel[k][j] * dt;
-      for (let i = 0; i < n; i++) {
-        const o = i * 3;
-        let ax = 0, ay = 0, az = 0;
-        for (let k = 0; k < 2; k++) {
-          const rx = corePos[k][0] - pos[o], ry = corePos[k][1] - pos[o + 1], rz = corePos[k][2] - pos[o + 2];
-          const rr2 = rx * rx + ry * ry + rz * rz + soft * soft;
-          const f = M[k] / (rr2 * Math.sqrt(rr2));
-          ax += rx * f;
-          ay += ry * f;
-          az += rz * f;
-        }
-        vel[o] += ax * dt;
-        vel[o + 1] += ay * dt;
-        vel[o + 2] += az * dt;
-        pos[o] += vel[o] * dt;
-        pos[o + 1] += vel[o + 1] * dt;
-        pos[o + 2] += vel[o + 2] * dt;
-      }
-    }
-  }
-  data.position.set(frames[0]);
-  return { frames, data };
-}
-
-function merger(): Shot<{ sim: MergerSim; stars: Sprites; sky: Sprites; cam: Camera; buf: Float32Array }> {
-  return {
-    ...span('merger', { dIn: 1.0, dOut: 1.0 }),
-    setup(e) {
-      const sim = simulateMerger();
-      return {
-        sim,
-        stars: new Sprites(e, sim.data, { minPixels: 0.7 }),
-        sky: new Sprites(e, starSphere(rng(255), { count: 6000, brightness: 0.25 })),
-        cam: new Camera({ fov: 40, far: 1000 }),
-        buf: new Float32Array(sim.data.count * 3),
-      };
-    },
-    render(c, s) {
-      const b = beat('merger');
-      const u = Math.min(0.9999, Math.max(0, (c.time - (b.start - 0.5)) / (b.end - b.start + 1.0)));
-      const f = u * (s.sim.frames.length - 1);
-      const i0 = Math.floor(f), i1 = Math.min(i0 + 1, s.sim.frames.length - 1), w = f - i0;
-      const A = s.sim.frames[i0], B = s.sim.frames[i1];
-      for (let i = 0; i < s.buf.length; i++) s.buf[i] = A[i] + (B[i] - A[i]) * w;
-      s.stars.update({ position: s.buf });
-      const az = 0.3 + u * 0.5;
-      s.cam.set({ pos: [Math.sin(az) * 9.5, 4.8, Math.cos(az) * 9.5], target: [0, 0, 0] });
-      s.sky.draw(s.cam, c.time, {}, { sky: true });
-      s.stars.draw(s.cam, c.time, {}, { blend: 'add', brightness: 1.0 });
-    },
-  };
-}
-
-// ------------------------------------------------------------------ the last stars
-function lastStars(): Shot<{ stars: Sprites; cam: Camera }> {
-  return {
-    ...span('laststars', { dIn: 1.0, dOut: 1.2 }),
-    setup(e) {
-      const r = rng(262);
-      const d = starSphere(r, { count: 12000, brightness: 0.55, band: 0.3 });
-      const b = beat('laststars');
-      for (let i = 0; i < d.count; i++) {
-        // Death times spread over the shot, most stars late (red dwarfs linger).
-        const tDeath = b.start - 1 + Math.pow(r.next(), 0.6) * (b.end - b.start + 1.5);
-        d.extra!.set([tDeath, 0, r.next(), 0], i * 4);
-      }
-      // The eight synchronized stars: bright, near the centre of view.
-      const deaths = timeline.starDeaths;
-      deaths.forEach((td, k) => {
-        const a = (k / deaths.length) * Math.PI * 2 + 0.4;
-        const dir: Vec3 = [Math.sin(a) * 0.32, Math.cos(a) * 0.14 + 0.03, -1];
-        const l = Math.hypot(...dir);
-        d.position.set([(dir[0] / l) * 5000, (dir[1] / l) * 5000, (dir[2] / l) * 5000], k * 3);
-        const c = blackbody(3800 + k * 500);
-        d.color.set([c[0] * 14, c[1] * 14, c[2] * 14], k * 3);
-        d.extra!.set([td, 1, 0, 0], k * 4);
-      });
-      return {
-        stars: new Sprites(e, d, {
-          animate: `
-            vec3 animate(vec3 p, vec4 x, inout vec3 col, inout float size) {
-              float age = uTime - x.x;
-              float redden = smoothstep(-6.0, 0.0, age);
-              col *= mix(vec3(1.0), vec3(1.3, 0.55, 0.3), redden * 0.8);
-              if (age > 0.0) {
-                float flare = x.y > 0.5 ? exp(-age * 5.0) * 4.0 : 0.0;
-                col *= exp(-age * 2.2) + flare;
-                size *= 1.0 + flare * 0.5;
-              }
-              return p;
-            }`,
-        }),
-        cam: new Camera({ fov: 45 }),
-      };
-    },
-    render(c, s) {
-      const t = c.time - beat('laststars').start;
-      s.cam.set({ pos: [0, 0, 0], target: [Math.sin(t * 0.02) * 0.2, 0.02, -1] });
-      s.stars.draw(s.cam, c.time, {}, { sky: true, brightness: 1.0 });
-    },
-  };
-}
-
-// ------------------------------------------------------------------ black holes (lensing ray tracer)
-const BLACKHOLE = `
-#include <noise>
-#include <color>
-#include <camera>
-#include <stars>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime;
-uniform float uRs, uDisk, uHawking, uFlash, uStars;
-vec2 octa(vec3 d) {
-  d /= abs(d.x) + abs(d.y) + abs(d.z);
-  vec2 o = d.y >= 0.0 ? d.xz : (1.0 - abs(d.zx)) * sign(d.xz);
-  return o;
-}
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  vec3 rd = camRay(p);
-  vec3 pos = uCamPos;
-  vec3 vel = rd;
-  vec3 col = vec3(0.0);
-  float trans = 1.0;
-  bool captured = false;
-  float rs = max(uRs, 1e-4);
-  vec3 h3 = cross(pos, vel);
-  float h2 = dot(h3, h3);
-  // Integrate the photon path: a'' = -1.5 rs h^2 r / |r|^5 (Schwarzschild null geodesic), the
-  // force-law form popularized by Riccardo Antonelli's "Starless" write-up.
-  // Per-pixel jitter of the step length turns integration banding into fine noise.
-  float jit = 0.75 + 0.5 * hash12(gl_FragCoord.xy);
-  for (int i = 0; i < 260; i++) {
-    float r = length(pos);
-    if (r < rs) { captured = true; break; }
-    if (r > 40.0 && dot(pos, vel) > 0.0) break;
-    float dt = clamp(0.032 * r * jit, 0.008, 1.0);
-    vec3 acc = -1.5 * rs * h2 * pos / pow(r, 5.0);
-    vec3 np = pos + vel * dt + 0.5 * acc * dt * dt;
-    vec3 acc2 = -1.5 * rs * h2 * np / pow(max(length(np), 1e-3), 5.0);
-    vel = normalize(vel + 0.5 * (acc + acc2) * dt);
-    // Thin accretion disk in the y = 0 plane.
-    if (uDisk > 0.0 && pos.y * np.y < 0.0) {
-      float f = pos.y / (pos.y - np.y);
-      vec3 hp = mix(pos, np, f);
-      float rr = length(hp.xz) / rs;
-      if (rr > 2.6 && rr < 9.0) {
-        float ang = atan(hp.z, hp.x);
-        float swirl = fbm(vec2(ang * 3.0 + uGTime * 0.6 / pow(rr, 1.5) * 8.0, rr * 2.2), 4);
-        float temp = 9000.0 * pow(2.6 / rr, 0.75);
-        float dop = 1.0 + 0.55 * dot(normalize(vec3(-hp.z, 0.0, hp.x)), -rd);
-        float e = smoothstep(2.6, 3.4, rr) * smoothstep(9.0, 5.0, rr) * (0.3 + 1.1 * swirl);
-        col += blackbody(temp) * e * pow(dop, 3.0) * uDisk * trans * 0.9;
-        trans *= 1.0 - saturate(e * 0.7);
-      }
-    }
-    pos = np;
-  }
-  if (!captured) {
-    vec2 o = octa(vel);
-    col += starField(o * 2.0, 2.0 / uRes.y, uGTime, 31.0, uStars) * trans;
-  } else {
-    col *= 0.0;
-  }
-  // Hawking glow: the horizon itself begins to shine as the hole shrinks and heats up.
-  vec2 cp = rayPointDist(uCamPos, rd, vec3(0.0));
-  col += mix(vec3(1.0, 0.4, 0.2), vec3(0.7, 0.8, 1.0), uHawking) * uHawking * exp(-cp.x / (rs * 1.6)) * 2.0 * uHawking;
-  float Rf = (1.0 - uFlash) * 6.0;
-  col += vec3(0.9, 0.93, 1.0) * uFlash * (exp(-cp.x / 0.03) * 25.0 + exp(-pow((cp.x - Rf) / (0.2 + Rf * 0.1), 2.0)) * 0.8);
-  fragColor = vec4(col, 1.0);
-}`;
-
-function blackHoles(): Shot<{ half: RenderTarget; cam: Camera }> {
-  const b0 = beat('blackholes'), b1 = beat('evaporation');
-  return {
-    id: 'blackholes',
-    start: b0.start - 0.6,
-    end: b1.end + 0.6,
-    fadeIn: 1.2,
-    fadeOut: 1.2,
-    setup: (e) => ({ half: scratch(e, 0.75), cam: new Camera({ fov: 36 }) }),
-    render(c, s) {
-      const t = c.time - b0.start;
-      const az = -0.35 + t * 0.03;
-      const el = keys(t, [[-1, 0.1], [16, 0.22]]);
-      const dist = keys(t, [[-1, 34], [8, 28], [13, 18, 'inOutSine'], [16, 16]]);
-      // Lowered a little so the hole sits above its caption.
-      s.cam.set({ pos: [Math.sin(az) * dist * Math.cos(el), dist * Math.sin(el), Math.cos(az) * dist * Math.cos(el)], target: [0, 0, 0] }).pan(0, -0.045 * dist);
-      const rs = keys(c.time, [[b0.start, 1.0], [b1.start, 1.0], [cues.lastFlash - 0.05, 0.02, 'inQuad']]);
-      const gone = c.time > cues.lastFlash;
-      s.half.bind();
-      c.fullscreen(c.e.program(BLACKHOLE, 'blackhole'), {
-        ...s.cam.uniforms(),
-        uRs: gone ? 0 : rs,
-        uDisk: keys(c.time, [[b0.start - 1, 0.8], [b0.start + 5, 0.45], [b1.start + 1, 0.0]]),
-        uHawking: gone ? 0 : prog(c.time, b1.start + 0.5, cues.lastFlash, 'inQuad'),
-        uFlash: c.time > cues.lastFlash ? Math.exp(-(c.time - cues.lastFlash) * 1.8) : 0,
-        uStars: keys(c.time, [[b0.start, 0.35], [b1.end, 0.0]]),
-      });
-      c.target.bind();
-      c.fullscreen(c.e.program(COPY_ADD, 'copyadd'), { uSrc: s.half });
-    },
-  };
-}
-
-// ------------------------------------------------------------------ heat death and epilogue
-const VOID = `
-#include <noise>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uGTime, uAmt;
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  // The last faint photons drifting in an almost perfect, featureless dark.
-  float n = fbm(vec3(p * 2.0, uGTime * 0.05), 4);
-  vec3 col = vec3(0.35, 0.4, 0.55) * pow(n, 5.0) * 0.02 * uAmt;
-  vec2 g = p * 40.0 + vec2(uGTime * 0.05, -uGTime * 0.03);
-  vec3 h = hash32(floor(g));
-  col += vec3(0.6, 0.7, 1.0) * step(0.985, h.z) * exp(-dot(fract(g) - h.xy, fract(g) - h.xy) / 0.003) * 0.05 * uAmt;
-  fragColor = vec4(col, 1.0);
-}`;
-
-function heatDeath(): Shot {
-  const b = beat('heatdeath');
-  return {
-    ...span('heatdeath', { dIn: 1.2, dOut: 1.5 }),
-    render(c) {
-      c.fullscreen(c.e.program(VOID, 'void'), { uAmt: keys(c.time, [[b.start, 1.0], [b.end, 0.0, 'inOutSine']]) });
-    },
-  };
-}
-
-function epilogue(): Shot<{ cam: Camera; sky: Sprites; dot: Sprites }> {
-  const b = beat('epilogue');
-  return {
-    ...span('epilogue', { dIn: 1.5, dOut: 0 }),
-    setup(e) {
-      const d = allocSprites(1);
-      d.position.set([0, 0, -1000]);
-      d.color.set([0.35, 0.55, 1.0]);
-      d.size[0] = 0.7;
-      return { cam: new Camera({ fov: 32 }), sky: new Sprites(e, starSphere(rng(296), { count: 7000, brightness: 0.22 })), dot: new Sprites(e, d, { minPixels: 0.9 }) };
-    },
-    render(c, s) {
-      s.cam.set({ pos: [0, 0, 0], target: [0, 0, -1] });
-      const e = beat('epilogue');
-      const stars = prog(c.time, e.start + 4, e.start + 13, 'inOutSine') * (1 - prog(c.time, e.end - 2.5, e.end, 'inOutSine'));
-      s.sky.draw(s.cam, c.time, {}, { sky: true, brightness: stars });
-      const warm = prog(c.time, cues.picardy, cues.picardy + 3, 'inOutSine');
-      const dot = prog(c.time, e.start + 6, e.start + 10, 'inOutSine') * (1 - prog(c.time, e.end - 3, e.end - 0.5, 'inOutSine'));
-      c.gl.enable(c.gl.BLEND);
-      c.gl.blendFunc(c.gl.ONE, c.gl.ONE);
-      c.fullscreen(c.e.program(`
-#include <noise>
-in vec2 vUv; out vec4 fragColor;
-uniform vec2 uRes; uniform float uAspect, uAmt, uWarm;
-void main() {
-  vec2 p = centered(vUv, uAspect);
-  vec2 d = normalize(vec2(0.35, 1.0));
-  float x = dot(p - vec2(0.02, 0.0), vec2(d.y, -d.x));
-  float band = exp(-pow(x / 0.1, 2.0)) * 0.5 + exp(-pow((x + 0.22) / 0.05, 2.0)) * 0.2;
-  vec3 c = mix(vec3(0.8, 0.75, 0.7), vec3(1.0, 0.72, 0.45), uWarm);
-  fragColor = vec4(c * band * (0.9 + 0.2 * fbm(vec2(dot(p, d) * 3.0, x * 20.0), 3)) * uAmt * 0.1, 1.0);
-}`, 'epibeam'), { uAmt: dot, uWarm: warm });
-      c.gl.disable(c.gl.BLEND);
-      s.dot.draw(s.cam, c.time, {}, { brightness: dot * (3.0 + 2.0 * warm) });
     },
   };
 }
 
 export function futureShots(): Shot[] {
-  return [turn(), mars(), drift(), hotEarth(), redGiantSwell(), redGiantEarth(), whiteDwarf(), merger(), lastStars(), blackHoles(), heatDeath(), epilogue()];
+  return [turn(), mars(), drift(), hotEarth(), redGiantSwell(), redGiantEarth(), whiteDwarf(), ...endShots()];
+}
+
+/**
+ * Look overrides for this file's beats (bloom, streak, exposure, grade...), merged last in
+ * project.ts. Return {} outside them so other shots keep the film's look.
+ */
+export function futureLook(time: number): Partial<Look> {
+  // The white dwarf draws its own diffraction cross: keep the anamorphic streak faint beside it
+  // (the film's look has it off until a second into the beat, and back up for the merger).
+  const wd = beat('whitedwarf');
+  if (time > wd.start + 1 && time < wd.end + 0.5) return { streak: keys(time, [[wd.start + 1, 0], [wd.start + 2, 0.03], [wd.end - 0.5, 0.03], [wd.end + 0.5, 0.09]]) };
+  return {};
 }

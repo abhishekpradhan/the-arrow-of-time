@@ -274,7 +274,10 @@ const SUN: Vec3 = v3.norm([-0.7, 0.3, 0.6]);
  */
 const SHADE = `
 vec4 shade(vec2 q, vec3 col, vec4 x) {
-  float a = 1.0 - exp(-x.x * exp(-0.5 * dot(q, q)));
+  float g = exp(-0.5 * dot(q, q));
+  float a = 1.0 - exp(-x.x * g);
+  // Loose droplets (x.z) carry a white-hot core in a dimmer halo: beads of melt, not soft balls.
+  col *= 1.0 + 3.2 * x.z * g * g * g;
   return vec4(col * a, a) * x.y;
 }`;
 
@@ -520,10 +523,11 @@ function drawSim(c: ShotContext, s: SimState, hours: number) {
     // Isolated droplets vary in size (a hash per parcel), so the spray is embers of every size
     // rather than confetti; the fluid's parcels are drawn wider and thinner so they merge.
     const jit = hash1(i * 7 + 3);
-    const sig = spark ? 0.012 + 0.024 * jit * jit + 0.1 * veil : Math.max(0.012, 0.72 * hh * grow);
+    const sig = spark ? 0.0065 + 0.015 * jit * jit + 0.1 * veil : Math.max(0.012, 0.72 * hh * grow);
     O.size[r] = sig;
     O.extra[r * 4] = (spark ? (0.45 + 0.45 * jit) * (1 - 0.7 * veil) : Math.min(2.5, 1.3 * grow ** 3 * (sigRef / sig) ** 2)) * (1 - 0.88 * envelope);
     O.extra[r * 4 + 1] = s.vis[i];
+    O.extra[r * 4 + 2] = spark ? 1 - veil : 0;
   }
   s.sph.update(O);
   s.sph.draw(s.cam, c.time, {}, { blend: 'premul', count: live });

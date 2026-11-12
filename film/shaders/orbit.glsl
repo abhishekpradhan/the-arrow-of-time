@@ -267,12 +267,49 @@ vec3 shadeHardware(vec3 p, vec3 rd, int id, float mat, float dist, float pix) {
     col += sunC * shS * ks * 3.0 + moonC * shM * km * 1.5;
     return col;
   }
-  vec3 alb = id == 0 ? vec3(0.6, 0.61, 0.63) : id == 1 ? vec3(0.5, 0.51, 0.52) : vec3(0.55, 0.56, 0.57);
-  float spec = id == 0 ? 0.6 : 0.12;
-  float rough = id == 0 ? 60.0 : 20.0;
+  // The stage and the fairing: painted sheet metal built up in rings and gores. Seams and
+  // rivet rows show while a pixel is small enough to hold them; every panel takes the paint a
+  // little differently; soot streaks run down the hull, and frost clings where the oxygen
+  // tank chills the skin.
+  vec3 q = id == 1 ? uStageRot * (p - uStage) : uFairRot[id - 2] * (p - uFair[id - 2]);
+  vec3 nl = id == 1 ? uStageRot * n : uFairRot[id - 2] * n;
+  float pixM = dist * pix;
+  float phi = atan(q.z, q.x);
+  float rad = max(length(q.xz), 0.08);
+  const float GORES = 12.0, RING = 1.24;
+  float u = phi / TAU * GORES, v = q.y / RING;
+  float du = abs(fract(u + 0.5) - 0.5) * (TAU * rad / GORES);
+  float dv = abs(fract(v + 0.5) - 0.5) * RING;
+  float w = max(0.006, pixM * 0.8);
+  float seam = max(smoothstep(w, 0.0, du), smoothstep(w, 0.0, dv)) * min(1.0, 0.012 / w);
+  float rw = max(0.007, pixM);
+  float rivet = max(smoothstep(rw, 0.0, abs(du - 0.045)) * smoothstep(0.3, 0.1, abs(fract(q.y / 0.12) - 0.5)),
+                    smoothstep(rw, 0.0, abs(dv - 0.045)) * smoothstep(0.3, 0.1, abs(fract(phi * rad / 0.12) - 0.5))) * saturate(0.02 / rw - 0.3);
+  float tone = hash12(vec2(floor(u + 0.5), floor(v + 0.5)) + 3.0 + float(id) * 17.0);
+  float mott = fbm(vec2(phi * rad * 2.0 + float(id) * 3.0, q.y * 2.0), 4);
+  float streak = fbm(vec2(phi * 26.0, q.y * 0.4 + float(id)), 3);
+  vec3 alb = id == 1 ? vec3(0.5, 0.51, 0.52) : vec3(0.55, 0.56, 0.57);
+  alb *= 0.82 + 0.16 * tone + 0.24 * (mott - 0.5) - 0.13 * smoothstep(0.55, 0.85, streak);
+  float spec = 0.22, rough = 26.0;
+  if (id == 1) {
+    float frost = smoothstep(0.42, 0.68, fbm(vec2(phi * rad * 1.3, q.y * 0.9), 4)) * smoothstep(9.0, 13.0, q.y) * (1.0 - smoothstep(21.4, 22.4, q.y));
+    alb = mix(alb, vec3(0.78, 0.82, 0.87), frost * 0.6);
+    spec *= 1.0 - 0.7 * frost;
+  } else if (dot(nl.xz, q.xz) < 0.0) {
+    // Inside a fairing half: bare primed metal, with stringers running up to the tip.
+    float rib = smoothstep(0.03, 0.01, abs(fract(phi / TAU * 36.0) - 0.5) * (TAU * rad / 36.0));
+    alb = vec3(0.16, 0.17, 0.15) * (0.8 + 0.3 * mott) * (1.0 + 0.5 * rib);
+    seam *= 0.4;
+    spec = 0.06;
+  }
+  alb *= (1.0 - 0.5 * seam) * (1.0 - 0.35 * rivet);
   vec3 col = alb * (sunC * max(dot(n, uSunDir), 0.0) * shS + moonC * max(dot(n, uMoonDir), 0.0) * shM + earthshine);
   vec3 hs = normalize(uSunDir - rd), hm = normalize(uMoonDir - rd);
-  col += spec * (sunC * shS * pow(max(dot(n, hs), 0.0), rough) + moonC * shM * pow(max(dot(n, hm), 0.0), rough));
+  col += spec * (sunC * shS * pow(max(dot(n, hs), 0.0), rough) + moonC * shM * pow(max(dot(n, hm), 0.0), rough)) * (1.0 - seam);
+  // The paint's sheen picks up the Earth below at grazing angles.
+  vec3 r = reflect(rd, n);
+  float fres = 0.03 + 0.97 * pow(1.0 - max(dot(n, -rd), 0.0), 5.0);
+  col += fres * (uMoonE * 0.35 + uSunE * 0.04 * smoothstep(-0.3, -0.2, dot(normalize(uCamP), uSunDir))) * saturate(dot(r, down) * 0.5 + 0.5) * 0.9 * (spec / 0.22);
   return col;
 }
 

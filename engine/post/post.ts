@@ -1,4 +1,4 @@
-// HDR post pipeline: bloom (Jimenez 13-tap down / tent up), anamorphic streaks,
+// HDR post pipeline: bloom (Jimenez 13-tap down / tent up), halation, anamorphic streaks,
 // tonemapping, grading, vignette, grain, dithering, letterbox and text composite.
 
 import { FULLSCREEN_VS, Program, RenderTarget, setBlend, type GL, type Texture } from '../gl/gl';
@@ -49,6 +49,28 @@ void main() {
   fragColor = vec4(c / 16.0, 1.0);
 }`;
 
+// Halation: light that passes through a film's emulsion, scatters off its base and exposes
+// the red-sensitive layer again from behind, so bright highlights wear a soft red-orange
+// fringe. Built from a small blur of the highlights only (two bloom levels, before the up
+// chain adds the wide ones into them).
+const HALO = `
+#include <common>
+in vec2 vUv; out vec4 fragColor;
+uniform sampler2D uA, uB; uniform vec2 uTexelA, uTexelB; uniform float uThreshold;
+vec3 tent(sampler2D t, vec2 tx) {
+  vec3 c = texture(t, vUv + vec2(-1, 1) * tx).rgb + 2.0 * texture(t, vUv + vec2(0, 1) * tx).rgb + texture(t, vUv + vec2(1, 1) * tx).rgb
+         + 2.0 * texture(t, vUv + vec2(-1, 0) * tx).rgb + 4.0 * texture(t, vUv).rgb + 2.0 * texture(t, vUv + vec2(1, 0) * tx).rgb
+         + texture(t, vUv + vec2(-1, -1) * tx).rgb + 2.0 * texture(t, vUv + vec2(0, -1) * tx).rgb + texture(t, vUv + vec2(1, -1) * tx).rgb;
+  return c / 16.0;
+}
+void main() {
+  vec3 c = 0.6 * tent(uA, uTexelA) + 0.4 * tent(uB, uTexelB);
+  // Only what is brighter than the threshold scatters visibly; a soft knee keeps it from popping.
+  float l = luma(c);
+  float k = smoothstep(uThreshold * 0.5, uThreshold * 2.5, l);
+  fragColor = vec4(c * k / (1.0 + 0.15 * l), 1.0);
+}`;
+
 const STREAK = `
 #include <common>
 in vec2 vUv; out vec4 fragColor;
@@ -97,8 +119,9 @@ const FINAL = `
 #include <common>
 #include <color>
 in vec2 vUv; out vec4 fragColor;
-uniform sampler2D uScene, uBloom, uStreak, uText, uRays;
-uniform float uRaysAmt;
+uniform sampler2D uScene, uBloom, uStreak, uText, uRays, uHalo;
+uniform float uRaysAmt, uHalation, uGrainSize;
+uniform vec3 uHaloTint;
 uniform vec3 uRaysTint;
 uniform vec2 uRes, uShake;
 uniform float uBloomAmt, uBloomNorm, uStreakAmt, uExposure, uContrast, uSaturation;
@@ -132,6 +155,7 @@ void main() {
   col += texture(uBloom, suv).rgb * uBloomNorm * uBloomAmt;
   if (uStreakAmt > 0.0) col += texture(uStreak, suv).rgb * uStreakTint * uStreakAmt;
   if (uRaysAmt > 0.0) col += texture(uRays, suv).rgb * uRaysTint * uRaysAmt;
+  if (uHalation > 0.0) col += luma(texture(uHalo, suv).rgb) * uHaloTint * uHalation;
   col = max(col, 0.0) * exp2(uExposure);
 
   col = tonemap(col, uTonemap);
@@ -166,10 +190,25 @@ void main() {
   col += uFlash * uFlashColor;
   col *= uFade;
 
-  // Film grain, strongest in the mid-tones, re-seeded every frame.
+  // Film grain, strongest in the mid-tones, re-seeded every frame. Real grain is clumps of
+  // crystals a little larger than a pixel, not per-pixel noise: most of it here is noise on a
+  // coarser lattice (uGrainSize pixels), smoothly interpolated, with a little per-pixel
+  // sparkle on top. It reads as film rather than sensor noise, and costs the encoder far less.
   vec2 px = floor(uv * uRes);
   vec3 nz = pixelNoise(px, uFrame);
   float g = (nz.x + nz.y + nz.z) - 1.5; // ~N(0, 0.5)
+  if (uGrainSize > 1.0) {
+    vec2 gp = uv * uRes / uGrainSize;
+    vec2 gi = floor(gp), gf = fract(gp);
+    gf = gf * gf * (3.0 - 2.0 * gf);
+    float fr = uFrame + 97.0;
+    vec3 a = pixelNoise(gi, fr), b = pixelNoise(gi + vec2(1.0, 0.0), fr);
+    vec3 c = pixelNoise(gi + vec2(0.0, 1.0), fr), d = pixelNoise(gi + vec2(1.0, 1.0), fr);
+    vec3 m = mix(mix(a, b, gf.x), mix(c, d, gf.x), gf.y);
+    // Interpolation halves the spread: scale it back up so the amount means the same.
+    float soft = ((m.x + m.y + m.z) - 1.5) * 1.75;
+    g = 0.3 * g + 0.85 * soft;
+  }
   float l = luma(col);
   float gw = 0.35 + 2.4 * l * (1.0 - l);
   col += g * uGrain * gw;
@@ -197,6 +236,8 @@ export class Post {
   streakRT: RenderTarget;
   raysA: RenderTarget;
   raysB: RenderTarget;
+  haloRT: RenderTarget;
+  halo: Program;
   rays: Program;
   down: Program;
   up: Program;
@@ -217,6 +258,8 @@ export class Post {
     this.streakRT = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f' });
     this.raysA = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f' });
     this.raysB = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f' });
+    this.haloRT = new RenderTarget(gl, m1.width, m1.height, { format: 'rgba16f', filter: 'linear' });
+    this.halo = new Program(gl, FULLSCREEN_VS, HALO, 'post.halo');
     this.rays = new Program(gl, FULLSCREEN_VS, RAYS, 'post.rays');
     this.down = new Program(gl, FULLSCREEN_VS, DOWN, 'post.down');
     this.up = new Program(gl, FULLSCREEN_VS, UP, 'post.up');
@@ -248,6 +291,13 @@ export class Post {
       this.e.drawFullscreen();
       this.raysB.bind();
       this.rays.use().set({ uSrc: this.raysA, uCenter: look.raysCenter, uThreshold: 0, uSpan: 1.0 / 32.0, uDecay: 1.0, uFirst: 0 });
+      this.e.drawFullscreen();
+    }
+    // Halation from two small bloom levels, before the up chain adds the wide ones into them.
+    if (look.halation > 0) {
+      const a = this.mips[Math.min(1, this.mips.length - 1)], b = this.mips[Math.min(2, this.mips.length - 1)];
+      this.haloRT.bind();
+      this.halo.use().set({ uA: a, uB: b, uTexelA: [1 / a.width, 1 / a.height], uTexelB: [1 / b.width, 1 / b.height], uThreshold: look.halationThreshold });
       this.e.drawFullscreen();
     }
     // Up chain, accumulating into each finer level.
@@ -282,6 +332,10 @@ export class Post {
       uBloom: this.mips[0],
       uStreak: look.streak > 0 ? this.streakRT : this.blank,
       uRays: look.rays > 0 ? this.raysB : this.blank,
+      uHalo: look.halation > 0 ? this.haloRT : this.blank,
+      uHalation: look.halation,
+      uHaloTint: look.halationTint,
+      uGrainSize: look.grainSize * (this.e.height / 1080),
       uRaysAmt: look.rays,
       uRaysTint: look.raysTint,
       uText: text ?? this.blank,
