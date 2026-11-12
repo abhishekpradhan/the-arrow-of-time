@@ -7,8 +7,9 @@ that look for that name.)
 
 ## Layout
 
-- `film/`: the film. `timeline.json` (script, captions, cues) + `project.ts` + `shots/` +
-  `shaders/` + `text.ts` (captions) + `score.py`.
+- `film/`: the film. `timeline.json` (script, captions, cues) + `project.ts` + `shots/` (one file
+  per act: `universe`, `dawn`, `sun`, `moon`, `life`, `human`, `civilization`, `ascent`,
+  `sputnik`, `apollo`, `future`, `end`) + `shaders/` + `text.ts` (captions) + `score.py`.
 - `engine/`: the film engine (TypeScript, browser), kept general. Public API: `@engine`
   (`engine/index.ts`); the runtime loads `film/project.ts`.
 - `audio/studio/`: the Python synthesizer and mastering the score is written with (`audio/README.md`).
@@ -81,10 +82,16 @@ that look for that name.)
   over a `Planet` Earth drawn first (premultiplied alpha).
 - **Components** (`engine/components/`): `Planet` + `loadEarth` render a planet from any era
   (molten, ocean, snowball, real present-day Earth, city lights, Mars, the Moon; every knob is
-  documented on `PlanetParams`; `opacity` fades one out). Colliding or overlapping planets need `depthTest: true`;
+  documented on `PlanetParams`; `opacity` fades one out). Its clouds are weather (noise wound
+  round storm centres, climate zones, shadows on the ground), and its air is a scattering shell:
+  `atmoColor * atmo` is the optical depth per colour, which tints the day side, brightens the
+  limb and sets the colour of the terminator (blue air gives orange sunsets). `shock` is a blast
+  wave through the cloud deck; `relief` shades land from its height field. Colliding or overlapping planets need `depthTest: true`;
   `impacts` scars scale with the length of their vector (1 = crater, ~10 = planet-scale), and
-  `planetLocal()` converts a world direction for them. `Galaxy` (or raw `galaxyData`) is a
-  rotating sprite spiral. `Atmosphere` (with `#include <atmosphere>`) is a physically based sky
+  `planetLocal()` converts a world direction for them. `Galaxy` is a barred spiral rendered as a
+  volume: a face-on map baked once and ray-marched as a thin disk with reddening dust, an
+  analytic bulge, and star sprites from the same map. `noiseVolume` bakes a tiling 3D noise
+  texture for ray-marched volumes (one fetch per step instead of several noise octaves). `Atmosphere` (with `#include <atmosphere>`) is a physically based sky
   and limb from single scattering: `...atmo.uniforms(c)` bakes its transmittance table on first
   use; `atmoSegment` integrates a stretch of ray (composite the air in front of a cloud layer,
   then behind it), `atmoLight` gives sunlight's colour at a point (red near the horizon, zero in
@@ -107,6 +114,11 @@ that look for that name.)
   `{ sky: true }`. The `animate`/`shade` GLSL hooks run per sprite and per fragment.
 - **Uniforms** are typed by reflection (`Program.set`). Arrays: pass flat JS arrays. Unknown
   names are ignored silently, so a misspelt uniform just does nothing.
+- **Looks per act.** `project.ts` holds the film's look (grade, grain, halation, letterbox,
+  flashes, shake). A shot file that needs its own bloom, streaks, exposure or light shafts for
+  its beats exports a function (`universeLook`, `dawnLook`, `sunLook`, `mammalsLook`,
+  `futureLook`, `endLook`) that returns overrides there and `{}` elsewhere; `project.ts` merges
+  them last.
 - **CI** (`.github/workflows/ci.yml`) typechecks everything, compiles the Python, synthesizes
   the whole score and checks its hits and cuts against the timeline (`audio/analyze.py`). Keep
   `npm run typecheck` clean, and when a cue moves, keep the onsets CI checks in step.
@@ -170,6 +182,19 @@ that look for that name.)
   slopes; derive them from a smooth measure over a wide range.
 - Chromatic aberration fringes thousands of tiny bright lights red and blue (city lights read
   pink): keep `aberration` low in those shots.
+- Cracks drawn along the edges of a cell (Voronoi) pattern read as a net of polygons, a football.
+  Draw fractures, lava rifts and leads in ice along the zero lines of smooth noise fields
+  (`abs(gfbm(p))` near 0): they meander, branch, and widen into pools where the field is flat.
+- Cross-fading two air or haze colours (an orange smog into a blue sky) passes through grey. Thin
+  the first out before the second builds.
+- A noise field wound round a centre (a cyclone) rings like a target at the eye if it is wound
+  tighter than the noise can show: cap the turn at the centre.
+- Light shafts (`rays`) fed by a large bright sky wash the whole frame out. Raise
+  `raysThreshold` until only the sun's disc feeds them.
+- A silhouette made from one profile mirrored about its axis (a chimney, a trunk) reads as turned
+  on a lathe. Give each flank its own noise.
+- A glow drawn as a bright point with a halo on top of a spire reads as a candle flame. Lay an
+  ember across the lip instead and put the light into the smoke above it.
 - Soft shadows of curved surfaces (a rocket's tank, a fairing) come out terraced with the
   simple estimate `min(k * h / t)`; use the closest approach between successive steps (the
   improved soft shadow in `orbit.glsl` and `moonlanding.glsl`).
@@ -233,8 +258,9 @@ over the image, letterbox framing, and transitions between shots.
 
 ## Rendering
 
-- `npm run render -- --preset draft`: half resolution, no motion blur (about 16 min for the 6:12
-  film at 720p with motion blur on a Mac's GPU; hours on a 4-core CPU).
+- `npm run render -- --preset draft`: half resolution, no motion blur unless `--mb 1` (the 6:12
+  film at 540p with motion blur and `--workers 2` takes about 7 min on a Mac's GPU, 19 ms of GPU
+  time per frame; hours on a 4-core CPU).
 - `npm run render`: final 1080p, x264 CRF 17 `slow`, Rec.709, AAC 320k. Outputs
   `out/renders/the-arrow-of-time-final-<stamp>.mp4` and `...-final-latest.mp4`. The v1.0 master
   (6:12) took 31 min with `--workers 2` on a Mac's GPU (`MOVIES_BROWSER=chrome`) and is 1.6 GB,

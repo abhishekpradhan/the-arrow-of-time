@@ -9,7 +9,7 @@ lives in `film/`.
 for each frame:
   active shots ──► each renders HDR, linear light into its target ──► dissolves composited
               ──► motion blur (optional sub-frame accumulation)
-              ──► post: bloom, streaks, tonemap, grade, grain, vignette, letterbox, flash, shake
+              ──► post: bloom, halation, streaks, tonemap, grade, grain, vignette, letterbox, flash, shake
               ──► captions composited from the glyph cache ──► canvas
 ```
 
@@ -138,8 +138,14 @@ and never flicker. `starSphere(rng, options)` makes a sky; draw it with `{ sky: 
   impact scars scale with the length of their vector (1 is a crater, about 10 a planet-scale
   wound), and `planetLocal()` converts a world direction into the planet's frame. `opacity` fades
   the whole planet (a body dissolving into a particle simulation of itself, for example).
-- **`Galaxy`** (or raw `galaxyData`) is a rotating barred spiral made of sprites: stars, a glow
-  layer and dust lanes.
+- **`Galaxy`** is a barred spiral rendered as a volume: its face-on structure (old and young
+  stars, dust, H-II regions) is baked once into a map (`galaxy-map` chunk) and ray-marched as a
+  thin disk with reddening dust (`galaxy` chunk), with an analytic bulge and star sprites drawn
+  from the same map on top.
+- **`noiseVolume`** (`engine/components/noise-volume.ts`) bakes a tiling 3D noise texture, so a
+  ray-marched volume pays one fetch per step instead of several octaves of hashed noise.
+- **`Streaks`** (`engine/components/streaks.ts`) draws fast points as the path they cover while
+  the shutter is open: motion blur for a particle field in one sample instead of eight.
 - <a id="atmosphere"></a>**`Atmosphere`** (`engine/components/atmosphere.ts` with the
   `atmosphere` chunk) is a planet's air from single scattering: Rayleigh and Mie scattering,
   ozone absorption and the planet's shadow, with the transmittance to space baked once into a
@@ -158,10 +164,11 @@ where the next scene (or someone else's film) can use it.
 
 ## Post-processing
 
-The post chain turns the HDR frame into the picture: 13-tap bloom with Karis averaging, anamorphic
-streaks, light shafts (`rays`: the bright parts of the frame smeared towards `raysCenter`, so a low
-sun streams between silhouettes), ACES or AgX tonemapping, lift/gamma/gain grading, saturation and contrast, grain,
-vignette, chromatic aberration, a letterbox that animates between 16:9 and 2.39:1, fades, flashes
+The post chain turns the HDR frame into the picture: 13-tap bloom with Karis averaging, halation
+(`halation`: the soft red-orange fringe film shows round highlights), anamorphic streaks, light shafts (`rays`: the bright parts of the frame smeared towards `raysCenter`, so a low
+sun streams between silhouettes), ACES or AgX tonemapping, lift/gamma/gain grading, saturation and contrast, grain (`grainSize`
+sets the size of its clumps: 1 is per-pixel noise, about 1.6 reads as film and costs the encoder
+far less), vignette, chromatic aberration, a letterbox that animates between 16:9 and 2.39:1, fades, flashes
 and camera shake. Everything is animated through `project.look(t)` (see `Look` in
 `engine/core/types.ts`). NaNs are zeroed so they cannot bloom into black holes, but the pixel is
 still wrong: guard `pow()` and `exp()`.

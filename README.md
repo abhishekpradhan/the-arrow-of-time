@@ -27,11 +27,11 @@ history, stops dead at **Now**, then resumes and slows as the stars die, until i
 
 | Time | Chapter | |
 | --- | --- | --- |
-| 0:00 | Prologue | "Everything that has ever happened…", a single point of light gathering energy |
+| 0:00 | Prologue | "Everything that has ever happened…": each tick of the clock sends a ring of light through the dark, until everything falls into a single point |
 | 0:20 | The Universe | the Big Bang, inflation, the first elements, first light |
 | 0:50 | Cosmic Dawn | the dark ages, the first stars, galaxies, the Milky Way |
 | 1:20 | The Sun and Earth | a collapsing nebula, the young Sun, a molten Earth, the impact that makes the Moon, the first oceans |
-| 2:00 | Life | the first cells, the Great Oxidation, Snowball Earth, the Cambrian seas, onto land, the dinosaurs, the asteroid |
+| 2:00 | Life | hydrothermal vents and the first cells, the Great Oxidation, Snowball Earth, the Cambrian seas, onto land, the dinosaurs, the asteroid |
 | 2:46 | Humanity | mammals at dawn, the first people at dusk on the savanna, hand stencils in a cave |
 | 3:06 | Civilization | twelve thousand years as one day: the first harvest, Uruk, cuneiform, Giza, Athens, Gutenberg's press, the railway, the Wright Flyer, Trinity |
 | 3:31 | The Space Race | the R-7 lifting Sputnik through the clouds into an orbital sunrise; Apollo 11 on the Sea of Tranquility, and Armstrong's own voice; the Earth at night |
@@ -42,8 +42,8 @@ history, stops dead at **Now**, then resumes and slows as the stars die, until i
 
 ## How it was made
 
-- **Everything is code.** No footage, stock or samples: ray marching, particle sprites and painted
-  silhouettes make every frame, and a small synthesizer makes every sound. The one recording is
+- **Everything is code.** No footage, stock or samples: ray-marched volumes, a geodesic ray tracer
+  for the black hole, particle sprites and painted silhouettes make every frame, and a small synthesizer makes every sound. The one recording is
   NASA's own, of Neil Armstrong calling Houston from Tranquility Base.
 - **Real science and history where it counts.** The Moon forms in a smoothed-particle
   hydrodynamics simulation run for the film (SWIFT, 61,139 particles). Today's Earth comes from
@@ -56,8 +56,8 @@ history, stops dead at **Now**, then resumes and slows as the stars die, until i
 - **A score you can check without listening.** Organ, strings, piano, synth brass, bells, choir
   and drums with convolution reverb, mastered to -14 LUFS. CI renders it on every push and checks
   its hits and cuts against the timeline.
-- **Cinematic post.** HDR rendering, bloom, anamorphic streaks, light shafts, ACES tonemapping,
-  grading, grain, motion blur, and a 2.39:1 letterbox that opens to full frame for the biggest
+- **Cinematic post.** HDR rendering, bloom, halation, anamorphic streaks, light shafts, ACES
+  tonemapping, grading, film grain, motion blur, and a 2.39:1 letterbox that opens to full frame for the biggest
   moments.
 - **Renders anywhere.** Headless Chromium on a GPU, Mesa llvmpipe on a plain CPU, or dozens of
   containers at once [on Modal](docs/modal.md) for minutes and about a dollar.

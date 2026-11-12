@@ -95,10 +95,13 @@ typography on its own with `npm run still -- --t 10 --textonly`.
 ## 4. The look
 
 `look(t)` in [`project.ts`](../film/project.ts) returns the post-processing settings for any
-moment: `exposure`, `bloom`, `streak` (anamorphic), light shafts (`rays`), `tonemap` (`aces` or
-`agx`), grading (`lift`, `gamma`, `gain`, `saturation`, `contrast`), `grain`, `vignette`,
+moment: `exposure`, `bloom`, `halation`, `streak` (anamorphic), light shafts (`rays`), `tonemap`
+(`aces` or `agx`), grading (`lift`, `gamma`, `gain`, `saturation`, `contrast`), `grain` and
+`grainSize`, `vignette`,
 `aberration`, `letterbox`, `fade`, `flash`, `shake`, and a `scrim` that darkens the picture softly
-behind captions. Animate them with `keys()`, keyed to cues from the timeline.
+behind captions. Animate them with `keys()`, keyed to cues from the timeline. A shot file can
+ask for its own look during its beats by exporting a function such as `dawnLook(time)` (bloom,
+streaks, light shafts from its sun...), which `project.ts` merges last.
 
 Prefer an exposure kick plus light from the scene itself to a white `flash`: over a dark frame a
 flash reads as a grey veil.

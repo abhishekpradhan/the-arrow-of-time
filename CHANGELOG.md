@@ -8,12 +8,57 @@ here becomes the release notes. The working cuts before it (v0.1 to v0.4) are re
 
 ## [Unreleased]
 
+A second pass over the picture, shot by shot, for cinematic quality. The cut, the captions, the
+timing and the score are unchanged: every beat and cue is where it was.
+
+### The film
+
+- **The opening** is new. Each tick of the clock sends a shell of light through a field of dust
+  too faint to see, so the dark glitters in expanding rings; through the riser everything falls
+  into a single point. The Big Bang, inflation, the first elements and first light are now one
+  continuous flight through volumetric fire.
+- **The Milky Way** is a volumetric barred spiral with real dust lanes, a warm bulge, H-II knots
+  and 150,000 resolved stars, reached by one camera move out of the cosmic web, whose small
+  galaxies are redrawn too.
+- **The solar nebula** is a volume of sculpted, backlit dust pillars crossed by the supernova's
+  blast wave; **the Sun's birth** a flared, self-shadowing disk with gaps, wakes and a jet.
+- **Every planet** is redrawn: weather-system clouds that shade the ground, a scattering
+  atmosphere with coloured terminators, a wind-roughened ocean glint, relief on land, a magma
+  ocean whose rifts meander like fractures, and a Snowball with long leads in its ice.
+- **Life** opens on a field of black smokers lit by their own glow. **The age of mammals** is a
+  new painted dawn: the Sun rising through the mist of a dead forest, a small mammal on a fallen
+  trunk. The asteroid's blast wave tears the cloud deck away under a finer rain of re-entering
+  ejecta, and the Moon-forming impact's spray is white-hot beads.
+- **The space race**: the R-7's stage and fairing are painted, riveted sheet metal with frost and
+  soot. **Earth at night** carries hairline air routes with aircraft on them. **Now** and the
+  epilogue share a sunbeam modelled on Voyager 1's frame.
+- **The far future**: a watch-face dial, star trails behind the drifting Dipper, a red giant
+  with real convection, limb darkening and an atmosphere that swallows Mercury and Venus, a
+  scorched Earth ringed by its last air, and a planetary nebula coloured by ionisation.
+- **The end**: a tidal merger of two luminous spirals, the last stars as dying embers, and a
+  black hole from a Schwarzschild geodesic tracer (lensed disk, photon ring, Doppler and
+  gravitational shift) that drains, evaporates and ends in an expanding shell of light.
+- **The look**: halation round highlights, and film grain in clumps a little larger than a pixel
+  instead of per-pixel noise (which also makes the master far cheaper to encode).
+
+### The engine
+
+- `Planet`: clouds, air, glint, relief, lava and ice rebuilt; new `shock`, `relief`,
+  `atmoHeight` and `cloudZones` parameters.
+- `Galaxy` is volumetric (a baked face-on map marched as a thin disk); `galaxyData`,
+  `GALAXY_SPIN` and `ABSORBER_SHADE` are gone.
+- New `noiseVolume` (a tiling 3D noise texture for ray-marched volumes) and `Streaks` (points
+  drawn as their shutter path).
+- `Look` gains `halation`, `halationThreshold`, `halationTint` and `grainSize`.
+
 ### The repository
 
 - `AGENTS.md` holds the conventions and pitfalls, for people and coding agents alike; `CLAUDE.md`
   is a symlink to it, for agents that look for that name.
 - The *Render on Modal* workflow runs only when the repository's owner starts it.
 - A Buy Me a Coffee link (`.github/FUNDING.yml` and the README).
+- The far future is two shot files, `future.ts` and `end.ts`, and each act's shot file can export
+  a look function for its own beats, merged last in `project.ts`.
 
 ## [v1.0] - 2026-09-28
 
